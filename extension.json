@@ -1,0 +1,14 @@
+{
+    "builtin": "False",
+    "default_enabled": "True",
+    "type": "extension",
+    "rocket_mode_compatible": "False",
+    "name": "pyBpmExternal",
+    "description": "An official extension for pyRevit tailored for offices using our services.",
+    "author": "BPM",
+    "author_profile": "https://github.com/shaybpm",
+    "url": "https://github.com/shaybpm/pyBpmExternal.git",
+    "website": "https://bpm-eng.co.il/",
+    "image": "",
+    "dependencies": []
+}
