@@ -5,7 +5,7 @@
 - Defines whether the opening is located in the floor or not.
 - Calculates the projected height of the opening.
 - Calculates the absolute height of the opening. """
-__title__ = 'Opening\nUpdate'
+__title__ = 'Opening\nSetter'
 __author__ = 'Eyal Sinay'
 
 # ------------------------------
