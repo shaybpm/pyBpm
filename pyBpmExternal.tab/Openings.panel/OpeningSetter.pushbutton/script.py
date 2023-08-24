@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ This script iterates over all the openings (Generic Model from the BPM library) and dose the following:
 - Copies the Elevation to a taggable parameter (useful in versions 20+21).
 - Copies the Reference Level to a taggable parameter.
@@ -61,41 +62,90 @@ def get_all_openings():
             openings.append(gm)
     return openings
 
-def set_schedule_level(opening):
-    """ Sets the Schedule Level parameter to the correct level. """
-    all_levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
-    all_levels_sorted = sorted(all_levels, key = lambda x: x.Elevation)
-    all_levels_sorted_length = len(all_levels_sorted)
-    opening_location_point_z = opening.Location.Point.Z
+# def set_schedule_level(opening):
+#     """ Sets the Schedule Level parameter to the correct level. """
+#     # TODO: Check if is floor, if is floor, get the level of the floor. if it is not floor, get the floor below and set the level to it. if there is no floor below, set the level by the code below.
+#     # ! For now, we decided to not use this function. The user will have to set the level manually. The script will only set the "MEP - Not Required" parameter to true or false by this calculation.
+#     all_levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
+#     all_levels_sorted = sorted(all_levels, key = lambda x: x.Elevation)
+#     all_levels_sorted_length = len(all_levels_sorted)
+#     opening_location_point_z = opening.Location.Point.Z
+#     param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
+#     if not param__schedule_level:
+#         return
+#     if all_levels_sorted[0].Elevation >= opening_location_point_z:
+#         param__schedule_level.Set(all_levels_sorted[0].Id)
+#         return
+#     if all_levels_sorted[all_levels_sorted_length - 1].Elevation <= opening_location_point_z:
+#         param__schedule_level.Set(all_levels_sorted[all_levels_sorted_length - 1].Id)
+#         return
+#     for i in range(all_levels_sorted_length - 1):
+#         if all_levels_sorted[i].Elevation <= opening_location_point_z and all_levels_sorted[i + 1].Elevation > opening_location_point_z:
+#             param__schedule_level.Set(all_levels_sorted[i].Id)
+#             return
+#     print('No level found for opening: {}'.format(opening.Id))
+
+def is_floor(opening):
+    """ Returns True if the host of the opening is a floor, else returns False.
+     We don't use the host property because sometimes the connection between the opening and the host is broken. """
+    param__Elevation_from_Level = opening.LookupParameter('Elevation from Level')
+    if not param__Elevation_from_Level:
+        # print('WARNING: No Elevation from Level parameter found. Opening ID: {}'.format(opening.Id))
+        return False
+    if param__Elevation_from_Level.IsReadOnly:
+        return True
+    else:
+        return False
+    
+def set_mep_not_required_param(opening):
+    """ Get the schedule level parameter and check if it is match to the opening instance in the model. If it is, set the MEP - Not Required parameter to true, else set it to false. """
+    param__mep_not_required = opening.LookupParameter('MEP - Not Required')
+    if not param__mep_not_required:
+        # print('WARNING: No MEP - Not Required parameter found. Opening ID: {}'.format(opening.Id))
+        return
     param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
-    if not param__schedule_level:
+    id__schedule_level = param__schedule_level.AsElementId()
+    if id__schedule_level.IntegerValue == -1:
+        param__mep_not_required.Set(0)
         return
-    if all_levels_sorted[0].Elevation >= opening_location_point_z:
-        param__schedule_level.Set(all_levels_sorted[0].Id)
+
+    all_floors = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
+    if len(all_floors) == 0:
+        param__mep_not_required.Set(0)
         return
-    if all_levels_sorted[all_levels_sorted_length - 1].Elevation <= opening_location_point_z:
-        param__schedule_level.Set(all_levels_sorted[all_levels_sorted_length - 1].Id)
+    
+    if not is_floor(opening):
+        # filter the floors that are below the opening
+        all_floors = [floor for floor in all_floors if floor.get_BoundingBox(None).Min.Z <= opening.Location.Point.Z]
+
+    opening_location_point_z = opening.Location.Point.Z
+    target_floor = all_floors[0]
+    target_floor_location_point_z = target_floor.get_BoundingBox(None).Min.Z
+    for floor in all_floors:
+        floor_location_point_z = floor.get_BoundingBox(None).Min.Z
+        if abs(floor_location_point_z - opening_location_point_z) < abs(target_floor_location_point_z - opening_location_point_z):
+            target_floor = floor
+            target_floor_location_point_z = floor_location_point_z
+
+    if target_floor.LevelId == id__schedule_level:
+        param__mep_not_required.Set(1)
         return
-    for i in range(all_levels_sorted_length - 1):
-        if all_levels_sorted[i].Elevation <= opening_location_point_z and all_levels_sorted[i + 1].Elevation > opening_location_point_z:
-            param__schedule_level.Set(all_levels_sorted[i].Id)
-            return
-    print('No level found for opening: {}'.format(opening.Id))
+    else:
+        param__mep_not_required.Set(0)
+        return
 
 def set_comments(opening):
     """ Sets the comments parameter to 'F' if the host of the opening is a floor, and 'nF' if not. """
-    param__Elevation_from_Level = opening.LookupParameter('Elevation from Level')
-    if not param__Elevation_from_Level:
-        print('No Elevation from Level parameter found.')
-        return
-    if param__Elevation_from_Level.IsReadOnly:
-        opening.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).Set('F')
+    para__comments = opening.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
+    if is_floor(opening):
+        para__comments.Set('F')
     else:
-        opening.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).Set('nF')
+        para__comments.Set('nF')
 
 def set_elevation_params(opening):
     """ Sets the elevation parameters: 'Opening Elevation' and 'Opening Absolute Level'... """
     # את הערך האבסולוטי דרך תוספת השדה הנמצב בפרוג'קט בייס פויינט ELEV
+    # The absolute value through the addition of the field located in the project base point ELEV
     pass
 
 def set_ref_level_and_mid_elevation(opening):
@@ -107,7 +157,8 @@ def set_mark(opening):
     pass
 
 def execute_all_functions(opening):
-    set_schedule_level(opening)
+    # set_schedule_level(opening)
+    set_mep_not_required_param(opening)
     set_comments(opening)
     set_elevation_params(opening)
     set_ref_level_and_mid_elevation(opening)
