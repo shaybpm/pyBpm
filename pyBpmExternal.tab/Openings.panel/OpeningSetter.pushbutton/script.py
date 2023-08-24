@@ -68,6 +68,8 @@ def set_schedule_level(opening):
     all_levels_sorted_length = len(all_levels_sorted)
     opening_location_point_z = opening.Location.Point.Z
     param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
+    if not param__schedule_level:
+        return
     if all_levels_sorted[0].Elevation >= opening_location_point_z:
         param__schedule_level.Set(all_levels_sorted[0].Id)
         return
@@ -82,7 +84,6 @@ def set_schedule_level(opening):
 
 def set_comments(opening):
     """ Sets the comments parameter to 'F' if the host of the opening is a floor, and 'nF' if not. """
-    # ? Why not get the host and check its category?
     param__Elevation_from_Level = opening.LookupParameter('Elevation from Level')
     if not param__Elevation_from_Level:
         print('No Elevation from Level parameter found.')
@@ -92,16 +93,13 @@ def set_comments(opening):
     else:
         opening.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).Set('nF')
 
-def set_elevation_params1(opening):
+def set_elevation_params(opening):
     """ Sets the elevation parameters: 'Opening Elevation' and 'Opening Absolute Level'... """
-    pass
-
-def set_elevation_params2(opening):
-    """ Sets the elevation parameters: '#Elevation at Bottom' and '##Bottom Elevation'... """
+    # את הערך האבסולוטי דרך תוספת השדה הנמצב בפרוג'קט בייס פויינט ELEV
     pass
 
 def set_ref_level_and_mid_elevation(opening):
-    """ Sets the parameters: '##Reference Level' and '##Middle Elevation'... """
+    """ Sets the parameters: '##Reference Level'(floor level) and '##Middle Elevation'()... """
     pass
 
 def set_mark(opening):
@@ -111,9 +109,9 @@ def set_mark(opening):
 def execute_all_functions(opening):
     set_schedule_level(opening)
     set_comments(opening)
-    set_elevation_params1(opening)
-    set_elevation_params2(opening)
+    set_elevation_params(opening)
     set_ref_level_and_mid_elevation(opening)
+    set_mark(opening)
 
 def run():
     all_openings = get_all_openings()
