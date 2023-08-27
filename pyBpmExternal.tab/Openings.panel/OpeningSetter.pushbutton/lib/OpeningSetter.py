@@ -9,6 +9,9 @@ clr.AddReferenceByPartialName('System.Windows.Forms')
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltInParameter
 
 # ------------------------------------------------------------
+from pyrevit import script
+output = output = script.get_output()
+# ------------------------------------------------------------
 
 def get_all_openings(doc):
     """ Returns a list of all the openings in the model. """
@@ -43,14 +46,14 @@ def set_mep_not_required_param(doc, opening, print_warnings = True):
     param__mep_not_required = opening.LookupParameter('MEP - Not Required')
     if not param__mep_not_required:
         if print_warnings:
-            print('WARNING: No MEP - Not Required parameter found. Opening ID: {}'.format(opening.Id))
+            print('WARNING: No MEP - Not Required parameter found. Opening ID: {}'.format(output.linkify(opening.Id)))
         return "WARNING"
     param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
     id__schedule_level = param__schedule_level.AsElementId()
     if id__schedule_level.IntegerValue == -1:
         param__mep_not_required.Set(0)
         if print_warnings:
-            print('WARNING: Schedule Level is not set. Opening ID: {}'.format(opening.Id))
+            print('WARNING: Schedule Level is not set. Opening ID: {}'.format(output.linkify(opening.Id)))
         return "WARNING"
 
     all_floors = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
@@ -82,7 +85,7 @@ def set_comments(opening, print_warnings = True):
     para__comments = opening.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
     if not para__comments:
         if print_warnings:
-            print('WARNING: No Comments parameter found. Opening ID: {}'.format(opening.Id))
+            print('WARNING: No Comments parameter found. Opening ID: {}'.format(output.linkify(opening.Id)))
         return "WARNING"
     if is_floor(opening):
         para__comments.Set('F')
@@ -99,7 +102,7 @@ def set_elevation_params(doc, opening, print_warnings = True):
     param__opening_absolute_level = opening.LookupParameter('Opening Absolute Level')
     if not param__opening_elevation or not param__opening_absolute_level:
         if print_warnings:
-            print('WARNING: No Opening Elevation or Opening Absolute Level parameter found. Opening ID: {}'.format(opening.Id))
+            print('WARNING: No Opening Elevation or Opening Absolute Level parameter found. Opening ID: {}'.format(output.linkify(opening.Id)))
         return "WARNING"
     param__opening_elevation.Set(opening_location_point_z)
     param__opening_absolute_level.Set(opening_location_point_z + project_base_point_elevation)
@@ -113,7 +116,7 @@ def set_ref_level_and_mid_elevation(opening, print_warnings = True):
     param__middle_elevation = opening.LookupParameter('##Middle Elevation')
     if not param__schedule_level or not param__reference_level or not param__elevation_from_level or not param__middle_elevation:
         if print_warnings:
-            print('WARNING: No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found. Opening ID: {}'.format(opening.Id))
+            print('WARNING: No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found. Opening ID: {}'.format(output.linkify(opening.Id)))
         return "WARNING"
     param__reference_level.Set(param__schedule_level.AsValueString())
     param__middle_elevation.Set(param__elevation_from_level.AsDouble())
@@ -138,7 +141,7 @@ def set_mark(doc, opening, print_warnings = True):
     param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
     if not param__mark:
         if print_warnings:
-            print('WARNING: No Mark parameter found. Opening ID: {}'.format(opening.Id))
+            print('WARNING: No Mark parameter found. Opening ID: {}'.format(output.linkify(opening.Id)))
         return "WARNING"
     if param__mark.AsString() and param__mark.AsString().isdigit():
         return "OK"
