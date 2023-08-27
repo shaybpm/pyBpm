@@ -33,10 +33,6 @@ def alert(msg):
     TaskDialog.Show('BPM - Opening Update', msg)
 
 # ------------------------------------------------------------
-# status:
-# 0 - OK
-# 1 - Param not found
-# ------------------------------------------------------------
 
 def get_all_openings():
     """ Returns a list of all the openings in the model. """
@@ -67,11 +63,12 @@ def is_floor(opening):
     else:
         return False
     
-def set_mep_not_required_param(opening):
+def set_mep_not_required_param(opening, print_warnings = True):
     """ Get the schedule level parameter and check if it is match to the opening instance in the model. If it is, set the MEP - Not Required parameter to true, else set it to false. """
     param__mep_not_required = opening.LookupParameter('MEP - Not Required')
     if not param__mep_not_required:
-        # print('WARNING: No MEP - Not Required parameter found. Opening ID: {}'.format(opening.Id))
+        if print_warnings:
+            print('WARNING: No MEP - Not Required parameter found. Opening ID: {}'.format(opening.Id))
         return
     param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
     id__schedule_level = param__schedule_level.AsElementId()
@@ -104,7 +101,7 @@ def set_mep_not_required_param(opening):
         param__mep_not_required.Set(0)
         return
 
-def set_comments(opening):
+def set_comments(opening, print_warnings = True):
     """ Sets the comments parameter to 'F' if the host of the opening is a floor, and 'nF' if not. """
     para__comments = opening.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
     if is_floor(opening):
@@ -112,7 +109,7 @@ def set_comments(opening):
     else:
         para__comments.Set('nF')
 
-def set_elevation_params(opening):
+def set_elevation_params(opening, print_warnings = True):
     """ Sets the elevation parameters: 'Opening Elevation' and 'Opening Absolute Level'... """
     project_base_point = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ProjectBasePoint).WhereElementIsNotElementType().ToElements()[0]
     project_base_point_elevation = project_base_point.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble()
@@ -120,19 +117,21 @@ def set_elevation_params(opening):
     param__opening_elevation = opening.LookupParameter('Opening Elevation')
     param__opening_absolute_level = opening.LookupParameter('Opening Absolute Level')
     if not param__opening_elevation or not param__opening_absolute_level:
-        # print('WARNING: No Opening Elevation or Opening Absolute Level parameter found. Opening ID: {}'.format(opening.Id))
+        if print_warnings:
+            print('WARNING: No Opening Elevation or Opening Absolute Level parameter found. Opening ID: {}'.format(opening.Id))
         return
     param__opening_elevation.Set(opening_location_point_z)
     param__opening_absolute_level.Set(opening_location_point_z + project_base_point_elevation)
 
-def set_ref_level_and_mid_elevation(opening):
+def set_ref_level_and_mid_elevation(opening, print_warnings = True):
     """ Sets the parameter '##Reference Level' to get the value in that in the parameter 'Schedule Level', and the parameter '##Middle Elevation' to get the value that in the parameter: 'Elevation from Level' """
     param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
     param__reference_level = opening.LookupParameter('##Reference Level')
     param__elevation_from_level = opening.LookupParameter('Elevation from Level')
     param__middle_elevation = opening.LookupParameter('##Middle Elevation')
     if not param__schedule_level or not param__reference_level or not param__elevation_from_level or not param__middle_elevation:
-        # print('WARNING: No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found. Opening ID: {}'.format(opening.Id))
+        if print_warnings:
+            print('WARNING: No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found. Opening ID: {}'.format(opening.Id))
         return
     param__reference_level.Set(param__schedule_level.AsValueString())
     param__middle_elevation.Set(param__elevation_from_level.AsDouble())
@@ -151,23 +150,24 @@ def opening_number_generator():
         number += 1
     return str(number)
 
-def set_mark(opening):
+def set_mark(opening, print_warnings = True):
     """ Sets the Mark parameter to opening number. """
     param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
     if not param__mark:
-        # print('WARNING: No Mark parameter found. Opening ID: {}'.format(opening.Id))
+        if print_warnings:
+            print('WARNING: No Mark parameter found. Opening ID: {}'.format(opening.Id))
         return
     if param__mark.AsString() and param__mark.AsString().isdigit():
         return
     num = opening_number_generator()
     param__mark.Set(num)
 
-def execute_all_functions(opening):
-    set_mep_not_required_param(opening)
-    set_comments(opening)
-    set_elevation_params(opening)
-    set_ref_level_and_mid_elevation(opening)
-    set_mark(opening)
+def execute_all_functions(opening, print_warnings = True):
+    set_mep_not_required_param(opening, print_warnings)
+    set_comments(opening, print_warnings)
+    set_elevation_params(opening, print_warnings)
+    set_ref_level_and_mid_elevation(opening, print_warnings)
+    set_mark(opening, print_warnings)
 
 def run():
     all_openings = get_all_openings()
