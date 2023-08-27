@@ -68,12 +68,12 @@ def set_mep_not_required_param(opening, print_warnings = True):
     if not param__mep_not_required:
         if print_warnings:
             print('WARNING: No MEP - Not Required parameter found. Opening ID: {}'.format(opening.Id))
-        return
+        return "WARNING"
     param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
     id__schedule_level = param__schedule_level.AsElementId()
     if id__schedule_level.IntegerValue == -1:
         param__mep_not_required.Set(0)
-        return
+        return "WARNING"
 
     all_floors = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
      
@@ -82,7 +82,7 @@ def set_mep_not_required_param(opening, print_warnings = True):
     
     if len(all_floors) == 0:
         param__mep_not_required.Set(0)
-        return
+        return "OK"
 
     opening_location_point_z = opening.Location.Point.Z
     target_floor = all_floors[0]
@@ -95,18 +95,23 @@ def set_mep_not_required_param(opening, print_warnings = True):
 
     if target_floor.LevelId == id__schedule_level:
         param__mep_not_required.Set(1)
-        return
+        return "OK"
     else:
         param__mep_not_required.Set(0)
-        return
+        return "OK"
 
 def set_comments(opening, print_warnings = True):
     """ Sets the comments parameter to 'F' if the host of the opening is a floor, and 'nF' if not. """
     para__comments = opening.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
+    if not para__comments:
+        if print_warnings:
+            print('WARNING: No Comments parameter found. Opening ID: {}'.format(opening.Id))
+        return "WARNING"
     if is_floor(opening):
         para__comments.Set('F')
     else:
         para__comments.Set('nF')
+    return "OK"
 
 def set_elevation_params(opening, print_warnings = True):
     """ Sets the elevation parameters: 'Opening Elevation' and 'Opening Absolute Level'... """
@@ -118,9 +123,10 @@ def set_elevation_params(opening, print_warnings = True):
     if not param__opening_elevation or not param__opening_absolute_level:
         if print_warnings:
             print('WARNING: No Opening Elevation or Opening Absolute Level parameter found. Opening ID: {}'.format(opening.Id))
-        return
+        return "WARNING"
     param__opening_elevation.Set(opening_location_point_z)
     param__opening_absolute_level.Set(opening_location_point_z + project_base_point_elevation)
+    return "OK"
 
 def set_ref_level_and_mid_elevation(opening, print_warnings = True):
     """ Sets the parameter '##Reference Level' to get the value in that in the parameter 'Schedule Level', and the parameter '##Middle Elevation' to get the value that in the parameter: 'Elevation from Level' """
@@ -131,9 +137,10 @@ def set_ref_level_and_mid_elevation(opening, print_warnings = True):
     if not param__schedule_level or not param__reference_level or not param__elevation_from_level or not param__middle_elevation:
         if print_warnings:
             print('WARNING: No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found. Opening ID: {}'.format(opening.Id))
-        return
+        return "WARNING"
     param__reference_level.Set(param__schedule_level.AsValueString())
     param__middle_elevation.Set(param__elevation_from_level.AsDouble())
+    return "OK"
 
 def opening_number_generator():
     """ Generates a number for the opening. """
@@ -155,18 +162,22 @@ def set_mark(opening, print_warnings = True):
     if not param__mark:
         if print_warnings:
             print('WARNING: No Mark parameter found. Opening ID: {}'.format(opening.Id))
-        return
+        return "WARNING"
     if param__mark.AsString() and param__mark.AsString().isdigit():
-        return
+        return "OK"
     num = opening_number_generator()
     param__mark.Set(num)
+    return "OK"
 
 def execute_all_functions(opening, print_warnings = True):
-    set_mep_not_required_param(opening, print_warnings)
-    set_comments(opening, print_warnings)
-    set_elevation_params(opening, print_warnings)
-    set_ref_level_and_mid_elevation(opening, print_warnings)
-    set_mark(opening, print_warnings)
+    results = set_mep_not_required_param(opening, print_warnings)
+    results = set_comments(opening, print_warnings)
+    results = set_elevation_params(opening, print_warnings)
+    results = set_ref_level_and_mid_elevation(opening, print_warnings)
+    results = set_mark(opening, print_warnings)
+    if "WARNING" in results:
+        return "WARNING"
+    return "OK"
 
 def run():
     all_openings = get_all_openings()
@@ -177,7 +188,12 @@ def run():
     t = Transaction(doc, 'BPM | Opening Update')
     t.Start()
     for opening in all_openings:
-        execute_all_functions(opening, True)
+        results = execute_all_functions(opening, True)
+    
+    if results == "OK":
+        alert('All openings updated successfully.')
+    else:
+        alert('Completed with warnings. See the output window for more details.')
     
     t.Commit()
 
