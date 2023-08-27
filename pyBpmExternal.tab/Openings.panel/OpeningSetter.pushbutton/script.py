@@ -73,6 +73,8 @@ def set_mep_not_required_param(opening, print_warnings = True):
     id__schedule_level = param__schedule_level.AsElementId()
     if id__schedule_level.IntegerValue == -1:
         param__mep_not_required.Set(0)
+        if print_warnings:
+            print('WARNING: No Schedule Level parameter found. Opening ID: {}'.format(opening.Id))
         return "WARNING"
 
     all_floors = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
