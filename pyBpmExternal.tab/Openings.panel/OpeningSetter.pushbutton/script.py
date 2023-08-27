@@ -178,7 +178,7 @@ def run():
     t = Transaction(doc, 'BPM | Opening Update')
     t.Start()
     for opening in all_openings:
-        execute_all_functions(opening)
+        execute_all_functions(opening, True)
     
     t.Commit()
 
