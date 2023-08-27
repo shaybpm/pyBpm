@@ -56,7 +56,6 @@ def is_floor(opening):
      We don't use the host property because sometimes the connection between the opening and the host is broken. """
     param__Elevation_from_Level = opening.LookupParameter('Elevation from Level')
     if not param__Elevation_from_Level:
-        # print('WARNING: No Elevation from Level parameter found. Opening ID: {}'.format(opening.Id))
         return False
     if param__Elevation_from_Level.IsReadOnly:
         return True
