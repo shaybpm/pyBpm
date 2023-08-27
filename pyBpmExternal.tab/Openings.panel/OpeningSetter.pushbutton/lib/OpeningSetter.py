@@ -50,7 +50,7 @@ def set_mep_not_required_param(doc, opening, print_warnings = True):
     if id__schedule_level.IntegerValue == -1:
         param__mep_not_required.Set(0)
         if print_warnings:
-            print('WARNING: No Schedule Level parameter found. Opening ID: {}'.format(opening.Id))
+            print('WARNING: Schedule Level is not set. Opening ID: {}'.format(opening.Id))
         return "WARNING"
 
     all_floors = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
@@ -147,11 +147,12 @@ def set_mark(doc, opening, print_warnings = True):
     return "OK"
 
 def execute_all_functions(doc, opening, print_warnings = True):
-    results = set_mep_not_required_param(doc, opening, print_warnings)
-    results = set_comments(opening, print_warnings)
-    results = set_elevation_params(doc, opening, print_warnings)
-    results = set_ref_level_and_mid_elevation(opening, print_warnings)
-    results = set_mark(doc, opening, print_warnings)
+    results0 = set_mep_not_required_param(doc, opening, print_warnings)
+    results1 = set_comments(opening, print_warnings)
+    results2 = set_elevation_params(doc, opening, print_warnings)
+    results3 = set_ref_level_and_mid_elevation(opening, print_warnings)
+    results4 = set_mark(doc, opening, print_warnings)
+    results = [results0, results1, results2, results3, results4]
     if "WARNING" in results:
         return "WARNING"
     return "OK"
