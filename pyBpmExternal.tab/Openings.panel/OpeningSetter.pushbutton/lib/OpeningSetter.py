@@ -8,16 +8,9 @@ clr.AddReferenceByPartialName('System.Windows.Forms')
 
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltInParameter
 
-max_elements = 5
-gdict = globals()
-uiapp = __revit__
-uidoc = uiapp.ActiveUIDocument
-if uidoc:
-    doc = uiapp.ActiveUIDocument.Document
-
 # ------------------------------------------------------------
 
-def get_all_openings():
+def get_all_openings(doc):
     """ Returns a list of all the openings in the model. """
     opening_names = [
         'Round Face Opening',
@@ -45,7 +38,7 @@ def is_floor(opening):
     else:
         return False
     
-def set_mep_not_required_param(opening, print_warnings = True):
+def set_mep_not_required_param(doc, opening, print_warnings = True):
     """ Get the schedule level parameter and check if it is match to the opening instance in the model. If it is, set the MEP - Not Required parameter to true, else set it to false. """
     param__mep_not_required = opening.LookupParameter('MEP - Not Required')
     if not param__mep_not_required:
@@ -97,7 +90,7 @@ def set_comments(opening, print_warnings = True):
         para__comments.Set('nF')
     return "OK"
 
-def set_elevation_params(opening, print_warnings = True):
+def set_elevation_params(doc, opening, print_warnings = True):
     """ Sets the elevation parameters: 'Opening Elevation' and 'Opening Absolute Level'... """
     project_base_point = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ProjectBasePoint).WhereElementIsNotElementType().ToElements()[0]
     project_base_point_elevation = project_base_point.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble()
@@ -126,9 +119,9 @@ def set_ref_level_and_mid_elevation(opening, print_warnings = True):
     param__middle_elevation.Set(param__elevation_from_level.AsDouble())
     return "OK"
 
-def opening_number_generator():
+def opening_number_generator(doc):
     """ Generates a number for the opening. """
-    all_openings = get_all_openings()
+    all_openings = get_all_openings(doc)
     all_existing_numbers = []
     for opening in all_openings:
         param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
@@ -140,7 +133,7 @@ def opening_number_generator():
         number += 1
     return str(number)
 
-def set_mark(opening, print_warnings = True):
+def set_mark(doc, opening, print_warnings = True):
     """ Sets the Mark parameter to opening number. """
     param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
     if not param__mark:
@@ -149,16 +142,16 @@ def set_mark(opening, print_warnings = True):
         return "WARNING"
     if param__mark.AsString() and param__mark.AsString().isdigit():
         return "OK"
-    num = opening_number_generator()
+    num = opening_number_generator(doc)
     param__mark.Set(num)
     return "OK"
 
-def execute_all_functions(opening, print_warnings = True):
-    results = set_mep_not_required_param(opening, print_warnings)
+def execute_all_functions(doc, opening, print_warnings = True):
+    results = set_mep_not_required_param(doc, opening, print_warnings)
     results = set_comments(opening, print_warnings)
-    results = set_elevation_params(opening, print_warnings)
+    results = set_elevation_params(doc, opening, print_warnings)
     results = set_ref_level_and_mid_elevation(opening, print_warnings)
-    results = set_mark(opening, print_warnings)
+    results = set_mark(doc, opening, print_warnings)
     if "WARNING" in results:
         return "WARNING"
     return "OK"

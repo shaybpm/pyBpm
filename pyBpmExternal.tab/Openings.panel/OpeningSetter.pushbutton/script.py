@@ -39,7 +39,7 @@ import OpeningSetter
 # ------------------------------------------------------------
 
 def run():
-    all_openings = OpeningSetter.get_all_openings()
+    all_openings = OpeningSetter.get_all_openings(doc)
     if len(all_openings) == 0:
         alert('No openings found.')
         return
@@ -47,7 +47,7 @@ def run():
     t = Transaction(doc, 'BPM | Opening Update')
     t.Start()
     for opening in all_openings:
-        results = OpeningSetter.execute_all_functions(opening, True)
+        results = OpeningSetter.execute_all_functions(doc, opening, True)
     
     if results == "OK":
         alert('All openings updated successfully.')
