@@ -46,8 +46,11 @@ def run():
     
     t = Transaction(doc, 'BPM | Opening Update')
     t.Start()
+    
+    results = []
     for opening in all_openings:
-        results = OpeningSetter.execute_all_functions(doc, opening, True)
+        opening_results = OpeningSetter.execute_all_functions(doc, opening, True)
+        results.append(opening_results)
     
     if results == "OK":
         alert('All openings updated successfully.')
