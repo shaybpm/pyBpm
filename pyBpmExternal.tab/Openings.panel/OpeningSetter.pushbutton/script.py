@@ -33,6 +33,10 @@ def alert(msg):
     TaskDialog.Show('BPM - Opening Update', msg)
 
 # ------------------------------------------------------------
+# status:
+# 0 - OK
+# 1 - Param not found
+# ------------------------------------------------------------
 
 def get_all_openings():
     """ Returns a list of all the openings in the model. """
@@ -159,7 +163,6 @@ def set_mark(opening):
     param__mark.Set(num)
 
 def execute_all_functions(opening):
-    # set_schedule_level(opening)
     set_mep_not_required_param(opening)
     set_comments(opening)
     set_elevation_params(opening)
