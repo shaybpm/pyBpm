@@ -110,13 +110,13 @@ def set_mep_not_required_param(opening):
         return
 
     all_floors = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
+     
+    if not is_floor(opening):
+        all_floors = [floor for floor in all_floors if floor.get_BoundingBox(None).Min.Z <= opening.Location.Point.Z]
+    
     if len(all_floors) == 0:
         param__mep_not_required.Set(0)
         return
-    
-    if not is_floor(opening):
-        # filter the floors that are below the opening
-        all_floors = [floor for floor in all_floors if floor.get_BoundingBox(None).Min.Z <= opening.Location.Point.Z]
 
     opening_location_point_z = opening.Location.Point.Z
     target_floor = all_floors[0]
@@ -144,17 +144,53 @@ def set_comments(opening):
 
 def set_elevation_params(opening):
     """ Sets the elevation parameters: 'Opening Elevation' and 'Opening Absolute Level'... """
-    # את הערך האבסולוטי דרך תוספת השדה הנמצב בפרוג'קט בייס פויינט ELEV
-    # The absolute value through the addition of the field located in the project base point ELEV
-    pass
+    project_base_point = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ProjectBasePoint).WhereElementIsNotElementType().ToElements()[0]
+    project_base_point_elevation = project_base_point.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble()
+    opening_location_point_z = opening.Location.Point.Z
+    param__opening_elevation = opening.LookupParameter('Opening Elevation')
+    param__opening_absolute_level = opening.LookupParameter('Opening Absolute Level')
+    if not param__opening_elevation or not param__opening_absolute_level:
+        # print('WARNING: No Opening Elevation or Opening Absolute Level parameter found. Opening ID: {}'.format(opening.Id))
+        return
+    param__opening_elevation.Set(opening_location_point_z)
+    param__opening_absolute_level.Set(opening_location_point_z + project_base_point_elevation)
 
 def set_ref_level_and_mid_elevation(opening):
-    """ Sets the parameters: '##Reference Level'(floor level) and '##Middle Elevation'()... """
-    pass
+    """ Sets the parameter '##Reference Level' to get the value in that in the parameter 'Schedule Level', and the parameter '##Middle Elevation' to get the value that in the parameter: 'Elevation from Level' """
+    param__schedule_level = opening.get_Parameter(BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM)
+    param__reference_level = opening.LookupParameter('##Reference Level')
+    param__elevation_from_level = opening.LookupParameter('Elevation from Level')
+    param__middle_elevation = opening.LookupParameter('##Middle Elevation')
+    if not param__schedule_level or not param__reference_level or not param__elevation_from_level or not param__middle_elevation:
+        # print('WARNING: No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found. Opening ID: {}'.format(opening.Id))
+        return
+    param__reference_level.Set(param__schedule_level.AsValueString())
+    param__middle_elevation.Set(param__elevation_from_level.AsDouble())
+
+def opening_number_generator():
+    """ Generates a number for the opening. """
+    all_openings = get_all_openings()
+    all_existing_numbers = []
+    for opening in all_openings:
+        param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
+        if param__mark.AsString() and param__mark.AsString().isdigit():
+            all_existing_numbers.append(int(param__mark.AsString()))
+    
+    number = 1
+    while number in all_existing_numbers:
+        number += 1
+    return str(number)
 
 def set_mark(opening):
-    """ Sets the Mark parameter... """
-    pass
+    """ Sets the Mark parameter to opening number. """
+    param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
+    if not param__mark:
+        # print('WARNING: No Mark parameter found. Opening ID: {}'.format(opening.Id))
+        return
+    if param__mark.AsString() and param__mark.AsString().isdigit():
+        return
+    num = opening_number_generator()
+    param__mark.Set(num)
 
 def execute_all_functions(opening):
     # set_schedule_level(opening)
