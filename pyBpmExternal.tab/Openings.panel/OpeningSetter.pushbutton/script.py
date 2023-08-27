@@ -97,10 +97,9 @@ def set_mep_not_required_param(opening, print_warnings = True):
 
     if target_floor.LevelId == id__schedule_level:
         param__mep_not_required.Set(1)
-        return "OK"
     else:
         param__mep_not_required.Set(0)
-        return "OK"
+    return "OK"
 
 def set_comments(opening, print_warnings = True):
     """ Sets the comments parameter to 'F' if the host of the opening is a floor, and 'nF' if not. """
