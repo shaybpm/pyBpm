@@ -5,32 +5,52 @@ __author__ = 'Eyal Sinay'
 
 # ------------------------------
 
+import os
 import clr
-clr.AddReference('RevitAPI')
-clr.AddReferenceByPartialName('PresentationCore')
-clr.AddReferenceByPartialName('AdWindows')
-clr.AddReferenceByPartialName("PresentationFramework")
-clr.AddReferenceByPartialName('System')
-clr.AddReferenceByPartialName('System.Windows.Forms')
+import shutil
 
-# from Autodesk.Revit.DB import Transaction
-from Autodesk.Revit.UI import TaskDialog
+clr.AddReference('System')
+clr.AddReference('System.Net')
+clr.AddReference('System.IO.Compression.FileSystem')
 
-max_elements = 5
-gdict = globals()
-uiapp = __revit__
-uidoc = uiapp.ActiveUIDocument
-if uidoc:
-    doc = uiapp.ActiveUIDocument.Document
-
-def alert(msg):
-    TaskDialog.Show('BPM - Opening Update', msg)
-
-# ------------------------------------------------------------
-
-# ------------------------------------------------------------
+from System import Uri, Net
+from System.IO.Compression import ZipFile
 
 def run():
-    pass
+    print("Update pyBpmExternal...")
+
+    extensions_folder = os.path.join(os.getenv('APPDATA'), 'pyRevit', 'Extensions')
+
+    if not os.path.isdir(extensions_folder):
+        print("The update failed.")
+        return
+
+    pyBpmExternal_folder = os.path.join(extensions_folder, 'pyBpmExternal.extension')
+
+    if os.path.isdir(pyBpmExternal_folder):
+        shutil.rmtree(pyBpmExternal_folder)
+    else:
+        print("The update failed.")
+        return
+
+    download_url = "https://github.com/shaybpm/pyBpmExternal/archive/refs/heads/main.zip"
+    zip_filename = os.path.join(extensions_folder, "pyBpmExternal.zip")
+
+    web_client = Net.WebClient()
+    try:
+        web_client.DownloadFile(Uri(download_url), zip_filename)
+    except Exception as e:
+        print("The installation failed. Make sure you are connected to the internet and try again.")
+        print(e)
+        return
+
+    ZipFile.ExtractToDirectory(zip_filename, extensions_folder)
+    zipped_folder_name = next(os.walk(extensions_folder))[1][0]  # Assuming the unzipped folder is the first one in the extensions_folder
+    zipped_folder = os.path.join(extensions_folder, zipped_folder_name)
+
+    os.rename(zipped_folder, pyBpmExternal_folder)
+    os.remove(zip_filename)
+
+    print("The update was successful.")
 
 run()
