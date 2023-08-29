@@ -7,7 +7,7 @@
 - Calculates the projected height of the opening.
 - Calculates the absolute height of the opening. """
 __title__ = 'Opening\nSetter'
-__author__ = 'Eyal Sinay'
+__author__ = ['Ely Komm', 'Eyal Sinay']
 
 # ------------------------------
 
