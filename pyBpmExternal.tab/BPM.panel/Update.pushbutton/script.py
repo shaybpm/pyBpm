@@ -45,7 +45,7 @@ def run():
         return
 
     ZipFile.ExtractToDirectory(zip_filename, extensions_folder)
-    zipped_folder_name = next(os.walk(extensions_folder))[1][0]  # Assuming the unzipped folder is the first one in the extensions_folder
+    zipped_folder_name = next(os.walk(extensions_folder))[1][0]
     zipped_folder = os.path.join(extensions_folder, zipped_folder_name)
 
     os.rename(zipped_folder, pyBpmExternal_folder)
