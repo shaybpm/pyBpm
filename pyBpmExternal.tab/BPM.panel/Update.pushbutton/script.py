@@ -16,6 +16,8 @@ clr.AddReference('System.IO.Compression.FileSystem')
 from System import Uri, Net
 from System.IO.Compression import ZipFile
 
+from pyrevit.versionmgr import updater
+
 def run():
     print("Update pyBpmExternal...")
 
@@ -51,6 +53,7 @@ def run():
     os.rename(zipped_folder, pyBpmExternal_folder)
     os.remove(zip_filename)
 
+    updater.update_pyrevit()
     print("The update was successful.")
 
 run()
