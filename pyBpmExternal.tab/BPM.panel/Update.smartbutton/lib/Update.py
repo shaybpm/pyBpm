@@ -23,7 +23,6 @@ import HttpRequest
 
 def run():
     print("Update pyBpmExternal...")
-    return
 
     extensions_folder = os.path.join(os.getenv('APPDATA'), 'pyRevit', 'Extensions')
 
