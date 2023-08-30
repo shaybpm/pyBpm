@@ -8,6 +8,9 @@ __author__ = 'Eyal Sinay'
 import os, sys
 import clr
 import shutil
+from pyrevit import script
+from pyrevit.loader import sessionmgr
+from pyrevit.loader import sessioninfo
 
 clr.AddReference('System')
 clr.AddReference('System.Net')
@@ -55,12 +58,20 @@ def run():
 
     print("The update was successful.")
 
-# run()
+    # Reload pyrevit:
+    logger = script.get_logger()
+    results = script.get_results()
+    # re-load pyrevit session.
+    logger.info('Reloading....')
+    sessionmgr.reload_pyrevit()
+    results.newsession = sessioninfo.get_session_uuid()
 
-github_extension_file = HttpRequest.get_request("https://raw.githubusercontent.com/shaybpm/pyBpmExternal/main/extension.json")
-last_version = github_extension_file['version']
+run()
 
-local_extension_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'extension.json')
-local_extension_file = pyUtils.get_json_from_file(local_extension_path)
-local_version = local_extension_file["version"]
-print("Local version: " + local_version)
+# github_extension_file = HttpRequest.get_request("https://raw.githubusercontent.com/shaybpm/pyBpmExternal/main/extension.json")
+# last_version = github_extension_file['version']
+
+# local_extension_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'extension.json')
+# local_extension_file = pyUtils.get_json_from_file(local_extension_path)
+# local_version = local_extension_file["version"]
+# print("Local version: " + local_version)
