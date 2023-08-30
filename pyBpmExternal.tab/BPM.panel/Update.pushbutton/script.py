@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib')
 
 from System.IO.Compression import ZipFile
 import HttpRequest
+import pyUtils
 
 def run():
     print("Update pyBpmExternal...")
@@ -54,4 +55,12 @@ def run():
 
     print("The update was successful.")
 
-run()
+# run()
+
+github_extension_file = HttpRequest.get_request("https://raw.githubusercontent.com/shaybpm/pyBpmExternal/main/extension.json")
+last_version = github_extension_file['version']
+
+local_extension_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'extension.json')
+local_extension_file = pyUtils.get_json_from_file(local_extension_path)
+local_version = local_extension_file["version"]
+print("Local version: " + local_version)
