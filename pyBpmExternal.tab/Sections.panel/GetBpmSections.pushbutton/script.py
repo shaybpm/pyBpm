@@ -70,9 +70,8 @@ def get_all_section_viewFamilyTypes():
 	return section_viewFamilyTypes
 
 def create_section(section, viewFamilyTypeId, transform):
-	section_bbox = section.get_BoundingBox(None)
-	section_bbox.Transform = transform
-	ViewSection.CreateSection(doc, viewFamilyTypeId, section_bbox)
+	section_bbox = RevitUtils.GetSecBoundingBox(section, transform)
+	return ViewSection.CreateSection(doc, viewFamilyTypeId, section_bbox)
 
 def run():
     comp_link = get_comp_link()
@@ -95,7 +94,9 @@ def run():
     
     t = Transaction(doc, transaction_name)
     t.Start()
-    create_section(selected_section, selected_viewFamilyType.Id, comp_link.GetTotalTransform())
+    new_view = create_section(selected_section, selected_viewFamilyType.Id, comp_link.GetTotalTransform())
     t.Commit()
+
+    uidoc.ActiveView = new_view
 
 run()
