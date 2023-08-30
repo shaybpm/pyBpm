@@ -4,8 +4,6 @@ __title__ = 'Update'
 __author__ = 'Eyal Sinay'
 
 # ------------------------------------------------------------
-from pyrevit.coreutils import ribbon
-# ------------------------------------------------------------
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 import Update
@@ -26,7 +24,7 @@ def __selfinit__(script_cmp, ui_button_cmp, __rvt__):
 		
 		has_update_icon = script_cmp.get_bundle_file('icon_hasupdates.png')
 		if last_version != current_version:
-			ui_button_cmp.set_icon(has_update_icon, icon_size=ribbon.ICON_LARGE)
+			ui_button_cmp.set_icon(has_update_icon)
 		return True
 	except:
 		return False
