@@ -1,5 +1,7 @@
 import json
 
 def get_json_from_file(path):
-	with open(path, 'r') as f:
-		return json.load(f)
+	f = open(path, 'r')
+	res = json.load(f)
+	f.close()
+	return res
