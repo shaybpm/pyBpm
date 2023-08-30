@@ -31,4 +31,4 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 import LoadOpeningFamily
 # ------------------------------------------------------------
 
-LoadOpeningFamily.run()
+LoadOpeningFamily.run(doc)
