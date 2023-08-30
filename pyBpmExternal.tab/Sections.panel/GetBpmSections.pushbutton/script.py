@@ -15,7 +15,7 @@ clr.AddReferenceByPartialName('System.Windows.Forms')
 
 # from System.Collections.Generic import List
 
-from Autodesk.Revit.DB import Transaction, FilteredElementCollector, RevitLinkInstance, ViewType, BuiltInParameter, ViewSection, ViewFamilyType
+from Autodesk.Revit.DB import Transaction, FilteredElementCollector, RevitLinkInstance, ViewType, BuiltInParameter, ViewSection, ViewFamilyType, BoundingBoxXYZ
 
 from Autodesk.Revit.UI import TaskDialog
 
@@ -70,8 +70,8 @@ def get_all_section_viewFamilyTypes():
 	return section_viewFamilyTypes
 
 def create_section(section, viewFamilyTypeId, transform):
-	section_bbox = RevitUtils.GetSecBoundingBox(section, transform)
-	return ViewSection.CreateSection(doc, viewFamilyTypeId, section_bbox)
+    section_bbox = RevitUtils.GetSecBoundingBox(section, transform)
+    return ViewSection.CreateSection(doc, viewFamilyTypeId, section_bbox)
 
 def run():
     comp_link = get_comp_link()
