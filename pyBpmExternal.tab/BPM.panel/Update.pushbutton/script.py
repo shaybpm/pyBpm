@@ -5,7 +5,7 @@ __author__ = 'Eyal Sinay'
 
 # ------------------------------
 
-import os
+import os, sys
 import clr
 import shutil
 
@@ -13,10 +13,10 @@ clr.AddReference('System')
 clr.AddReference('System.Net')
 clr.AddReference('System.IO.Compression.FileSystem')
 
-from System import Uri, Net
-from System.IO.Compression import ZipFile
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
 
-from pyrevit.versionmgr import updater
+from System.IO.Compression import ZipFile
+import HttpRequest
 
 def run():
     print("Update pyBpmExternal...")
@@ -38,9 +38,8 @@ def run():
     download_url = "https://github.com/shaybpm/pyBpmExternal/archive/refs/heads/main.zip"
     zip_filename = os.path.join(extensions_folder, "pyBpmExternal.zip")
 
-    web_client = Net.WebClient()
     try:
-        web_client.DownloadFile(Uri(download_url), zip_filename)
+        HttpRequest.download_file(download_url, zip_filename)
     except Exception as e:
         print("The installation failed. Make sure you are connected to the internet and try again.")
         print(e)
@@ -53,7 +52,6 @@ def run():
     os.rename(zipped_folder, pyBpmExternal_folder)
     os.remove(zip_filename)
 
-    updater.update_pyrevit()
     print("The update was successful.")
 
 run()
