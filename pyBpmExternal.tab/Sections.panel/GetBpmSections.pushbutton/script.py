@@ -70,7 +70,12 @@ def get_all_section_viewFamilyTypes():
 	return section_viewFamilyTypes
 
 def create_section(section, viewFamilyTypeId, transform):
-    section_bbox = RevitUtils.GetSecBoundingBox(section, transform)
+    # Create a section whose view volume corresponds geometrically with the specified sectionBox. The view direction of the resulting section will be sectionBox.Transform.BasisZ and the up direction will be sectionBox.Transform.BasisY. The right hand direction will be computed so that (right, up, view direction) form a left handed coordinate system. The resulting view will be cropped, and far clipping will be active. The crop region will correspond to the projections of BoundingBoxXYZ.Min and BoundingBoxXYZ.Max onto the view's cut plane. The far clip distance will be equal to the difference of the z-coordinates of BoundingBoxXYZ.Min and BoundingBoxXYZ.Max. The new section ViewSection will receive a unique view name.
+    section_bbox = BoundingBoxXYZ()
+    section_bbox.Transform.BasisZ = transform.OfVector(section.ViewDirection)
+    section_bbox.Transform.BasisY = transform.OfVector(section.UpDirection)
+    section_bbox.Min = transform.OfPoint(section.CropBox.Min)
+    section_bbox.Max = transform.OfPoint(section.CropBox.Max)
     return ViewSection.CreateSection(doc, viewFamilyTypeId, section_bbox)
 
 def run():
