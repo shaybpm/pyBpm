@@ -105,3 +105,36 @@ def run():
     uidoc.ActiveView = new_view
 
 run()
+
+# ------------------------------------------------------------
+
+def test():
+    from Autodesk.Revit.DB import ElementTransformUtils, CopyPasteOptions, ElementId
+    from System.Collections.Generic import List
+    comp_link = get_comp_link()
+    if not comp_link:
+        alert("The Compilation mode link is not loaded.")
+        return
+    comp_doc = comp_link.GetLinkDocument()
+    selected_section = forms.select_views(title='Select Plans', button_name='Copy', width=500, multiple=False, filterfunc=is_su_sec, doc=comp_doc)
+    
+    if not selected_section:
+        return
+    
+    section_viewFamilyTypes = get_all_section_viewFamilyTypes()
+    section_viewFamilyTypes_names = [RevitUtils.getElementName(viewFamilyType) for viewFamilyType in section_viewFamilyTypes]
+    selected_viewFamilyType_str = forms.SelectFromList.show(section_viewFamilyTypes_names, title='Select Section Type', button_name='Select', multiselect=False)
+    if not selected_viewFamilyType_str:
+        return
+
+    ilSection = List[ElementId]([selected_section.Id])
+    
+    t = Transaction(doc, "TEST - " + transaction_name)
+    t.Start()
+    new_view_list_ids = ElementTransformUtils.CopyElements(comp_doc, ilSection, doc, comp_link.GetTotalTransform(), CopyPasteOptions())
+    t.Commit()
+
+    new_view = doc.GetElement(new_view_list_ids[0])
+    uidoc.ActiveView = new_view
+
+# test()

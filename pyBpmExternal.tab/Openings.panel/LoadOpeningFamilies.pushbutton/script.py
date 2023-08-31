@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-""" Loads the BPM Opening family into the project. """
+""" Loads the BPM Opening families into the project.
+families:
+- M_Rectangular Face Opening Solid.rfa
+- M_Round Face Opening Solid.rfa """
 __title__ = 'Load Opening\nFamily'
 __author__ = 'Ely Komm & Eyal Sinay'
 
