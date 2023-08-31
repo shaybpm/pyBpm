@@ -17,6 +17,8 @@ import pyUtils
 import RevitUtils
 # ------------------------------------------------------------
 
+# TODO: For all parameters that we set, check if they are read only.
+
 def get_all_openings(doc):
     """ Returns a list of all the openings in the model. """
     opening_names = [
