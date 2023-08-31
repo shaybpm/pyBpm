@@ -24,6 +24,7 @@ import HttpRequest
 def run():
     print("Update pyBpmExternal...")
 
+    # TODO: Get the extensions folder from pyrevit or from __file__
     extensions_folder = os.path.join(os.getenv('APPDATA'), 'pyRevit', 'Extensions')
 
     if not os.path.isdir(extensions_folder):

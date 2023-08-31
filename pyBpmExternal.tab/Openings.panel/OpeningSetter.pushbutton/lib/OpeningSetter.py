@@ -12,6 +12,10 @@ from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltIn
 from pyrevit import script
 output = output = script.get_output()
 # ------------------------------------------------------------
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
+import pyUtils
+import RevitUtils
+# ------------------------------------------------------------
 
 def get_all_openings(doc):
     """ Returns a list of all the openings in the model. """
@@ -122,6 +126,23 @@ def set_ref_level_and_mid_elevation(opening, print_warnings = True):
     param__middle_elevation.Set(param__elevation_from_level.AsDouble())
     return "OK"
 
+def is_positioned_correctly(opening, print_warnings = True):
+    """ Returns OK if the opening is positioned correctly, else returns WARNING. """
+    return "OK"
+    # TODO: TETS
+    param__h = opening.LookupParameter('h')
+    if not param__h:
+        if print_warnings:
+            print('WARNING: No h parameter found. Opening ID: {}'.format(output.linkify(opening.Id)))
+        return "WARNING"
+    bbox = opening.get_BoundingBox(None)
+    h_num = RevitUtils.convertCmToRevitNum(param__h.AsDouble())
+    bb_num = bbox.Max.Z - bbox.Min.Z
+    if pyUtils.is_close(h_num, bb_num):
+        return True
+    return False 
+
+
 def opening_number_generator(doc):
     """ Generates a number for the opening. """
     all_openings = get_all_openings(doc)
@@ -154,8 +175,10 @@ def execute_all_functions(doc, opening, print_warnings = True):
     results1 = set_comments(opening, print_warnings)
     results2 = set_elevation_params(doc, opening, print_warnings)
     results3 = set_ref_level_and_mid_elevation(opening, print_warnings)
-    results4 = set_mark(doc, opening, print_warnings)
-    results = [results0, results1, results2, results3, results4]
+    results4 = is_positioned_correctly(opening, print_warnings)
+    results5 = set_mark(doc, opening, print_warnings)
+
+    results = [results0, results1, results2, results3, results4, results5]
     if "WARNING" in results:
         return "WARNING"
     return "OK"
