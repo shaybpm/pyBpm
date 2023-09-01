@@ -15,7 +15,7 @@ clr.AddReferenceByPartialName('System.Windows.Forms')
 
 # from System.Collections.Generic import List
 
-from Autodesk.Revit.DB import Transaction, FilteredElementCollector, RevitLinkInstance, ViewType, BuiltInParameter, ViewSection, ViewFamilyType, BoundingBoxXYZ
+from Autodesk.Revit.DB import Transaction, FilteredElementCollector, RevitLinkInstance, ViewType, BuiltInParameter, ViewSection, ViewFamilyType, BoundingBoxXYZ, Transform, XYZ
 
 from Autodesk.Revit.UI import TaskDialog
 
@@ -71,12 +71,90 @@ def get_all_section_viewFamilyTypes():
 
 def create_section(section, viewFamilyTypeId, transform):
     # Create a section whose view volume corresponds geometrically with the specified sectionBox. The view direction of the resulting section will be sectionBox.Transform.BasisZ and the up direction will be sectionBox.Transform.BasisY. The right hand direction will be computed so that (right, up, view direction) form a left handed coordinate system. The resulting view will be cropped, and far clipping will be active. The crop region will correspond to the projections of BoundingBoxXYZ.Min and BoundingBoxXYZ.Max onto the view's cut plane. The far clip distance will be equal to the difference of the z-coordinates of BoundingBoxXYZ.Min and BoundingBoxXYZ.Max. The new section ViewSection will receive a unique view name.
-    section_bbox = BoundingBoxXYZ()
-    section_bbox.Transform.BasisZ = transform.OfVector(section.ViewDirection)
-    section_bbox.Transform.BasisY = transform.OfVector(section.UpDirection)
-    section_bbox.Min = transform.OfPoint(section.CropBox.Min)
-    section_bbox.Max = transform.OfPoint(section.CropBox.Max)
-    return ViewSection.CreateSection(doc, viewFamilyTypeId, section_bbox)
+
+    # An example of how to create a section view from a wall with c#:
+    # XYZ p = line.get_EndPoint( 0 );
+    # XYZ q = line.get_EndPoint( 1 );
+    # XYZ v = q - p;
+ 
+    # BoundingBoxXYZ bb = wall.get_BoundingBox( null );
+    # double minZ = bb.Min.Z;
+    # double maxZ = bb.Max.Z;
+ 
+    # double w = v.GetLength();
+    # double h = maxZ - minZ;
+    # double d = wall.WallType.Width;
+    # double offset = 0.1 * w;
+ 
+    # XYZ min = new XYZ( -w, minZ - offset, -offset );
+    # XYZ max = new XYZ( w, maxZ + offset, 0 );
+ 
+    # XYZ midpoint = p + 0.5 * v;
+    # XYZ walldir = v.Normalize();
+    # XYZ up = XYZ.BasisZ;
+    # XYZ viewdir = walldir.CrossProduct( up );
+ 
+    # Transform t = Transform.Identity;
+    # t.Origin = midpoint;
+    # t.BasisX = walldir;
+    # t.BasisY = up;
+    # t.BasisZ = viewdir;
+ 
+    # BoundingBoxXYZ sectionBox = new BoundingBoxXYZ();
+    # sectionBox.Transform = t;
+    # sectionBox.Min = min;
+    # sectionBox.Max = max;
+
+    view_direction = transform.OfVector(section.ViewDirection)
+    up_direction = transform.OfVector(section.UpDirection)
+    right_direction = transform.OfVector(section.RightDirection)
+
+    view_crop_region_CurveLoopIterator  = section.GetCropRegionShapeManager().GetCropShape()[0].GetCurveLoopIterator()
+    view_crop_region_CurveLoopIterator.MoveNext()
+    point1 = view_crop_region_CurveLoopIterator.Current.GetEndPoint(0)
+    view_crop_region_CurveLoopIterator.MoveNext()
+    point2 = view_crop_region_CurveLoopIterator.Current.GetEndPoint(0)
+    view_crop_region_CurveLoopIterator.MoveNext()
+    point3 = view_crop_region_CurveLoopIterator.Current.GetEndPoint(0)
+    view_crop_region_CurveLoopIterator.MoveNext()
+    point4 = view_crop_region_CurveLoopIterator.Current.GetEndPoint(0)
+
+    point1 = transform.OfPoint(point1)
+    point2 = transform.OfPoint(point2)
+    point3 = transform.OfPoint(point3)
+    point4 = transform.OfPoint(point4)
+
+    points = [point1, point2, point3, point4]
+
+    section_height = None
+    section_length = None
+    for i in range(len(points)):
+        next = i + 1 if i < len(points) - 1 else 0
+        v = points[next] - points[i]
+        if v.DotProduct(up_direction) == 0:
+            section_height = v.GetLength()
+        if v.DotProduct(right_direction) == 0:
+            section_length = v.GetLength()
+
+    section_far_clip = section.get_Parameter(BuiltInParameter.VIEWER_BOUND_OFFSET_FAR).AsDouble()
+
+    xyz_min = XYZ(-section_length, -section_height, -section_far_clip)
+    xyz_max = XYZ(section_length, section_height, 0)
+    
+    section_box = BoundingBoxXYZ()
+    section_box.Enabled = True
+
+    t = Transform.Identity
+    t.Origin = transform.OfPoint(section.Origin)
+    t.BasisZ = view_direction
+    t.BasisY = up_direction
+    t.BasisX = right_direction
+
+    section_box.Transform = t
+    section_box.Min = xyz_min
+    section_box.Max = xyz_max
+
+    return ViewSection.CreateSection(doc, viewFamilyTypeId, section_box)
 
 def run():
     comp_link = get_comp_link()
@@ -103,6 +181,15 @@ def run():
     t.Commit()
 
     uidoc.ActiveView = new_view
+
+    print("new_view.ViewDirection")
+    print(new_view.ViewDirection)
+    print("new_view.UpDirection")
+    print(new_view.UpDirection)
+    print("new_view.CropBox.Min")
+    print(new_view.CropBox.Min)
+    print("new_view.CropBox.Max")
+    print(new_view.CropBox.Max)
 
 run()
 
