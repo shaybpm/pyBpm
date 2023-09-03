@@ -52,7 +52,7 @@ def run():
         opening_results = OpeningSetter.execute_all_functions(doc, opening, True)
         results.append(opening_results)
     
-    if "WARNING" not in results:
+    if not "WARNING" in results:
         alert('All openings updated successfully.')
     else:
         alert('Completed with warnings. See the output window for more details.')
