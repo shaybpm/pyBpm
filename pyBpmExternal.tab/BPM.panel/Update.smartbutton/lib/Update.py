@@ -22,7 +22,8 @@ from System.IO.Compression import ZipFile
 import HttpRequest
 
 def run():
-    print("Update pyBpmExternal...")
+    output = script.get_output()
+    output.print_html('<strong>Update pyBpmExternal...</strong>')
 
     pyBpmExternal_folder_name = 'pyBpmExternal.extension'
 
@@ -30,7 +31,7 @@ def run():
     extensions_folder = __file__[:index_of_extension - 1]
 
     if not os.path.isdir(extensions_folder):
-        print("The update failed.")
+        output.print_html('<div style="color:red;">The update failed.</div>')
         return
 
     pyBpmExternal_folder = os.path.join(extensions_folder, pyBpmExternal_folder_name)
@@ -38,7 +39,7 @@ def run():
     if os.path.isdir(pyBpmExternal_folder):
         shutil.rmtree(pyBpmExternal_folder)
     else:
-        print("The update failed.")
+        output.print_html('<div style="color:red;">The update failed.</div>')
         return
 
     download_url = "https://github.com/shaybpm/pyBpmExternal/archive/refs/heads/main.zip"
@@ -47,8 +48,9 @@ def run():
     try:
         HttpRequest.download_file(download_url, zip_filename)
     except Exception as e:
-        print("The installation failed. Make sure you are connected to the internet and try again.")
-        print(e)
+        output.print_html('<div style="color:red;">The update failed.</div>')
+        print("Make sure you are connected to the internet and try again.")
+        # print(e)
         return
 
     ZipFile.ExtractToDirectory(zip_filename, extensions_folder)
@@ -58,7 +60,7 @@ def run():
     os.rename(zipped_folder, pyBpmExternal_folder)
     os.remove(zip_filename)
 
-    print("The update was successful.")
+    output.print_html('<div style="color:green;">The update was successful.</div>')
 
     # Reload pyrevit:
     logger = script.get_logger()
@@ -67,3 +69,10 @@ def run():
     logger.info('Reloading....')
     sessionmgr.reload_pyrevit()
     results.newsession = sessioninfo.get_session_uuid()
+
+def dev_run():
+    output = script.get_output()
+    print("dev_run")
+    output.print_html('<strong>Update pyBpmExternal...</strong>')
+    output.print_html('<div style="color:red;">The update failed.</div>')
+    output.print_html('<div style="color:green;">The update was successful.</div>')
