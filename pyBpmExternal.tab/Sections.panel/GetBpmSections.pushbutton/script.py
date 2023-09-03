@@ -70,41 +70,6 @@ def get_all_section_viewFamilyTypes():
 	return section_viewFamilyTypes
 
 def create_section(section, viewFamilyTypeId, transform):
-    # Create a section whose view volume corresponds geometrically with the specified sectionBox. The view direction of the resulting section will be sectionBox.Transform.BasisZ and the up direction will be sectionBox.Transform.BasisY. The right hand direction will be computed so that (right, up, view direction) form a left handed coordinate system. The resulting view will be cropped, and far clipping will be active. The crop region will correspond to the projections of BoundingBoxXYZ.Min and BoundingBoxXYZ.Max onto the view's cut plane. The far clip distance will be equal to the difference of the z-coordinates of BoundingBoxXYZ.Min and BoundingBoxXYZ.Max. The new section ViewSection will receive a unique view name.
-
-    # An example of how to create a section view from a wall with c#:
-    # XYZ p = line.get_EndPoint( 0 );
-    # XYZ q = line.get_EndPoint( 1 );
-    # XYZ v = q - p;
- 
-    # BoundingBoxXYZ bb = wall.get_BoundingBox( null );
-    # double minZ = bb.Min.Z;
-    # double maxZ = bb.Max.Z;
- 
-    # double w = v.GetLength();
-    # double h = maxZ - minZ;
-    # double d = wall.WallType.Width;
-    # double offset = 0.1 * w;
- 
-    # XYZ min = new XYZ( -w, minZ - offset, -offset );
-    # XYZ max = new XYZ( w, maxZ + offset, 0 );
- 
-    # XYZ midpoint = p + 0.5 * v;
-    # XYZ walldir = v.Normalize();
-    # XYZ up = XYZ.BasisZ;
-    # XYZ viewdir = walldir.CrossProduct( up );
- 
-    # Transform t = Transform.Identity;
-    # t.Origin = midpoint;
-    # t.BasisX = walldir;
-    # t.BasisY = up;
-    # t.BasisZ = viewdir;
- 
-    # BoundingBoxXYZ sectionBox = new BoundingBoxXYZ();
-    # sectionBox.Transform = t;
-    # sectionBox.Min = min;
-    # sectionBox.Max = max;
-
     view_direction = -1 * transform.OfVector(section.ViewDirection)
     up_direction = transform.OfVector(section.UpDirection)
     right_direction = -1 * transform.OfVector(section.RightDirection)
