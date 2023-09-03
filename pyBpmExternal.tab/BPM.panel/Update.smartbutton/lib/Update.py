@@ -23,7 +23,7 @@ import HttpRequest
 
 def run():
     output = script.get_output()
-    output.print_html('<strong>Update pyBpmExternal...</strong>')
+    output.print_html('<h2>Update pyBpmExternal...</h2>')
 
     pyBpmExternal_folder_name = 'pyBpmExternal.extension'
 

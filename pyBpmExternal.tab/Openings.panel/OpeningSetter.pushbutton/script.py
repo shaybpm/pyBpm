@@ -32,6 +32,7 @@ if uidoc:
 def alert(msg):
     TaskDialog.Show('BPM - Opening Update', msg)
 
+from pyrevit import script
 # ------------------------------------------------------------
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
@@ -39,9 +40,12 @@ import OpeningSetter
 # ------------------------------------------------------------
 
 def run():
+    output = script.get_output()
+    output.print_html('<h1>Opening Setter</h1>')
+
     all_openings = OpeningSetter.get_all_openings(doc)
     if len(all_openings) == 0:
-        alert('No openings found.')
+        output.print_html('<h2 style="color:blue">No openings found.</h2>')
         return
     
     t = Transaction(doc, 'BPM | Opening Update')
@@ -49,14 +53,22 @@ def run():
     
     results = []
     for opening in all_openings:
-        opening_results = OpeningSetter.execute_all_functions(doc, opening, True)
+        opening_results = OpeningSetter.execute_all_functions(doc, opening)
         results.append(opening_results)
     
-    if not "WARNING" in results:
-        alert('All openings updated successfully.')
+    is_any_warning = "WARNING" in [result["status"] for result in results]
+    if is_any_warning:
+        output.print_html('<h2 style="color:red">End with warnings.</h2>')
+        for result in results:
+            if result["status"] == "WARNING":
+                output.insert_divider()
+                print(output.linkify(result["opening_id"]))
+                for res in result["all_results"]:
+                    if res["status"] == "WARNING":
+                        output.print_html('<div style="color:red">{}</div>'.format(res["message"]))
     else:
-        alert('Completed with warnings. See the output window for more details.')
-    
+        output.print_html('<h2 style="color:green">End successfully.</h2>')
+
     t.Commit()
 
 run()

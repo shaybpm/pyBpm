@@ -18,7 +18,7 @@ try:
 	t = Transaction(doc, 'BPM | Opening Update')
 	t.Start()
 	for opening in all_openings:
-		results = OpeningSetter.execute_all_functions(doc, opening, False)
+		results = OpeningSetter.execute_all_functions(doc, opening)
 	t.Commit()
 
 except Exception as e:
