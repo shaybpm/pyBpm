@@ -10,7 +10,7 @@ try:
 	# ------------------------------------------------------------
 
 	# Run the "Opening setter" script without printing anything to the console and without showing any dialogs.
-	import os, sys
+	import sys, os
 	sys.path.append(os.path.join(os.path.dirname(__file__), "..", "pyBpmExternal.tab", "Openings.panel", "OpeningSetter.pushbutton", "lib"))
 	import OpeningSetter
 
