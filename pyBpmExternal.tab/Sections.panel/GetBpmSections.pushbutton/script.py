@@ -136,6 +136,10 @@ def create_section(section, viewFamilyTypeId, transform):
         if not section_length and v.DotProduct(up_direction) == 0:
             section_length = v.GetLength()
 
+    if not section_height or not section_length:
+        alert("Couldn't calculate section height and length.")
+        return
+
     section_far_clip = section.get_Parameter(BuiltInParameter.VIEWER_BOUND_OFFSET_FAR).AsDouble()
 
     xyz_min = XYZ(-0.5 * section_length, -0.5 * section_height, -0.5 * section_far_clip)
@@ -183,6 +187,7 @@ def run():
     new_view = create_section(selected_section, selected_viewFamilyType.Id, comp_link.GetTotalTransform())
     t.Commit()
 
-    uidoc.ActiveView = new_view
+    if new_view:
+        uidoc.ActiveView = new_view
 
 run()
