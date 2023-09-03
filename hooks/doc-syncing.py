@@ -23,4 +23,7 @@ try:
 
 except Exception as e:
 	# TODO: If it's development mode, show the error message.
+	if "Software_Development\RevitDevelopment\PyRevitBpm" in __file__:
+		print(e)
+except:
 	pass
