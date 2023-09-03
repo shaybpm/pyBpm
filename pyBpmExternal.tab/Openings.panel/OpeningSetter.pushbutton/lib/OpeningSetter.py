@@ -185,9 +185,6 @@ def is_positioned_correctly(opening):
         "message": "",
         "opening_id": opening.Id
     }
-    
-    return results
-    # TODO: TEST THIS FUNCTION
 
     param__h = opening.LookupParameter('h')
     if not param__h:
