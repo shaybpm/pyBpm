@@ -132,7 +132,7 @@ def set_ref_level_and_mid_elevation(opening, print_warnings = True):
 def is_positioned_correctly(opening, print_warnings = True):
     """ Returns OK if the opening is positioned correctly, else returns WARNING. """
     return "OK"
-    # TODO: TETS
+    # TODO: TEST THIS FUNCTION
     param__h = opening.LookupParameter('h')
     if not param__h:
         if print_warnings:
