@@ -105,9 +105,9 @@ def create_section(section, viewFamilyTypeId, transform):
     # sectionBox.Min = min;
     # sectionBox.Max = max;
 
-    view_direction = transform.OfVector(section.ViewDirection)
+    view_direction = -1 * transform.OfVector(section.ViewDirection)
     up_direction = transform.OfVector(section.UpDirection)
-    right_direction = transform.OfVector(section.RightDirection)
+    right_direction = -1 * transform.OfVector(section.RightDirection)
 
     view_crop_region_CurveLoopIterator  = section.GetCropRegionShapeManager().GetCropShape()[0].GetCurveLoopIterator()
     view_crop_region_CurveLoopIterator.MoveNext()
@@ -131,21 +131,24 @@ def create_section(section, viewFamilyTypeId, transform):
     for i in range(len(points)):
         next = i + 1 if i < len(points) - 1 else 0
         v = points[next] - points[i]
-        if v.DotProduct(up_direction) == 0:
+        if not section_height and v.DotProduct(right_direction) == 0:
             section_height = v.GetLength()
-        if v.DotProduct(right_direction) == 0:
+        if not section_length and v.DotProduct(up_direction) == 0:
             section_length = v.GetLength()
 
     section_far_clip = section.get_Parameter(BuiltInParameter.VIEWER_BOUND_OFFSET_FAR).AsDouble()
 
-    xyz_min = XYZ(-section_length, -section_height, -section_far_clip)
-    xyz_max = XYZ(section_length, section_height, 0)
+    xyz_min = XYZ(-0.5 * section_length, -0.5 * section_height, -0.5 * section_far_clip)
+    xyz_max = XYZ(0.5 * section_length, 0.5 * section_height, 0.5 * section_far_clip)
+
+    mid_point = (point1 + point2 + point3 + point4) / 4
+    mid_point = mid_point + 0.5 * section_far_clip * view_direction
     
     section_box = BoundingBoxXYZ()
     section_box.Enabled = True
 
     t = Transform.Identity
-    t.Origin = transform.OfPoint(section.Origin)
+    t.Origin = mid_point
     t.BasisZ = view_direction
     t.BasisY = up_direction
     t.BasisX = right_direction
@@ -190,8 +193,10 @@ def run():
     print(new_view.CropBox.Min)
     print("new_view.CropBox.Max")
     print(new_view.CropBox.Max)
+    print("new_view.get_Parameter(BuiltInParameter.VIEWER_BOUND_OFFSET_FAR).AsDouble()")
+    print(new_view.get_Parameter(BuiltInParameter.VIEWER_BOUND_OFFSET_FAR).AsDouble())
 
-run()
+# run()
 
 # ------------------------------------------------------------
 
@@ -224,4 +229,15 @@ def test():
     new_view = doc.GetElement(new_view_list_ids[0])
     uidoc.ActiveView = new_view
 
-# test()
+    print("new_view.ViewDirection")
+    print(new_view.ViewDirection)
+    print("new_view.UpDirection")
+    print(new_view.UpDirection)
+    print("new_view.CropBox.Min")
+    print(new_view.CropBox.Min)
+    print("new_view.CropBox.Max")
+    print(new_view.CropBox.Max)
+    print("new_view.get_Parameter(BuiltInParameter.VIEWER_BOUND_OFFSET_FAR).AsDouble()")
+    print(new_view.get_Parameter(BuiltInParameter.VIEWER_BOUND_OFFSET_FAR).AsDouble())
+
+test()
