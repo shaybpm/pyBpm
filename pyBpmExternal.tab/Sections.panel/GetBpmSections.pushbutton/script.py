@@ -182,7 +182,7 @@ def run():
     
     selected_viewFamilyType = pyUtils.findInList(section_viewFamilyTypes, lambda viewFamilyType: RevitUtils.getElementName(viewFamilyType) == selected_viewFamilyType_str)
     
-    t = Transaction(doc, transaction_name)
+    t = Transaction(doc, transaction_name + ' - ' + selected_section.Name)
     t.Start()
     new_view = create_section(selected_section, selected_viewFamilyType.Id, comp_link.GetTotalTransform())
     t.Commit()
