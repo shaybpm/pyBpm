@@ -12,7 +12,6 @@ from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltIn
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
 import pyUtils
-import RevitUtils
 # ------------------------------------------------------------
 
 # TODO: For all parameters that we set, check if they are read only.
@@ -186,6 +185,13 @@ def is_positioned_correctly(opening):
         "opening_id": opening.Id
     }
 
+    if opening.Name == 'Round Face Opening':
+        results["message"] = "Round Face Opening."
+        return results
+    if is_floor(opening):
+        results["message"] = "Floor Opening."
+        return results
+
     param__h = opening.LookupParameter('h')
     if not param__h:
         results["status"] = "WARNING"
@@ -196,7 +202,7 @@ def is_positioned_correctly(opening):
         results["message"] = "h parameter is read only."
         return results
     bbox = opening.get_BoundingBox(None)
-    h_num = RevitUtils.convertCmToRevitNum(param__h.AsDouble())
+    h_num = param__h.AsDouble()
     bb_num = bbox.Max.Z - bbox.Min.Z
     if pyUtils.is_close(h_num, bb_num):
         results["message"] = "The position is correct."
