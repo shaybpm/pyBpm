@@ -3,9 +3,9 @@
 __title__ = 'Update'
 __author__ = 'Eyal Sinay'
 
-# ------------------------------
+# ------------------------------------------------------------
 
-import os, sys
+import sys, os
 import clr
 import shutil
 from pyrevit import script
@@ -24,14 +24,16 @@ import HttpRequest
 def run():
     print("Update pyBpmExternal...")
 
-    # TODO: Get the extensions folder from pyrevit or from __file__
-    extensions_folder = os.path.join(os.getenv('APPDATA'), 'pyRevit', 'Extensions')
+    pyBpmExternal_folder_name = 'pyBpmExternal.extension'
+
+    index_of_extension = __file__.find(pyBpmExternal_folder_name)
+    extensions_folder = __file__[:index_of_extension - 1]
 
     if not os.path.isdir(extensions_folder):
         print("The update failed.")
         return
 
-    pyBpmExternal_folder = os.path.join(extensions_folder, 'pyBpmExternal.extension')
+    pyBpmExternal_folder = os.path.join(extensions_folder, pyBpmExternal_folder_name)
 
     if os.path.isdir(pyBpmExternal_folder):
         shutil.rmtree(pyBpmExternal_folder)
