@@ -30,4 +30,8 @@ def __selfinit__(script_cmp, ui_button_cmp, __rvt__):
 		return False
 
 if __name__ == '__main__':
-    Update.run()
+	env_mode = pyUtils.env_mode()
+	if env_mode == "dev":
+		print("dev mode")
+	else:
+		Update.run()

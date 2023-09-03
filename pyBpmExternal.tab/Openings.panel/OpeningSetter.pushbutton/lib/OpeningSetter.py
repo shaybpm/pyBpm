@@ -12,6 +12,7 @@ from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltIn
 from pyrevit import script
 output = output = script.get_output()
 # ------------------------------------------------------------
+import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
 import pyUtils
 import RevitUtils
