@@ -177,7 +177,7 @@ def set_ref_level_and_mid_elevation(opening):
     return results
 
 def is_positioned_correctly(opening):
-    """ For now it's not set any parameter, just return results. """
+    """ Sets the parameter 'Insertion Configuration' to 'OK' if the opening is positioned correctly, else sets it to 'NOT-OK'. """
     results = {
         "function": "is_positioned_correctly",
         "status": "OK",
@@ -201,13 +201,25 @@ def is_positioned_correctly(opening):
         results["status"] = "WARNING"
         results["message"] = "h parameter is read only."
         return results
+    param__insertion_configuration = opening.LookupParameter('Insertion Configuration')
+    if not param__insertion_configuration:
+        results["status"] = "WARNING"
+        results["message"] = "No Insertion Configuration parameter found."
+        return results
+    if param__insertion_configuration.IsReadOnly:
+        results["status"] = "WARNING"
+        results["message"] = "Insertion Configuration parameter is read only."
+        return results
+    
     bbox = opening.get_BoundingBox(None)
     h_num = param__h.AsDouble()
     bb_num = bbox.Max.Z - bbox.Min.Z
     if pyUtils.is_close(h_num, bb_num):
+        param__insertion_configuration.Set('OK')
         results["message"] = "The position is correct."
         return results
     else:
+        param__insertion_configuration.Set('NOT-OK')
         results["status"] = "WARNING"
         results["message"] = "The position is not correct."
         return results
