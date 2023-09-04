@@ -204,10 +204,6 @@ def is_positioned_correctly(opening):
         results["status"] = "WARNING"
         results["message"] = "No h parameter found."
         return results
-    if param__h.IsReadOnly:
-        results["status"] = "WARNING"
-        results["message"] = "h parameter is read only."
-        return results
     
     bbox = opening.get_BoundingBox(None)
     h_num = param__h.AsDouble()
