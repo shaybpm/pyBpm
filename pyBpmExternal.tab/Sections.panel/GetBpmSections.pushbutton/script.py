@@ -15,7 +15,7 @@ clr.AddReferenceByPartialName('System.Windows.Forms')
 
 # from System.Collections.Generic import List
 
-from Autodesk.Revit.DB import Transaction, FilteredElementCollector, RevitLinkInstance, ViewType, BuiltInParameter, ViewSection, ViewFamilyType, BoundingBoxXYZ, Transform, XYZ
+from Autodesk.Revit.DB import Transaction, FilteredElementCollector, RevitLinkInstance, ViewType, BuiltInParameter, ViewSection, ViewFamilyType, BoundingBoxXYZ, Transform, XYZ, ElementTypeGroup
 
 from Autodesk.Revit.UI import TaskDialog
 
@@ -139,17 +139,22 @@ def run():
     if not selected_section:
         return
     
-    section_viewFamilyTypes = get_all_section_viewFamilyTypes()
-    section_viewFamilyTypes_names = [RevitUtils.getElementName(viewFamilyType) for viewFamilyType in section_viewFamilyTypes]
-    selected_viewFamilyType_str = forms.SelectFromList.show(section_viewFamilyTypes_names, title='Select Section Type', button_name='Select', multiselect=False)
-    if not selected_viewFamilyType_str:
-        return
+    default_viewFamilyType_id = doc.GetDefaultElementTypeId(ElementTypeGroup.ViewTypeSection)
+    selected_viewFamilyType_id = None
+    if not default_viewFamilyType_id:
+        section_viewFamilyTypes = get_all_section_viewFamilyTypes()
+        section_viewFamilyTypes_names = [RevitUtils.getElementName(viewFamilyType) for viewFamilyType in section_viewFamilyTypes]
+        selected_viewFamilyType_str = forms.SelectFromList.show(section_viewFamilyTypes_names, title='Select Section Type', button_name='Select', multiselect=False)
+        if not selected_viewFamilyType_str:
+            return
+        selected_viewFamilyType = pyUtils.findInList(section_viewFamilyTypes, lambda viewFamilyType: RevitUtils.getElementName(viewFamilyType) == selected_viewFamilyType_str)
+        selected_viewFamilyType_id = selected_viewFamilyType.Id
     
-    selected_viewFamilyType = pyUtils.findInList(section_viewFamilyTypes, lambda viewFamilyType: RevitUtils.getElementName(viewFamilyType) == selected_viewFamilyType_str)
-    
+    viewFamily_type_id = default_viewFamilyType_id or selected_viewFamilyType_id
+
     t = Transaction(doc, transaction_name + ' - ' + selected_section.Name)
     t.Start()
-    new_view = create_section(selected_section, selected_viewFamilyType.Id, comp_link.GetTotalTransform())
+    new_view = create_section(selected_section, viewFamily_type_id, comp_link.GetTotalTransform())
     t.Commit()
 
     if new_view:
