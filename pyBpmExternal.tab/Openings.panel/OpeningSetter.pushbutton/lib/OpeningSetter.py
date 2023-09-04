@@ -192,11 +192,11 @@ def is_positioned_correctly(opening):
 
     if opening.Name == 'Round Face Opening':
         param__insertion_configuration.Set('OK')
-        results["message"] = "Round Face Opening."
+        results["message"] = "Round Face Opening. Insertion Configuration set to OK."
         return results
     if is_floor(opening):
         param__insertion_configuration.Set('OK')
-        results["message"] = "Floor Opening."
+        results["message"] = "Floor Opening. Insertion Configuration set to OK."
         return results
 
     param__h = opening.LookupParameter('h')
@@ -210,12 +210,12 @@ def is_positioned_correctly(opening):
     bb_num = bbox.Max.Z - bbox.Min.Z
     if pyUtils.is_close(h_num, bb_num):
         param__insertion_configuration.Set('OK')
-        results["message"] = "The position is correct."
+        results["message"] = "The position is correct. Insertion Configuration set to OK."
         return results
     else:
         param__insertion_configuration.Set('NOT-OK')
         results["status"] = "WARNING"
-        results["message"] = "The position is not correct."
+        results["message"] = "The position is not correct. Insertion Configuration set to NOT-OK."
         return results
 
 def opening_number_generator(doc):
