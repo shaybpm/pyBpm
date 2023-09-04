@@ -5,7 +5,9 @@
 - Sets Mark to opening if it is missing.
 - Defines whether the opening is located in the floor or not.
 - Calculates the projected height of the opening.
-- Calculates the absolute height of the opening. """
+- Calculates the absolute height of the opening.
+
+To get the full results of the script, hold Shift and click the button. """
 __title__ = 'Opening\nSetter'
 __author__ = 'Ely Komm & Eyal Sinay'
 
