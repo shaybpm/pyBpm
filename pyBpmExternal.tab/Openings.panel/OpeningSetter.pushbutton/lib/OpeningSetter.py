@@ -6,7 +6,7 @@ clr.AddReferenceByPartialName("PresentationFramework")
 clr.AddReferenceByPartialName('System')
 clr.AddReferenceByPartialName('System.Windows.Forms')
 
-from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltInParameter, ElementId
+from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltInParameter, ElementId, RevitLinkInstance
 
 # ------------------------------------------------------------
 import os, sys
@@ -69,27 +69,37 @@ def set_mep_not_required_param(doc, opening):
         results["message"] = "Schedule Level is not set."
         return results
 
-    all_floors = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
-     
+    all_floors = []
+    floors_in_model = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
+    for floor in floors_in_model:
+        all_floors.append({"floor": floor, "minZ": floor.get_BoundingBox(None).Min.Z})
+    all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
+    for link in all_links:
+        link_doc = link.GetLinkDocument()
+        floors_in_link = FilteredElementCollector(link_doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
+        for floor in floors_in_link:
+            link_transform = link.GetTotalTransform()
+            all_floors.append({"floor": floor, "minZ": link_transform.OfPoint(floor.get_BoundingBox(None).Min).Z})
+    
     if not is_floor(opening):
-        all_floors = [floor for floor in all_floors if floor.get_BoundingBox(None).Min.Z <= opening.Location.Point.Z]
+        all_floors = [floor for floor in all_floors if floor["minZ"] <= opening.Location.Point.Z]
     
     if len(all_floors) == 0:
         param__mep_not_required.Set(0)
         results["status"] = "WARNING"
-        results["message"] = "Only one floor in the model."
+        results["message"] = "No floors found."
         return results
 
     opening_location_point_z = opening.Location.Point.Z
     target_floor = all_floors[0]
-    target_floor_location_point_z = target_floor.get_BoundingBox(None).Min.Z
+    target_floor_location_point_z = target_floor["minZ"]
     for floor in all_floors:
-        floor_location_point_z = floor.get_BoundingBox(None).Min.Z
+        floor_location_point_z = floor["minZ"]
         if abs(floor_location_point_z - opening_location_point_z) < abs(target_floor_location_point_z - opening_location_point_z):
             target_floor = floor
             target_floor_location_point_z = floor_location_point_z
 
-    if target_floor.LevelId == id__schedule_level:
+    if target_floor["floor"].LevelId == id__schedule_level:
         param__mep_not_required.Set(1)
         results["message"] = "MEP - Not Required parameter set to true."
         return results
