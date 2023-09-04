@@ -180,10 +180,22 @@ def is_positioned_correctly(opening):
         "opening_id": opening.Id
     }
 
+    param__insertion_configuration = opening.LookupParameter('Insertion Configuration')
+    if not param__insertion_configuration:
+        results["status"] = "WARNING"
+        results["message"] = "No Insertion Configuration parameter found."
+        return results
+    if param__insertion_configuration.IsReadOnly:
+        results["status"] = "WARNING"
+        results["message"] = "Insertion Configuration parameter is read only."
+        return results
+
     if opening.Name == 'Round Face Opening':
+        param__insertion_configuration.Set('OK')
         results["message"] = "Round Face Opening."
         return results
     if is_floor(opening):
+        param__insertion_configuration.Set('OK')
         results["message"] = "Floor Opening."
         return results
 
@@ -195,15 +207,6 @@ def is_positioned_correctly(opening):
     if param__h.IsReadOnly:
         results["status"] = "WARNING"
         results["message"] = "h parameter is read only."
-        return results
-    param__insertion_configuration = opening.LookupParameter('Insertion Configuration')
-    if not param__insertion_configuration:
-        results["status"] = "WARNING"
-        results["message"] = "No Insertion Configuration parameter found."
-        return results
-    if param__insertion_configuration.IsReadOnly:
-        results["status"] = "WARNING"
-        results["message"] = "Insertion Configuration parameter is read only."
         return results
     
     bbox = opening.get_BoundingBox(None)
