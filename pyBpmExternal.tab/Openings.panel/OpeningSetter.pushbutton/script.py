@@ -59,8 +59,18 @@ def print_results(results):
 def print_full_results(results):
     output = script.get_output()
     output.print_html('<h1>Opening Setter</h1>')
+
+    is_any_warning = "WARNING" in [result["status"] for result in results]
+    if is_any_warning:
+        output.print_html('<h2 style="color:red">End with warnings.</h2>')
+    
     for result in results:
         output.insert_divider()
+        is_any_opening_warning = "WARNING" in [res["status"] for res in result["all_results"]]
+        if is_any_opening_warning:
+            output.print_html('<div style="color:red; text-decoration: underline">- Warning</div>')
+        else:
+            output.print_html('<div style="color:green; text-decoration: underline">- Ok</div>')
         print(output.linkify(result["opening_id"]))
         for res in result["all_results"]:
             if res["status"] == "WARNING":
