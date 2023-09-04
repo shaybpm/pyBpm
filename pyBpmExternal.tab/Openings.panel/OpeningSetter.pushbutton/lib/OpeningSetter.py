@@ -76,6 +76,8 @@ def set_mep_not_required_param(doc, opening):
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
     for link in all_links:
         link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
         floors_in_link = FilteredElementCollector(link_doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
         for floor in floors_in_link:
             link_transform = link.GetTotalTransform()
