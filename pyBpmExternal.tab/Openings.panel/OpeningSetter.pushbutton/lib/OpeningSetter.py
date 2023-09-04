@@ -69,39 +69,22 @@ def set_mep_not_required_param(doc, opening):
         results["message"] = "Schedule Level is not set."
         return results
 
-    all_floors = []
-    floors_in_model = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
-    for floor in floors_in_model:
-        all_floors.append({"floor": floor, "minZ": floor.get_BoundingBox(None).Min.Z})
-    all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
-    for link in all_links:
-        link_doc = link.GetLinkDocument()
-        if not link_doc:
-            continue
-        floors_in_link = FilteredElementCollector(link_doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
-        for floor in floors_in_link:
-            link_transform = link.GetTotalTransform()
-            all_floors.append({"floor": floor, "minZ": link_transform.OfPoint(floor.get_BoundingBox(None).Min).Z})
-    
+    all_levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
+    all_levels = [level for level in all_levels if level.Id != ElementId.InvalidElementId]
+    all_levels = sorted(all_levels, key=lambda level: level.Elevation)
     if not is_floor(opening):
-        all_floors = [floor for floor in all_floors if floor["minZ"] <= opening.Location.Point.Z]
-    
-    if len(all_floors) == 0:
+        all_levels = [level for level in all_levels if level.Elevation <= opening.Location.Point.Z]
+    if len(all_levels) == 0:
         param__mep_not_required.Set(0)
         results["status"] = "WARNING"
-        results["message"] = "No floors found."
+        results["message"] = "No levels found."
         return results
-
-    opening_location_point_z = opening.Location.Point.Z
-    target_floor = all_floors[0]
-    target_floor_location_point_z = target_floor["minZ"]
-    for floor in all_floors:
-        floor_location_point_z = floor["minZ"]
-        if abs(floor_location_point_z - opening_location_point_z) < abs(target_floor_location_point_z - opening_location_point_z):
-            target_floor = floor
-            target_floor_location_point_z = floor_location_point_z
-
-    if target_floor["floor"].LevelId == id__schedule_level:
+    target_level = all_levels[0]
+    for level in all_levels:
+        if abs(level.Elevation - opening.Location.Point.Z) < abs(target_level.Elevation - opening.Location.Point.Z):
+            target_level = level
+    
+    if target_level.Id == id__schedule_level:
         param__mep_not_required.Set(1)
         results["message"] = "MEP - Not Required parameter set to true."
         return results
