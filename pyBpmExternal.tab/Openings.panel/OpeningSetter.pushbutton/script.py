@@ -39,23 +39,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 import OpeningSetter
 # ------------------------------------------------------------
 
-def run():
+def print_results(results):
     output = script.get_output()
     output.print_html('<h1>Opening Setter</h1>')
 
-    all_openings = OpeningSetter.get_all_openings(doc)
-    if len(all_openings) == 0:
-        output.print_html('<h2 style="color:blue">No openings found.</h2>')
-        return
-    
-    t = Transaction(doc, 'BPM | Opening Update')
-    t.Start()
-    
-    results = []
-    for opening in all_openings:
-        opening_results = OpeningSetter.execute_all_functions(doc, opening)
-        results.append(opening_results)
-    
     is_any_warning = "WARNING" in [result["status"] for result in results]
     if is_any_warning:
         output.print_html('<h2 style="color:red">End with warnings.</h2>')
@@ -68,6 +55,37 @@ def run():
                         output.print_html('<div style="color:red">{}</div>'.format(res["message"]))
     else:
         output.print_html('<h2 style="color:green">End successfully.</h2>')
+
+def print_full_results(results):
+    output = script.get_output()
+    output.print_html('<h1>Opening Setter</h1>')
+    for result in results:
+        output.insert_divider()
+        print(output.linkify(result["opening_id"]))
+        for res in result["all_results"]:
+            if res["status"] == "WARNING":
+                output.print_html('<div style="color:red">{}</div>'.format(res["message"]))
+            else:
+                output.print_html('<div style="color:green">{}</div>'.format(res["message"]))
+
+def run():
+    all_openings = OpeningSetter.get_all_openings(doc)
+    if len(all_openings) == 0:
+        alert('No openings found.')
+        return
+    
+    t = Transaction(doc, 'BPM | Opening Update')
+    t.Start()
+    
+    results = []
+    for opening in all_openings:
+        opening_results = OpeningSetter.execute_all_functions(doc, opening)
+        results.append(opening_results)
+    
+    if __shiftclick__:
+        print_full_results(results)
+    else:
+        print_results(results)
 
     t.Commit()
 
