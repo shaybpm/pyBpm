@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-""" This script iterates over all the openings (Generic Model from the BPM library) and dose the following:
-- Copies the Elevation to a taggable parameter (useful in versions 20+21).
-- Copies the Reference Level to a taggable parameter.
-- Sets Mark to opening if it is missing.
-- Defines whether the opening is located in the floor or not.
-- Calculates the projected height of the opening.
-- Calculates the absolute height of the opening.
+""" This script iterates over all the openings (Generic Model from the BPM library) and set their parameters according to the BPM standards.
 
 To get the full results of the script, hold Shift and click the button. """
 __title__ = 'Opening\nSetter'

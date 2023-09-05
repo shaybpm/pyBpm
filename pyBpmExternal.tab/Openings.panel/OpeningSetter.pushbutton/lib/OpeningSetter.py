@@ -215,7 +215,7 @@ def is_positioned_correctly(opening):
     else:
         param__insertion_configuration.Set('NOT-OK')
         results["status"] = "WARNING"
-        results["message"] = "The position is not correct. Insertion Configuration set to NOT-OK."
+        results["message"] = "The position is not correct. Insertion Configuration set to NOT-OK. You can fix it by selecting the opening and press spacebar."
         return results
 
 def opening_number_generator(doc):
