@@ -2,7 +2,7 @@
 """ This script iterates over all the openings (Generic Model from the BPM library) and set their parameters according to the BPM standards.
 
 To get the full results of the script, hold Shift and click the button. """
-__title__ = 'Opening\nSetter'
+__title__ = 'Opening\nSet'
 __author__ = 'Ely Komm & Eyal Sinay'
 
 # ------------------------------
@@ -37,7 +37,7 @@ import OpeningSet
 
 def print_results(results):
     output = script.get_output()
-    output.print_html('<h1>Opening Setter</h1>')
+    output.print_html('<h1>Opening Set</h1>')
     output.print_html('<div style="color:gray">Number of openings found: {}</div>'.format(len(results)))
 
     is_any_warning = "WARNING" in [result["status"] for result in results]
