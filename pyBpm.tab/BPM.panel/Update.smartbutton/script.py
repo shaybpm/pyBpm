@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-""" Update pyBpmExternal Extension. """
+""" Update pyBpm Extension. """
 __title__ = 'Update'
 __author__ = 'Eyal Sinay'
 
@@ -15,7 +15,7 @@ import pyUtils
 
 def __selfinit__(script_cmp, ui_button_cmp, __rvt__):
 	try:
-		github_extension_file = HttpRequest.get_request("https://raw.githubusercontent.com/shaybpm/pyBpmExternal/main/extension.json")
+		github_extension_file = HttpRequest.get_request("https://raw.githubusercontent.com/shaybpm/pyBpm/main/extension.json")
 		last_version = github_extension_file['version']
 
 		local_extension_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'extension.json')
