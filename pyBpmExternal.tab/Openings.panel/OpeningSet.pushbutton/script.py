@@ -32,7 +32,7 @@ from pyrevit import script
 # ------------------------------------------------------------
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
-import OpeningSetter
+import OpeningSet
 # ------------------------------------------------------------
 
 def print_results(results):
@@ -77,7 +77,7 @@ def print_full_results(results):
                 output.print_html('<div style="color:green">{}</div>'.format(res["message"]))
 
 def run():
-    all_openings = OpeningSetter.get_all_openings(doc)
+    all_openings = OpeningSet.get_all_openings(doc)
     if len(all_openings) == 0:
         alert('No openings found.')
         return
@@ -87,7 +87,7 @@ def run():
     
     results = []
     for opening in all_openings:
-        opening_results = OpeningSetter.execute_all_functions(doc, opening)
+        opening_results = OpeningSet.execute_all_functions(doc, opening)
         results.append(opening_results)
     
     if __shiftclick__:
