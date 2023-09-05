@@ -44,6 +44,7 @@ import OpeningSetter
 def print_results(results):
     output = script.get_output()
     output.print_html('<h1>Opening Setter</h1>')
+    output.print_html('<div style="color:gray">Number of openings found: {}</div>'.format(len(results)))
 
     is_any_warning = "WARNING" in [result["status"] for result in results]
     if is_any_warning:
@@ -61,6 +62,7 @@ def print_results(results):
 def print_full_results(results):
     output = script.get_output()
     output.print_html('<h1>Opening Setter</h1>')
+    output.print_html('<div style="color:gray">Number of openings found: {}</div>'.format(len(results)))
 
     is_any_warning = "WARNING" in [result["status"] for result in results]
     if is_any_warning:
