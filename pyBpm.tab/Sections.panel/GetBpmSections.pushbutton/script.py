@@ -131,7 +131,7 @@ def create_section(section, viewFamilyTypeId, transform):
 def run():
     comp_link = get_comp_link()
     if not comp_link:
-        alert("The Compilation mode link is not loaded.")
+        alert("The Compilation model link is not loaded.")
         return
     comp_doc = comp_link.GetLinkDocument()
     selected_section = forms.select_views(title='Select Plans', button_name='Copy', width=500, multiple=False, filterfunc=is_su_sec, doc=comp_doc)
