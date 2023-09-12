@@ -42,7 +42,7 @@ def alert(msg):
 def get_comp_link():
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
     for link in all_links:
-        if "COMP" in link.Name:
+        if "COMP" in link.Name or "CM" in link.Name:
               return link
 
 def is_su_sec(view):
