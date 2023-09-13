@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """ Update pyBpm Extension. """
-__title__ = 'Update'
-__author__ = 'Eyal Sinay'
+__title__ = "Update"
+__author__ = "Eyal Sinay"
 
 # ------------------------------------------------------------
 
@@ -12,23 +12,24 @@ from pyrevit import script
 from pyrevit.loader import sessionmgr
 from pyrevit.loader import sessioninfo
 
-clr.AddReference('System')
-clr.AddReference('System.Net')
-clr.AddReference('System.IO.Compression.FileSystem')
+clr.AddReference("System")
+clr.AddReference("System.Net")
+clr.AddReference("System.IO.Compression.FileSystem")
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..", "lib"))
 
 from System.IO.Compression import ZipFile
-import HttpRequest
+import HttpRequest  # type: ignore
+
 
 def run():
     output = script.get_output()
-    output.print_html('<h2>Update pyBpm...</h2>')
+    output.print_html("<h2>Update pyBpm...</h2>")
 
-    pyBpm_folder_name = 'pyBpm.extension'
+    pyBpm_folder_name = "pyBpm.extension"
 
     index_of_extension = __file__.find(pyBpm_folder_name)
-    extensions_folder = __file__[:index_of_extension - 1]
+    extensions_folder = __file__[: index_of_extension - 1]
 
     if not os.path.isdir(extensions_folder):
         output.print_html('<div style="color:red;">The update failed.</div>')
@@ -66,13 +67,14 @@ def run():
     logger = script.get_logger()
     results = script.get_results()
     # re-load pyrevit session.
-    logger.info('Reloading....')
+    logger.info("Reloading....")
     sessionmgr.reload_pyrevit()
     results.newsession = sessioninfo.get_session_uuid()
+
 
 def dev_run():
     output = script.get_output()
     print("dev_run")
-    output.print_html('<strong>Update pyBpm...</strong>')
+    output.print_html("<strong>Update pyBpm...</strong>")
     output.print_html('<div style="color:red;">The update failed.</div>')
     output.print_html('<div style="color:green;">The update was successful.</div>')

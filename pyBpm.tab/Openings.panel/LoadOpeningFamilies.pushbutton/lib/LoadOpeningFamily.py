@@ -6,11 +6,12 @@ from pyrevit import script
 
 # ------------------------------------------------------------
 
+
 def run(doc):
     output = script.get_output()
-    output.print_html('<h1>Load Opening Families</h1>')
+    output.print_html("<h1>Load Opening Families</h1>")
 
-    t = Transaction(doc, 'BPM | Load Opening Family')
+    t = Transaction(doc, "BPM | Load Opening Family")
     t.Start()
 
     # Family paths
@@ -37,19 +38,35 @@ def run(doc):
     if not family_rec_loaded:
         load_family_rec_result = doc.LoadFamily(family_rec_path)
     else:
-        output.print_html('<div style="color:yellow">Family already loaded: ' + family_rec_name + '</div>')
+        output.print_html(
+            '<div style="color:yellow">Family already loaded: '
+            + family_rec_name
+            + "</div>"
+        )
     if not family_round_loaded:
         load_family_round_result = doc.LoadFamily(family_round_path)
     else:
-        output.print_html('<div style="color:yellow">Family already loaded: ' + family_round_name + '</div>')
+        output.print_html(
+            '<div style="color:yellow">Family already loaded: '
+            + family_round_name
+            + "</div>"
+        )
 
     if not load_family_rec_result or not load_family_round_result:
-        output.print_html('<div style="color:blue">If you want to reload the family, you need to change the name of the family that already loaded, or remove it from the project.</div>')
+        output.print_html(
+            '<div style="color:blue">If you want to reload the family, you need to change the name of the family that already loaded, or remove it from the project.</div>'
+        )
 
     # Print the results
     if load_family_rec_result:
-        output.print_html('<div style="color:green">Loaded family: ' + family_rec_filename + '</div>')
+        output.print_html(
+            '<div style="color:green">Loaded family: ' + family_rec_filename + "</div>"
+        )
     if load_family_round_result:
-        output.print_html('<div style="color:green">Loaded family: ' + family_round_filename + '</div>')
+        output.print_html(
+            '<div style="color:green">Loaded family: '
+            + family_round_filename
+            + "</div>"
+        )
 
     t.Commit()
