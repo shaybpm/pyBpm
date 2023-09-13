@@ -6,7 +6,9 @@ families:
 __title__ = "Load Opening\nFamilies"
 __author__ = "Eyal Sinay"
 
-# ------------------------------
+# -------------------------------
+# ------------IMPORTS------------
+# -------------------------------
 
 import clr
 
@@ -19,6 +21,15 @@ clr.AddReferenceByPartialName("System.Windows.Forms")
 
 from Autodesk.Revit.UI import TaskDialog
 
+import os, sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
+import LoadOpeningFamily  # type: ignore
+
+# -------------------------------
+# -------------MAIN--------------
+# -------------------------------
+
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 
@@ -27,12 +38,8 @@ def alert(msg):
     TaskDialog.Show("BPM - Load Opening Family", msg)
 
 
-# ------------------------------------------------------------
-import os, sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
-import LoadOpeningFamily  # type: ignore
-
-# ------------------------------------------------------------
+# --------------------------------
+# -------------SCRIPT-------------
+# --------------------------------
 
 LoadOpeningFamily.run(doc)

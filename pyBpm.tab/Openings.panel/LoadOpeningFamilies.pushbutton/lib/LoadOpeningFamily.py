@@ -39,7 +39,7 @@ def run(doc):
         load_family_rec_result = doc.LoadFamily(family_rec_path)
     else:
         output.print_html(
-            '<div style="color:yellow">Family already loaded: '
+            '<div style="color:yellow; background-color:#020B4A;">Family already loaded: '
             + family_rec_name
             + "</div>"
         )
@@ -47,7 +47,7 @@ def run(doc):
         load_family_round_result = doc.LoadFamily(family_round_path)
     else:
         output.print_html(
-            '<div style="color:yellow">Family already loaded: '
+            '<div style="color:yellow; background-color:#020B4A;">Family already loaded: '
             + family_round_name
             + "</div>"
         )

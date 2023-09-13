@@ -5,7 +5,9 @@ To get the full results of the script, hold Shift and click the button. """
 __title__ = "Opening\nSet"
 __author__ = "Ely Komm & Eyal Sinay"
 
-# ------------------------------
+# -------------------------------
+# ------------IMPORTS------------
+# -------------------------------
 
 import clr
 
@@ -19,6 +21,16 @@ clr.AddReferenceByPartialName("System.Windows.Forms")
 from Autodesk.Revit.DB import Transaction
 from Autodesk.Revit.UI import TaskDialog
 
+from pyrevit import script
+import os, sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
+import OpeningSet  # type: ignore
+
+# -------------------------------
+# -------------MAIN--------------
+# -------------------------------
+
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 
@@ -27,15 +39,9 @@ def alert(msg):
     TaskDialog.Show("BPM - Opening Update", msg)
 
 
-from pyrevit import script
-
-# ------------------------------------------------------------
-import os, sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
-import OpeningSet  # type: ignore
-
-# ------------------------------------------------------------
+# --------------------------------
+# -------------SCRIPT-------------
+# --------------------------------
 
 
 def print_results(results):

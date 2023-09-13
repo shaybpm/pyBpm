@@ -3,7 +3,9 @@
 __title__ = "Get Bpm\nSections"
 __author__ = "Eyal Sinay"
 
-# ------------------------------------------------------------
+# -------------------------------
+# ------------IMPORTS------------
+# -------------------------------
 
 import clr
 
@@ -34,8 +36,13 @@ from pyrevit import forms
 
 import sys, os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "lib"))
+root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
+sys.path.append(os.path.join(root_path, "lib"))
 import RevitUtils, pyUtils  # type: ignore
+
+# -------------------------------
+# -------------MAIN--------------
+# -------------------------------
 
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
@@ -47,7 +54,9 @@ def alert(msg):
     TaskDialog.Show(transaction_name, msg)
 
 
-# ------------------------------------------------------------
+# --------------------------------
+# -------------SCRIPT-------------
+# --------------------------------
 
 
 def get_comp_link():

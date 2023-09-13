@@ -1,3 +1,7 @@
+# -------------------------------
+# ------------IMPORTS------------
+# -------------------------------
+
 import clr
 
 clr.AddReference("RevitAPI")
@@ -14,13 +18,15 @@ from Autodesk.Revit.DB import (
     ElementId,
 )
 
-# ------------------------------------------------------------
 import os, sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..", "lib"))
+root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
+sys.path.append(os.path.join(root_path, "lib"))
 import pyUtils  # type: ignore
 
-# ------------------------------------------------------------
+# --------------------------------
+# -------------SCRIPT-------------
+# --------------------------------
 
 
 def get_all_openings(doc):

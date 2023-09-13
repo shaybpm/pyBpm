@@ -3,7 +3,9 @@
 __title__ = "Update"
 __author__ = "Eyal Sinay"
 
-# ------------------------------------------------------------
+# -------------------------------
+# ------------IMPORTS------------
+# -------------------------------
 
 import sys, os
 import clr
@@ -16,10 +18,15 @@ clr.AddReference("System")
 clr.AddReference("System.Net")
 clr.AddReference("System.IO.Compression.FileSystem")
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..", "lib"))
+root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
+sys.path.append(os.path.join(root_path, "lib"))
 
 from System.IO.Compression import ZipFile
 import HttpRequest  # type: ignore
+
+# --------------------------------
+# -------------SCRIPT-------------
+# --------------------------------
 
 
 def run():
