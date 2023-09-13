@@ -115,7 +115,7 @@ def run():
         opening_results = OpeningSet.execute_all_functions(doc, opening)
         results.append(opening_results)
 
-    if __shiftclick__:
+    if __shiftclick__:  # type: ignore
         print_full_results(results)
     else:
         print_results(results)
