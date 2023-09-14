@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 uiapp = __revit__  # type: ignore
 uidoc = uiapp.ActiveUIDocument
 if uidoc:

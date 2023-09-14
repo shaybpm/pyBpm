@@ -10,15 +10,6 @@ __author__ = "Eyal Sinay"
 # ------------IMPORTS------------
 # -------------------------------
 
-import clr
-
-clr.AddReference("RevitAPI")
-clr.AddReferenceByPartialName("PresentationCore")
-clr.AddReferenceByPartialName("AdWindows")
-clr.AddReferenceByPartialName("PresentationFramework")
-clr.AddReferenceByPartialName("System")
-clr.AddReferenceByPartialName("System.Windows.Forms")
-
 from Autodesk.Revit.UI import TaskDialog
 
 import os, sys

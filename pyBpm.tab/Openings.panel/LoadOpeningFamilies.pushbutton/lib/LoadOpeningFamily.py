@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 
 from Autodesk.Revit.DB import Transaction, FilteredElementCollector, Family

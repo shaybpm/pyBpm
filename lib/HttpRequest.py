@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from System import Uri, Net
 import json
 
