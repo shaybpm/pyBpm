@@ -225,7 +225,9 @@ def set_ref_level_and_mid_elevation(opening):
 
 
 def is_positioned_correctly(opening):
-    """Sets the parameter 'Insertion Configuration' to 'OK' if the opening is positioned correctly, else sets it to 'NOT-OK'."""
+    """Sets the parameter 'Insertion Configuration' to 'OK' if the opening is positioned correctly, else sets it to 'NOT-OK'.
+    This function needs to run only if the opening is not a floor opening or a round face opening.
+    """
     results = {
         "function": "is_positioned_correctly",
         "status": "OK",
@@ -258,10 +260,34 @@ def is_positioned_correctly(opening):
         results["message"] = "No h parameter found."
         return results
 
+    param__cut_offset = opening.LookupParameter("Cut Offset")
+    param__additional_top_cut_offset = opening.LookupParameter(
+        "Additional Top Cut Offset"
+    )
+    param__additional_bottom_cut_offset = opening.LookupParameter(
+        "Additional Bottom Cut Offset"
+    )
+
+    if (
+        not param__cut_offset
+        or not param__additional_top_cut_offset
+        or not param__additional_bottom_cut_offset
+    ):
+        results["status"] = "WARNING"
+        results[
+            "message"
+        ] = "No Cut Offset or Additional Top Cut Offset or Additional Bottom Cut Offset parameter found."
+        return results
+
     bbox = opening.get_BoundingBox(None)
-    h_num = param__h.AsDouble()
+    h_num = (
+        param__h.AsDouble()
+        + 2 * param__cut_offset.AsDouble()
+        + param__additional_top_cut_offset.AsDouble()
+        + param__additional_bottom_cut_offset.AsDouble()
+    )
     bb_num = bbox.Max.Z - bbox.Min.Z
-    if pyUtils.is_close(h_num, bb_num):
+    if pyUtils.is_close(h_num, bb_num, 0.001):
         param__insertion_configuration.Set("OK")
         results[
             "message"
