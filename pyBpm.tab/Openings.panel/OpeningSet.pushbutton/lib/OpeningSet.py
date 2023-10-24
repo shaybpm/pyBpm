@@ -94,9 +94,13 @@ def set_mep_not_required_param(doc, opening):
     ]
     all_levels = sorted(all_levels, key=lambda level: level.Elevation)
     if not is_floor(opening):
-        all_levels = [
+        all_levels_filtered = [
             level for level in all_levels if level.Elevation <= opening.Location.Point.Z
         ]
+        min_level = min(all_levels, key=lambda level: level.Elevation)
+        all_levels = (
+            all_levels_filtered if len(all_levels_filtered) > 0 else [min_level]
+        )
     if len(all_levels) == 0:
         param__mep_not_required.Set(0)
         results["status"] = "WARNING"
