@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-""" Create selected section from the Bpm suggested sections. """
+""" Create selected section from the Bpm suggested sections.
+
+To run this script on multiple sections, hold Shift while selecting the sections. """
 __title__ = "Get Bpm\nSections"
 __author__ = "Eyal Sinay"
 
@@ -13,6 +15,7 @@ from Autodesk.Revit.DB import (
     RevitLinkInstance,
     ViewType,
     BuiltInParameter,
+    View,
     ViewSection,
     ViewFamilyType,
     BoundingBoxXYZ,
@@ -44,6 +47,8 @@ transaction_name = "BPM | Get Bpm Section"
 def alert(msg):
     TaskDialog.Show(transaction_name, msg)
 
+
+multiple_sections = __shiftclick__  # type: ignore
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -85,6 +90,17 @@ def get_all_section_viewFamilyTypes():
         if viewFamilyType.FamilyName == "Section":
             section_viewFamilyTypes.append(viewFamilyType)
     return section_viewFamilyTypes
+
+
+def get_all_views():
+    return FilteredElementCollector(doc).OfClass(View).ToElements()
+
+
+def is_viewName_already_exists(all_views, viewName):
+    for view in all_views:
+        if view.Name == viewName:
+            return True
+    return False
 
 
 def create_section(section, viewFamilyTypeId, transform):
@@ -148,7 +164,43 @@ def create_section(section, viewFamilyTypeId, transform):
     section_box.Min = xyz_min
     section_box.Max = xyz_max
 
-    return ViewSection.CreateSection(doc, viewFamilyTypeId, section_box)
+    new_section = ViewSection.CreateSection(doc, viewFamilyTypeId, section_box)
+    new_section_name = "BPM_Section_" + section.Name
+    num = 0
+    all_views = get_all_views()
+    while is_viewName_already_exists(all_views, new_section_name):
+        num += 1
+        new_section_name = "BPM_Section_" + section.Name + "_" + str(num)
+    new_section.Name = new_section_name
+    return new_section
+
+
+def get_type_id():
+    default_viewFamilyType_id = doc.GetDefaultElementTypeId(
+        ElementTypeGroup.ViewTypeSection
+    )
+    if default_viewFamilyType_id:
+        return default_viewFamilyType_id
+
+    section_viewFamilyTypes = get_all_section_viewFamilyTypes()
+    section_viewFamilyTypes_names = [
+        RevitUtils.getElementName(viewFamilyType)
+        for viewFamilyType in section_viewFamilyTypes
+    ]
+    selected_viewFamilyType_str = forms.SelectFromList.show(
+        section_viewFamilyTypes_names,
+        title="Select Section Type",
+        button_name="Select",
+        multiselect=False,
+    )
+    if not selected_viewFamilyType_str:
+        return None
+    selected_viewFamilyType = pyUtils.findInList(
+        section_viewFamilyTypes,
+        lambda viewFamilyType: RevitUtils.getElementName(viewFamilyType)
+        == selected_viewFamilyType_str,
+    )
+    return selected_viewFamilyType.Id
 
 
 def run():
@@ -161,7 +213,7 @@ def run():
         title="Select Plans",
         button_name="Copy",
         width=500,
-        multiple=False,
+        multiple=multiple_sections,
         filterfunc=is_su_sec,
         doc=comp_doc,
     )
@@ -169,41 +221,28 @@ def run():
     if not selected_section:
         return
 
-    default_viewFamilyType_id = doc.GetDefaultElementTypeId(
-        ElementTypeGroup.ViewTypeSection
+    if not multiple_sections:
+        selected_section = [selected_section]
+
+    viewFamily_type_id = get_type_id()
+    if not viewFamily_type_id:
+        return
+
+    new_views = []
+    transaction_name_info = (
+        selected_section[0].Name if len(selected_section) == 1 else "Multiple Sections"
     )
-    selected_viewFamilyType_id = None
-    if not default_viewFamilyType_id:
-        section_viewFamilyTypes = get_all_section_viewFamilyTypes()
-        section_viewFamilyTypes_names = [
-            RevitUtils.getElementName(viewFamilyType)
-            for viewFamilyType in section_viewFamilyTypes
-        ]
-        selected_viewFamilyType_str = forms.SelectFromList.show(
-            section_viewFamilyTypes_names,
-            title="Select Section Type",
-            button_name="Select",
-            multiselect=False,
-        )
-        if not selected_viewFamilyType_str:
-            return
-        selected_viewFamilyType = pyUtils.findInList(
-            section_viewFamilyTypes,
-            lambda viewFamilyType: RevitUtils.getElementName(viewFamilyType)
-            == selected_viewFamilyType_str,
-        )
-        selected_viewFamilyType_id = selected_viewFamilyType.Id
-
-    viewFamily_type_id = default_viewFamilyType_id or selected_viewFamilyType_id
-
-    t = Transaction(doc, transaction_name + " - " + selected_section.Name)
+    t = Transaction(doc, transaction_name + " - " + transaction_name_info)
     t.Start()
-    new_view = create_section(
-        selected_section, viewFamily_type_id, comp_link.GetTotalTransform()
-    )
+    for section in selected_section:
+        new_view = create_section(
+            section, viewFamily_type_id, comp_link.GetTotalTransform()
+        )
+        new_views.append(new_view)
     t.Commit()
 
-    if new_view:
+    if new_views and len(new_views) == 1:
+        new_view = new_views[0]
         uidoc.ActiveView = new_view
 
 
