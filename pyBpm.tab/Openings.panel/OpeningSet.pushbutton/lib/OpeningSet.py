@@ -167,9 +167,7 @@ def set_elevation_params(doc, opening):
         .WhereElementIsNotElementType()
         .ToElements()[0]
     )
-    project_base_point_elevation = project_base_point.get_Parameter(
-        BuiltInParameter.BASEPOINT_ELEVATION_PARAM
-    ).AsDouble()
+    project_base_point_position = project_base_point.Position.Z
     opening_location_point_z = opening.Location.Point.Z
     param__opening_elevation = opening.LookupParameter("Opening Elevation")
     param__opening_absolute_level = opening.LookupParameter("Opening Absolute Level")
@@ -187,7 +185,7 @@ def set_elevation_params(doc, opening):
         return results
     param__opening_elevation.Set(opening_location_point_z)
     param__opening_absolute_level.Set(
-        opening_location_point_z + project_base_point_elevation
+        opening_location_point_z - project_base_point_position
     )
     results["message"] = "Opening Elevation and Opening Absolute Level parameters set."
     return results
