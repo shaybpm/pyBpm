@@ -92,12 +92,14 @@ def set_mep_not_required_param(doc, opening):
     all_levels = [
         level for level in all_levels if level.Id != ElementId.InvalidElementId
     ]
-    all_levels = sorted(all_levels, key=lambda level: level.Elevation)
+    all_levels = sorted(all_levels, key=lambda level: level.ProjectElevation)
     if not is_floor(opening):
         all_levels_filtered = [
-            level for level in all_levels if level.Elevation <= opening.Location.Point.Z
+            level
+            for level in all_levels
+            if level.ProjectElevation <= opening.Location.Point.Z
         ]
-        min_level = min(all_levels, key=lambda level: level.Elevation)
+        min_level = min(all_levels, key=lambda level: level.ProjectElevation)
         all_levels = (
             all_levels_filtered if len(all_levels_filtered) > 0 else [min_level]
         )
@@ -108,8 +110,8 @@ def set_mep_not_required_param(doc, opening):
         return results
     target_level = all_levels[0]
     for level in all_levels:
-        if abs(level.Elevation - opening.Location.Point.Z) < abs(
-            target_level.Elevation - opening.Location.Point.Z
+        if abs(level.ProjectElevation - opening.Location.Point.Z) < abs(
+            target_level.ProjectElevation - opening.Location.Point.Z
         ):
             target_level = level
 
