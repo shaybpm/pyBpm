@@ -14,6 +14,7 @@ import os, sys
 root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
 sys.path.append(os.path.join(root_path, "lib"))
 import pyUtils  # type: ignore
+import RevitUtils  # type: ignore
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -258,7 +259,15 @@ def is_positioned_correctly(opening):
         results["message"] = "Insertion Configuration parameter is read only."
         return results
 
-    if opening.Name == "Round Face Opening":
+    opening_symbol = opening.Symbol
+    opening_symbol_name = RevitUtils.getElementName(opening_symbol)
+    opening_symbol_family_name = opening_symbol.FamilyName
+    if (
+        "ROUND" in opening_symbol_name.upper()
+        or "CIRC" in opening_symbol_name.upper()
+        or "ROUND" in opening_symbol_family_name.upper()
+        or "CIRC" in opening_symbol_family_name.upper()
+    ):
         param__insertion_configuration.Set("OK")
         results["message"] = "Round Face Opening. Insertion Configuration set to OK."
         return results
