@@ -356,6 +356,33 @@ def set_mark(doc, opening):
     return results
 
 
+def is_workset_correct(doc, opening):
+    """Checks if the opening is in the correct workset."""
+    results = {
+        "function": "is_workset_correct",
+        "status": "OK",
+        "message": "",
+        "opening_id": opening.Id,
+    }
+    workset_id = opening.WorksetId
+    if not workset_id:
+        results["status"] = "WARNING"
+        results["message"] = "No workset found."
+        return results
+    workset = doc.GetWorksetTable().GetWorkset(workset_id)
+    if not workset:
+        results["status"] = "WARNING"
+        results["message"] = "No workset found."
+        return results
+    if "OPENING" in workset.Name.upper():
+        results["message"] = 'Workset name includes "opening".'
+        return results
+    else:
+        results["status"] = "WARNING"
+        results["message"] = 'Workset name does not include "opening".'
+        return results
+
+
 def execute_all_functions(doc, opening):
     """Executes all the functions in this script."""
     results = {
@@ -371,8 +398,9 @@ def execute_all_functions(doc, opening):
     results3 = set_ref_level_and_mid_elevation(opening)
     results4 = is_positioned_correctly(opening)
     results5 = set_mark(doc, opening)
+    results6 = is_workset_correct(doc, opening)
 
-    all_results = [results0, results1, results2, results3, results4, results5]
+    all_results = [results0, results1, results2, results3, results4, results5, results6]
     results["all_results"] = all_results
     is_any_warning = "WARNING" in [result["status"] for result in all_results]
 
