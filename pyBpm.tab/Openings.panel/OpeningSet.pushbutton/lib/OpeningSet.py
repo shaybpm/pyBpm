@@ -40,6 +40,15 @@ def get_all_openings(doc):
     for gm in generic_models:
         if gm.Name in opening_names:
             openings.append(gm)
+            continue
+        # ~~~ Special supports ~~~
+        #   ICHILOV NORTH TOWER (R22)
+        #   Electronic Team
+        #   Ori Sagi
+        if doc.Title == "ILV-NT-SMO-BASE-E" and gm.Name.startswith("MCT"):
+            openings.append(gm)
+            continue
+        # ~~~ Special supports ~~~
     return openings
 
 
