@@ -44,11 +44,12 @@ def run():
 
     pyBpm_folder = os.path.join(extensions_folder, pyBpm_folder_name)
 
-    if os.path.isdir(pyBpm_folder):
-        shutil.rmtree(pyBpm_folder)
-    else:
+    if not os.path.isdir(pyBpm_folder):
         output.print_html('<div style="color:red;">The update failed.</div>')
         return
+
+    # TODO: check if the folder or some sub folder or file are in use
+    shutil.rmtree(pyBpm_folder)
 
     download_url = "https://github.com/shaybpm/pyBpm/archive/refs/heads/main.zip"
     zip_filename = os.path.join(extensions_folder, "pyBpm.zip")
