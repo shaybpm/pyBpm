@@ -138,10 +138,14 @@ def run():
         comp_tag = gm_tags_in_comp_dict.get(gm_id)
         if not comp_tag:
             continue
+
         tag.HasLeader = comp_tag.HasLeader
+
         if tag.CanLeaderEndConditionBeAssigned(comp_tag.LeaderEndCondition):
             tag.LeaderEndCondition = comp_tag.LeaderEndCondition
+
         tag.TagOrientation = comp_tag.TagOrientation
+
         tag.TagHeadPosition = comp_transform.OfPoint(comp_tag.TagHeadPosition)
 
         tag_ref = get_ref_tag_by_id(tag, gm_id)
