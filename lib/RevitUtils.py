@@ -37,3 +37,15 @@ def convertCmToRevitNum(cm):
         from Autodesk.Revit.DB import UnitTypeId
 
         return UnitUtils.ConvertToInternalUnits(cm, UnitTypeId.Centimeters)
+
+
+def get_comp_link(doc):
+    from Autodesk.Revit.DB import FilteredElementCollector, RevitLinkInstance
+
+    all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
+    for link in all_links:
+        if "URS" in link.Name:
+            continue
+        if "COMP" in link.Name or "CM" in link.Name or "BPM" in link.Name:
+            return link
+    return None

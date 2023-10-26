@@ -55,15 +55,6 @@ multiple_sections = __shiftclick__  # type: ignore
 # --------------------------------
 
 
-def get_comp_link():
-    all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
-    for link in all_links:
-        if "URS" in link.Name:
-            continue
-        if "COMP" in link.Name or "CM" in link.Name or "BPM" in link.Name:
-            return link
-
-
 def is_su_sec(view):
     if not view.ViewType:
         return False
@@ -204,11 +195,14 @@ def get_type_id():
 
 
 def run():
-    comp_link = get_comp_link()
+    comp_link = RevitUtils.get_comp_link(doc)
     if not comp_link:
         alert("The Compilation model link is not loaded.")
         return
     comp_doc = comp_link.GetLinkDocument()
+    if not comp_doc:
+        alert("Something went wrong with the Compilation model link.")
+        return
     selected_section = forms.select_views(
         title="Select Plans",
         button_name="Copy",
