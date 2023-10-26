@@ -161,7 +161,7 @@ def run():
             )
             tag.SetLeaderEnd(tag_ref, comp_tag_leader_end)
 
-        if comp_tag.HasLeaderElbow(comp_ref) and tag.HasLeaderElbow(tag_ref):
+        if comp_tag.HasLeaderElbow(comp_ref):
             comp_tag_leader_elbow = comp_transform.OfPoint(
                 comp_tag.GetLeaderElbow(comp_ref)
             )
