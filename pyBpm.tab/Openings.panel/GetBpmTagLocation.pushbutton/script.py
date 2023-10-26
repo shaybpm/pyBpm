@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """ Relocation tags by the tags in BPM plan """
-__title__ = "Get BPM\nTag Location"
+__title__ = "Relocation\nTags"
 __author__ = "Eyal Sinay"
 
 # -------------------------------
@@ -129,6 +129,22 @@ def run():
     gm_tags_in_comp_dict = get_gm_tags_dict(comp_doc)
     if not gm_tags_in_comp_dict or len(gm_tags_in_comp_dict.keys()) == 0:
         forms.alert("No Generic Model tags in the Compilation model.")
+        return
+
+    gm_tags_in_view_dict = {
+        k: v
+        for k, v in gm_tags_in_view_dict.items()
+        if k in gm_tags_in_comp_dict.keys()
+    }
+
+    to_continue = forms.alert(
+        "This script will relocate {} Generic Model tags in the active view to the same location as the tags in the Compilation model.\n\nDo you want to continue?".format(
+            len(gm_tags_in_view_dict.keys())
+        ),
+        yes=True,
+        cancel=True,
+    )
+    if not to_continue:
         return
 
     t = Transaction(doc, "BPM | Relocate Tags")
