@@ -12,6 +12,7 @@ from Autodesk.Revit.DB import (
     IndependentTag,
     RevitLinkInstance,
     Transaction,
+    LeaderEndCondition,
 )
 
 # from Autodesk.Revit.UI import ...
@@ -81,6 +82,34 @@ def get_gm_tags_dict(_doc, in_active_view=False):
     return gm_tags
 
 
+def get_ref_tag_by_id(tag, id):
+    refs = None
+    if RevitUtils.revit_version < 2022:
+        refs = [tag.GetTaggedReference()]
+    else:
+        refs = tag.GetTaggedReferences()
+    if not refs or len(refs) == 0:
+        return None
+    for ref in refs:
+        linked_element_id = ref.LinkedElementId
+        if not linked_element_id:
+            continue
+        tagged_element = get_linked_element(linked_element_id)
+        if not tagged_element:
+            continue
+        if tagged_element.UniqueId == id:
+            return ref
+
+
+def is_leader_end_supported(tag):
+    """Tags with attached leaders or no leaders do not support leader ends"""
+    if not tag.HasLeader:
+        return False
+    if tag.LeaderEndCondition == LeaderEndCondition.Attached:
+        return False
+    return True
+
+
 def run():
     comp_link = RevitUtils.get_comp_link(doc)
     if not comp_link:
@@ -115,11 +144,24 @@ def run():
         tag.TagOrientation = comp_tag.TagOrientation
         tag.TagHeadPosition = comp_transform.OfPoint(comp_tag.TagHeadPosition)
 
-        # comp_tag_leader_end = comp_transform.OfPoint(comp_tag.GetLeaderEnd())
-        # tag.SetLeaderEnd(comp_tag_leader_end)
-        # if comp_tag.HasLeaderElbow():
-        #     comp_tag_leader_elbow = comp_transform.OfPoint(comp_tag.GetLeaderElbow())
-        #     tag.SetLeaderElbow(comp_tag_leader_elbow)
+        tag_ref = get_ref_tag_by_id(tag, gm_id)
+        if not tag_ref:
+            continue
+        comp_ref = get_ref_tag_by_id(comp_tag, gm_id)
+        if not comp_ref:
+            continue
+
+        if is_leader_end_supported(comp_tag) and is_leader_end_supported(tag):
+            comp_tag_leader_end = comp_transform.OfPoint(
+                comp_tag.GetLeaderEnd(comp_ref)
+            )
+            tag.SetLeaderEnd(tag_ref, comp_tag_leader_end)
+
+        if comp_tag.HasLeaderElbow(comp_ref) and tag.HasLeaderElbow(tag_ref):
+            comp_tag_leader_elbow = comp_transform.OfPoint(
+                comp_tag.GetLeaderElbow(comp_ref)
+            )
+            tag.SetLeaderElbow(tag_ref, comp_tag_leader_elbow)
     t.Commit()
 
 
