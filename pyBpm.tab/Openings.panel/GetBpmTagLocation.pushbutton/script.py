@@ -11,6 +11,7 @@ from Autodesk.Revit.DB import (
     FilteredElementCollector,
     IndependentTag,
     RevitLinkInstance,
+    Transaction,
 )
 
 # from Autodesk.Revit.UI import ...
@@ -47,33 +48,36 @@ def get_linked_element(id):
                 return element
 
 
-def get_all_gm_tags_in_view():
+def get_gm_tags_dict(_doc, in_active_view=False):
     all_tags_in_view = (
-        FilteredElementCollector(doc, doc.ActiveView.Id)
-        .OfClass(IndependentTag)
-        .ToElements()
+        (
+            FilteredElementCollector(_doc, doc.ActiveView.Id)
+            .OfClass(IndependentTag)
+            .ToElements()
+        )
+        if in_active_view
+        else (FilteredElementCollector(_doc).OfClass(IndependentTag).ToElements())
     )
-    gm_tags = []
+    gm_tags = {}
     for tag in all_tags_in_view:
-        ref = None
+        refs = None
         if RevitUtils.revit_version < 2022:
-            ref = tag.GetTaggedReference()
+            refs = [tag.GetTaggedReference()]
         else:
             refs = tag.GetTaggedReferences()
-            if refs and len(refs) > 0:
-                ref = refs[0]
-        if not ref:
+        if not refs or len(refs) == 0:
             continue
-        linked_element_id = ref.LinkedElementId
-        if not linked_element_id:
-            continue
-        tagged_element = get_linked_element(linked_element_id)
-        if not tagged_element:
-            continue
-        if not tagged_element.Category:
-            continue
-        if tagged_element.Category.Name == "Generic Models":
-            gm_tags.append(tag)
+        for ref in refs:
+            linked_element_id = ref.LinkedElementId
+            if not linked_element_id:
+                continue
+            tagged_element = get_linked_element(linked_element_id)
+            if not tagged_element:
+                continue
+            if not tagged_element.Category:
+                continue
+            if tagged_element.Category.Name == "Generic Models":
+                gm_tags[tagged_element.UniqueId] = tag
     return gm_tags
 
 
@@ -82,9 +86,41 @@ def run():
     if not comp_link:
         forms.alert("The Compilation model link is not loaded.")
         return
+    comp_doc = comp_link.GetLinkDocument()
+    if not comp_doc:
+        forms.alert("Something went wrong with the Compilation model link.")
+        return
+    comp_transform = comp_link.GetTotalTransform()
 
-    all_gm_tags_in_view = get_all_gm_tags_in_view()
-    print(all_gm_tags_in_view)
+    gm_tags_in_view_dict = get_gm_tags_dict(doc, True)
+    if not gm_tags_in_view_dict or len(gm_tags_in_view_dict.keys()) == 0:
+        forms.alert("No Generic Model tags in the view.")
+        return
+
+    gm_tags_in_comp_dict = get_gm_tags_dict(comp_doc)
+    if not gm_tags_in_comp_dict or len(gm_tags_in_comp_dict.keys()) == 0:
+        forms.alert("No Generic Model tags in the Compilation model.")
+        return
+
+    t = Transaction(doc, "BPM | Relocate Tags")
+    t.Start()
+    for gm_id in gm_tags_in_view_dict.keys():
+        tag = gm_tags_in_view_dict[gm_id]
+        comp_tag = gm_tags_in_comp_dict.get(gm_id)
+        if not comp_tag:
+            continue
+        tag.HasLeader = comp_tag.HasLeader
+        if tag.CanLeaderEndConditionBeAssigned(comp_tag.LeaderEndCondition):
+            tag.LeaderEndCondition = comp_tag.LeaderEndCondition
+        tag.TagOrientation = comp_tag.TagOrientation
+        tag.TagHeadPosition = comp_transform.OfPoint(comp_tag.TagHeadPosition)
+
+        # comp_tag_leader_end = comp_transform.OfPoint(comp_tag.GetLeaderEnd())
+        # tag.SetLeaderEnd(comp_tag_leader_end)
+        # if comp_tag.HasLeaderElbow():
+        #     comp_tag_leader_elbow = comp_transform.OfPoint(comp_tag.GetLeaderElbow())
+        #     tag.SetLeaderElbow(comp_tag_leader_elbow)
+    t.Commit()
 
 
 run()
