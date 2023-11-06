@@ -3,7 +3,7 @@
 families:
 - M_Rectangular Face Opening Solid.rfa
 - M_Round Face Opening Solid.rfa """
-__title__ = "Load Opening\nFamilies"
+__title__ = "Opening Families"
 __author__ = "Eyal Sinay"
 
 # -------------------------------
@@ -14,7 +14,7 @@ from Autodesk.Revit.UI import TaskDialog
 
 import os, sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import LoadOpeningFamily  # type: ignore
 
 # -------------------------------
@@ -33,4 +33,6 @@ def alert(msg):
 # -------------SCRIPT-------------
 # --------------------------------
 
-LoadOpeningFamily.run(doc)
+LoadOpeningFamily.run(
+    doc, ["M_Rectangular Face Opening Solid", "M_Round Face Opening Solid"]
+)
