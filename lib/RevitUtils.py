@@ -42,8 +42,21 @@ def convertCmToRevitNum(cm):
 def get_comp_link(doc):
     from Autodesk.Revit.DB import FilteredElementCollector, RevitLinkInstance
 
+    comp_model_guids = ["e6cfe7b1-d7de-4fed-a584-b403a09e9d47"]
+
+    def is_model_link_in_guids(link):
+        doc_link = link.GetLinkDocument()
+        if not doc_link:
+            return False
+        if not doc_link.IsModelInCloud:
+            return False
+        link_model_guid = doc_link.GetCloudModelPath().GetModelGUID().ToString()
+        return link_model_guid in comp_model_guids
+
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
     for link in all_links:
+        if is_model_link_in_guids(link):
+            return link
         if "URS" in link.Name:
             continue
         if "COMP" in link.Name or "CM" in link.Name or "BPM" in link.Name:
