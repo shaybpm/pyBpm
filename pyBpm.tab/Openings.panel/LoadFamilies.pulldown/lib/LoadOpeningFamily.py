@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-from Autodesk.Revit.DB import Transaction, FilteredElementCollector, Family
+from Autodesk.Revit.DB import FilteredElementCollector, Family
 
 from pyrevit import script
 
@@ -16,9 +16,6 @@ def get_family_path(family_name):
 def run(doc, family_names):
     output = script.get_output()
     output.print_html("<h1>Load Opening Families</h1>")
-
-    t = Transaction(doc, "BPM | Load Opening Family")
-    t.Start()
 
     some_family_already_exist = False
 
@@ -51,4 +48,10 @@ def run(doc, family_names):
             '<div style="color:blue">If you want to reload family that is already exist, you need to change the name of the family that already loaded, or remove it from the project.</div>'
         )
 
-    t.Commit()
+    families_to_return = []
+    for family_name in family_names:
+        families = FilteredElementCollector(doc).OfClass(Family)
+        for family in families:
+            if family.Name == family_name:
+                families_to_return.append(family)
+    return families_to_return
