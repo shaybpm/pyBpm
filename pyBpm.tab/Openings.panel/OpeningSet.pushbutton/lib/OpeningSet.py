@@ -334,8 +334,13 @@ def opening_number_generator(doc):
             all_existing_numbers.append(int(param__mark.AsString()))
 
     number = 1
+    loop_count = 0
+    max_loop_count = 2000
     while number in all_existing_numbers:
         number += 1
+        loop_count += 1
+        if loop_count > max_loop_count:
+            raise Exception("Opening number generator loop count exceeded.")
     return str(number)
 
 
