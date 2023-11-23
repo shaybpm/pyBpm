@@ -159,7 +159,14 @@ def create_section(section, viewFamilyTypeId, transform):
     new_section_name = "BPM_Section_" + section.Name
     num = 0
     all_views = get_all_views()
+    loop_count = 0
+    max_loop_count = 1000
     while is_viewName_already_exists(all_views, new_section_name):
+        if loop_count > max_loop_count:
+            raise Exception(
+                "Couldn't create new section with name: " + new_section_name
+            )
+        loop_count += 1
         num += 1
         new_section_name = "BPM_Section_" + section.Name + "_" + str(num)
     new_section.Name = new_section_name
