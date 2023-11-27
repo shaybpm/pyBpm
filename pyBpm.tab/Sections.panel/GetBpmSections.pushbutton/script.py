@@ -12,7 +12,6 @@ __author__ = "Eyal Sinay"
 from Autodesk.Revit.DB import (
     Transaction,
     FilteredElementCollector,
-    RevitLinkInstance,
     ViewType,
     BuiltInParameter,
     View,
