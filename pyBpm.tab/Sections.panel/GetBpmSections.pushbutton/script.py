@@ -50,6 +50,23 @@ def alert(msg):
 
 multiple_sections = __shiftclick__  # type: ignore
 
+# Set the Compilation model link
+comp_doc = None
+ex_suction_names = []
+comp_link = RevitUtils.get_comp_link(doc)
+if not comp_link:
+    alert("The Compilation model link is not loaded.")
+else:
+    comp_doc = comp_link.GetLinkDocument()
+    if not comp_doc:
+        alert("Something went wrong with the Compilation model link.")
+    else:
+        ex_suction_names = [
+            x.Name
+            for x in FilteredElementCollector(comp_doc).OfClass(View).ToElements()
+            if x.ViewType == ViewType.Section and "EX" in x.Name
+        ]
+
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
@@ -66,7 +83,10 @@ def is_su_sec(view):
         return False
 
     viewport_sheet_number = view.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NUMBER)
-    if not viewport_sheet_number.AsString():
+    if (
+        not viewport_sheet_number.AsString()
+        and not view.Name.replace("SU", "EX") in ex_suction_names
+    ):
         return False
 
     return True
@@ -202,14 +222,9 @@ def get_type_id():
 
 
 def run():
-    comp_link = RevitUtils.get_comp_link(doc)
-    if not comp_link:
-        alert("The Compilation model link is not loaded.")
+    if not comp_doc or not comp_link:
         return
-    comp_doc = comp_link.GetLinkDocument()
-    if not comp_doc:
-        alert("Something went wrong with the Compilation model link.")
-        return
+
     selected_section = forms.select_views(
         title="Select Plans",
         button_name="Copy",
