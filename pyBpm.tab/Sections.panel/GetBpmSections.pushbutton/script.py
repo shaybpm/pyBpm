@@ -63,7 +63,10 @@ else:
         ex_suction_names = [
             x.Name
             for x in FilteredElementCollector(comp_doc).OfClass(View).ToElements()
-            if x.ViewType == ViewType.Section and "EX" in x.Name
+            if x.ViewType == ViewType.Section
+            and "EX" in x.Name
+            and x.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NUMBER).AsString()
+            is not None
         ]
 
 # --------------------------------
