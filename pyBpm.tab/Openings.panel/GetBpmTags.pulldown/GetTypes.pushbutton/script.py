@@ -62,18 +62,9 @@ def run():
         if k in gm_tags_in_comp_dict.keys()
     }
 
-    to_continue = forms.alert(
-        "This script will replace the family types of {} Generic Model tags in the active view.\n\nDo you want to continue?".format(
-            len(gm_tags_in_view_dict.keys())
-        ),
-        yes=True,
-        cancel=True,
-    )
-    if not to_continue:
-        return
-
-    t = Transaction(doc, "BPM | Relocate Tags")
+    t = Transaction(doc, "BPM | Replace Tag family types")
     t.Start()
+    counter = 0
     for gm_id in gm_tags_in_view_dict.keys():
         tag = gm_tags_in_view_dict[gm_id]
         comp_tag = gm_tags_in_comp_dict.get(gm_id)
@@ -81,8 +72,19 @@ def run():
             continue
         comp_tag_type = comp_doc.GetElement(comp_tag.GetTypeId())
         comp_tag_type_name = RevitUtils.getElementName(comp_tag_type)
+        comp_tag_type_family_name = comp_tag_type.Family.Name
+
+        tag_type = doc.GetElement(tag.GetTypeId())
+        tag_type_name = RevitUtils.getElementName(tag_type)
+        tag_type_family_name = tag_type.Family.Name
+        if (
+            tag_type_name == comp_tag_type_name
+            and tag_type_family_name == comp_tag_type_family_name
+        ):
+            continue
+
         comp_tag_type_in_doc = GetBpmTags.get_type(
-            doc, comp_tag_type.Family.Name, comp_tag_type_name
+            doc, comp_tag_type_family_name, comp_tag_type_name
         )
         if not comp_tag_type_in_doc:
             copies_ids = ElementTransformUtils.CopyElements(
@@ -92,6 +94,23 @@ def run():
                 continue
             comp_tag_type_in_doc = doc.GetElement(copies_ids[0])
         tag.ChangeTypeId(comp_tag_type_in_doc.Id)
+        counter += 1
+
+    if counter > 0:
+        to_commit = forms.alert(
+            "This script will replace the family types of {} Generic Model tags in the active view.\n\nDo you want to continue?".format(
+                counter
+            ),
+            yes=True,
+            cancel=True,
+        )
+        if not to_commit:
+            t.RollBack()
+            return
+    else:
+        t.RollBack()
+        forms.alert("No Family types to replace.")
+        return
 
     t.Commit()
 
