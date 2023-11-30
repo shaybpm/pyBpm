@@ -21,7 +21,7 @@ def is_close(a, b, rel_tol=1e-09, abs_tol=0.0):
 
 
 def env_mode():
-    if "Software_Development\RevitDevelopment\PyRevitBpm" in __file__:
+    if "Software_Development\PyRevit\extension\pyBpm.extension" in __file__:
         return "dev"
     else:
         return "prod"
