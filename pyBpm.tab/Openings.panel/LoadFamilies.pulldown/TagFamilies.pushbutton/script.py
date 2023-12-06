@@ -17,6 +17,8 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import LoadOpeningFamily  # type: ignore
 
+from RevitUtils import revit_version  # type: ignore
+
 # -------------------------------
 # -------------MAIN--------------
 # -------------------------------
@@ -24,11 +26,20 @@ import LoadOpeningFamily  # type: ignore
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 
+families = (
+    [
+        "BPM Opening Tag (R20)",
+    ]
+    if revit_version < 2022
+    else [
+        "BPM Opening Tag (R22)",
+    ]
+)
 
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
 t = Transaction(doc, "BPM | Load Opening Tag Families")
 t.Start()
-LoadOpeningFamily.run(doc, ["BPM Opening Tag (R22)", "BPM Opening Tag (R20)"])
+LoadOpeningFamily.run(doc, families)
 t.Commit()
