@@ -7,6 +7,7 @@ from Autodesk.Revit.DB import (
     BuiltInCategory,
     BuiltInParameter,
     ElementId,
+    BasePoint,
 )
 
 import os, sys
@@ -171,14 +172,14 @@ def set_elevation_params(doc, opening):
         "message": "",
         "opening_id": opening.Id,
     }
-    project_base_point = (
-        FilteredElementCollector(doc)
-        .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
-        .WhereElementIsNotElementType()
-        .ToElements()[0]
-    )
+    project_base_point = BasePoint.GetProjectBasePoint(doc)
     project_base_point_position = project_base_point.Position.Z
+
+    survey_point = BasePoint.GetSurveyPoint(doc)
+    survey_point_position = survey_point.Position.Z
+
     opening_location_point_z = opening.Location.Point.Z
+
     param__opening_elevation = opening.LookupParameter("Opening Elevation")
     param__opening_absolute_level = opening.LookupParameter("Opening Absolute Level")
     if not param__opening_elevation or not param__opening_absolute_level:
@@ -193,10 +194,8 @@ def set_elevation_params(doc, opening):
             "message"
         ] = "Opening Elevation or Opening Absolute Level parameter is read only."
         return results
-    param__opening_elevation.Set(opening_location_point_z)
-    param__opening_absolute_level.Set(
-        opening_location_point_z - project_base_point_position
-    )
+    param__opening_elevation.Set(opening_location_point_z - project_base_point_position)
+    param__opening_absolute_level.Set(opening_location_point_z - survey_point_position)
     results["message"] = "Opening Elevation and Opening Absolute Level parameters set."
     return results
 
