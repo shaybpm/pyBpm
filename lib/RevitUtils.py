@@ -40,25 +40,33 @@ def convertCmToRevitNum(cm):
 
 
 def get_comp_link(doc):
-    from Autodesk.Revit.DB import FilteredElementCollector, RevitLinkInstance
-
-    comp_model_guids = ["e6cfe7b1-d7de-4fed-a584-b403a09e9d47"]
-
-    def is_model_link_in_guids(link):
-        doc_link = link.GetLinkDocument()
-        if not doc_link:
-            return False
-        if not doc_link.IsModelInCloud:
-            return False
-        link_model_guid = doc_link.GetCloudModelPath().GetModelGUID().ToString()
-        return link_model_guid in comp_model_guids
+    from Autodesk.Revit.DB import (
+        BuiltInParameter,
+        FilteredElementCollector,
+        RevitLinkInstance,
+    )
 
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
     for link in all_links:
-        if is_model_link_in_guids(link):
-            return link
-        if "URS" in link.Name:
+        link_doc = link.GetLinkDocument()
+        project_info = link_doc.ProjectInformation
+        organization_name_param = project_info.get_Parameter(
+            BuiltInParameter.PROJECT_ORGANIZATION_NAME
+        )
+        organization_description_param = project_info.get_Parameter(
+            BuiltInParameter.PROJECT_ORGANIZATION_DESCRIPTION
+        )
+        if (
+            not organization_name_param
+            or not organization_name_param.AsString()
+            or not organization_description_param
+            or not organization_description_param.AsString()
+        ):
             continue
-        if "COMP" in link.Name or "CM" in link.Name or "BPM" in link.Name:
+
+        if (
+            organization_name_param.AsString() == "BPM"
+            and organization_description_param.AsString() == "CM"
+        ):
             return link
     return None
