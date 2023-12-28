@@ -49,6 +49,8 @@ def get_comp_link(doc):
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
     for link in all_links:
         link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
         project_info = link_doc.ProjectInformation
         organization_name_param = project_info.get_Parameter(
             BuiltInParameter.PROJECT_ORGANIZATION_NAME
