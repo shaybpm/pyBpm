@@ -50,7 +50,7 @@ def get_gm_tags_dict(_doc, in_active_view=False):
     gm_tags = {}
     for tag in all_tags_in_view:
         refs = None
-        if RevitUtils.revit_version < 2022:
+        if RevitUtils.getRevitVersion(doc) < 2022:
             refs = [tag.GetTaggedReference()]
         else:
             refs = tag.GetTaggedReferences()
@@ -72,7 +72,7 @@ def get_gm_tags_dict(_doc, in_active_view=False):
 
 def get_ref_tag_by_id(tag, id):
     refs = None
-    if RevitUtils.revit_version < 2022:
+    if RevitUtils.getRevitVersion(doc) < 2022:
         refs = [tag.GetTaggedReference()]
     else:
         refs = tag.GetTaggedReferences()

@@ -21,17 +21,18 @@ import RevitUtils  # type: ignore
 # -------------SCRIPT-------------
 # --------------------------------
 
+opening_names = [
+    "Round Face Opening",
+    "Rectangular Face Opening",
+    "CIRC_FLOOR OPENING",
+    "CIRC_WALL OPENING",
+    "REC_FLOOR OPENING",
+    "REC_WALL OPENING",
+]
+
 
 def get_all_openings(doc):
     """Returns a list of all the openings in the model."""
-    opening_names = [
-        "Round Face Opening",
-        "Rectangular Face Opening",
-        "CIRC_FLOOR OPENING",
-        "CIRC_WALL OPENING",
-        "REC_FLOOR OPENING",
-        "REC_WALL OPENING",
-    ]
     openings = []
     generic_models = (
         FilteredElementCollector(doc)
