@@ -9,7 +9,12 @@ __author__ = "Ely Komm & Eyal Sinay"
 # ------------IMPORTS------------
 # -------------------------------
 
-from Autodesk.Revit.DB import Transaction
+from Autodesk.Revit.DB import (
+    Transaction,
+    IFailuresPreprocessor,
+    FailureProcessingResult,
+    BuiltInFailures,
+)
 from Autodesk.Revit.UI import TaskDialog
 
 from pyrevit import script
@@ -25,6 +30,9 @@ import OpeningSet  # type: ignore
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 
+output = script.get_output()
+output.close_others()
+
 
 def alert(msg):
     TaskDialog.Show("BPM - Opening Update", msg)
@@ -33,6 +41,16 @@ def alert(msg):
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
+
+
+class Preprocessor(IFailuresPreprocessor):
+    def PreprocessFailures(self, failuresAccessor):
+        failures = failuresAccessor.GetFailureMessages()
+        for f in failures:
+            id = f.GetFailureDefinitionId()
+            if BuiltInFailures.GeneralFailures.DuplicateValue == id:
+                failuresAccessor.DeleteWarning(f)
+        return FailureProcessingResult.Continue
 
 
 def print_results(results):
@@ -61,7 +79,6 @@ def print_results(results):
 
 
 def print_full_results(results):
-    output = script.get_output()
     output.print_html("<h1>Opening Set</h1>")
     output.print_html(
         '<div style="color:gray">Number of openings found: {}</div>'.format(
@@ -106,6 +123,11 @@ def run():
 
     t = Transaction(doc, "BPM | Opening Update")
     t.Start()
+
+    failOpt = t.GetFailureHandlingOptions()
+    preprocessor = Preprocessor()
+    failOpt.SetFailuresPreprocessor(preprocessor)
+    t.SetFailureHandlingOptions(failOpt)
 
     results = []
     for opening in all_openings:
