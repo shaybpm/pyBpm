@@ -24,7 +24,7 @@ def convertRevitNumToCm(doc, num):
         return UnitUtils.ConvertFromInternalUnits(num, UnitTypeId.Centimeters)
 
 
-def convertCmToRevitNum(cm):
+def convertCmToRevitNum(doc, cm):
     from Autodesk.Revit.DB import UnitUtils
 
     if getRevitVersion(doc) < 2021:
