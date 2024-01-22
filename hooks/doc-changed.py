@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-from Autodesk.Revit.DB import BuiltInCategory, ElementCategoryFilter
+from Autodesk.Revit.DB import (
+    BuiltInCategory,
+    ElementCategoryFilter,
+    ElementIsElementTypeFilter,
+    LogicalAndFilter,
+)
 
 from pyrevit import EXEC_PARAMS
 
@@ -32,7 +37,9 @@ def filter_ids_by_elem_name(elem_ids):
 
 
 def run():
-    element_filter = ElementCategoryFilter(BuiltInCategory.OST_GenericModel)
+    category_filter = ElementCategoryFilter(BuiltInCategory.OST_GenericModel)
+    not_type_filter = ElementIsElementTypeFilter(True)
+    element_filter = LogicalAndFilter(category_filter, not_type_filter)
 
     added_elements = EXEC_PARAMS.event_args.GetAddedElementIds(element_filter)
     deleted_elements = EXEC_PARAMS.event_args.GetDeletedElementIds()
