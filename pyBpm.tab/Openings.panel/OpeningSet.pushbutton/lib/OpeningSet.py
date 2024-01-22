@@ -20,7 +20,7 @@ sys.path.append(os.path.join(root_path, "lib"))
 import pyUtils  # type: ignore
 import RevitUtils  # type: ignore
 from PyRevitUtils import TempElementStorage  # type: ignore
-from Config import OPENING_SET_TEMP_FILE_ID  # type: ignore
+from Config import get_opening_set_temp_file_id  # type: ignore
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -439,7 +439,8 @@ def execute_all_functions(doc, opening):
     else:
         results["message"] = "Completed successfully."
 
-    temp_storage = TempElementStorage(OPENING_SET_TEMP_FILE_ID)
+    opening_set_temp_file_id = get_opening_set_temp_file_id(doc)
+    temp_storage = TempElementStorage(opening_set_temp_file_id)
     temp_storage.remove_element(opening.Id)
 
     return results

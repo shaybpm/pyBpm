@@ -5,7 +5,7 @@ try:
     from pyrevit import EXEC_PARAMS
 
     from PyRevitUtils import TempElementStorage  # type: ignore
-    from Config import OPENING_SET_TEMP_FILE_ID, is_to_run_opening_set_by_hooks, get_env_mode  # type: ignore
+    from Config import get_opening_set_temp_file_id, is_to_run_opening_set_by_hooks, get_env_mode  # type: ignore
 
     import sys, os
 
@@ -27,7 +27,8 @@ try:
         if not is_to_run_opening_set_by_hooks(doc):
             return
 
-        temp_storage = TempElementStorage(OPENING_SET_TEMP_FILE_ID)
+        opening_set_temp_file_id = get_opening_set_temp_file_id(doc)
+        temp_storage = TempElementStorage(opening_set_temp_file_id)
         opening_ids = temp_storage.get_element_ids()
 
         if len(opening_ids) > 0:
