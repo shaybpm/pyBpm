@@ -10,7 +10,7 @@ try:
     from pyrevit import EXEC_PARAMS
 
     from PyRevitUtils import TempElementStorage  # type: ignore
-    from Config import OPENING_ST_TEMP_FILE_ID, is_to_run_opening_set_by_hooks  # type: ignore
+    from Config import OPENING_ST_TEMP_FILE_ID, is_to_run_opening_set_by_hooks, get_env_mode  # type: ignore
     from RevitUtils import getElementName  # type: ignore
 
     def filter_ids_by_elem_name(doc, elem_ids):
@@ -72,5 +72,6 @@ try:
             temp_storage.remove_elements(deleted_elements)
 
     run()
-except:
-    pass
+except Exception as ex:
+    if get_env_mode() == "dev":
+        print(ex)
