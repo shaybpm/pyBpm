@@ -9,12 +9,7 @@ __author__ = "Ely Komm & Eyal Sinay"
 # ------------IMPORTS------------
 # -------------------------------
 
-from Autodesk.Revit.DB import (
-    Transaction,
-    IFailuresPreprocessor,
-    FailureProcessingResult,
-    BuiltInFailures,
-)
+from Autodesk.Revit.DB import Transaction
 from Autodesk.Revit.UI import TaskDialog
 
 from pyrevit import script
@@ -41,16 +36,6 @@ def alert(msg):
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
-
-
-class Preprocessor(IFailuresPreprocessor):
-    def PreprocessFailures(self, failuresAccessor):
-        failures = failuresAccessor.GetFailureMessages()
-        for f in failures:
-            id = f.GetFailureDefinitionId()
-            if BuiltInFailures.GeneralFailures.DuplicateValue == id:
-                failuresAccessor.DeleteWarning(f)
-        return FailureProcessingResult.Continue
 
 
 def print_results(results):
@@ -121,11 +106,11 @@ def run():
         alert("No openings found.")
         return
 
-    t = Transaction(doc, "BPM | Opening Update")
+    t = Transaction(doc, "BPM | Opening Set")
     t.Start()
 
     failOpt = t.GetFailureHandlingOptions()
-    preprocessor = Preprocessor()
+    preprocessor = OpeningSet.Preprocessor()
     failOpt.SetFailuresPreprocessor(preprocessor)
     t.SetFailureHandlingOptions(failOpt)
 

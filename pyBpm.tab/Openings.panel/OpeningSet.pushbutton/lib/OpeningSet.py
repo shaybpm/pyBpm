@@ -8,6 +8,9 @@ from Autodesk.Revit.DB import (
     BuiltInParameter,
     ElementId,
     BasePoint,
+    IFailuresPreprocessor,
+    FailureProcessingResult,
+    BuiltInFailures,
 )
 
 import os, sys
@@ -16,22 +19,35 @@ root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
 sys.path.append(os.path.join(root_path, "lib"))
 import pyUtils  # type: ignore
 import RevitUtils  # type: ignore
+from PyRevitUtils import TempElementStorage  # type: ignore
+from Config import OPENING_ST_TEMP_FILE_ID  # type: ignore
 
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
 
+opening_names = [
+    "Round Face Opening",
+    "Rectangular Face Opening",
+    "CIRC_FLOOR OPENING",
+    "CIRC_WALL OPENING",
+    "REC_FLOOR OPENING",
+    "REC_WALL OPENING",
+]
+
+
+class Preprocessor(IFailuresPreprocessor):
+    def PreprocessFailures(self, failuresAccessor):
+        failures = failuresAccessor.GetFailureMessages()
+        for f in failures:
+            id = f.GetFailureDefinitionId()
+            if BuiltInFailures.GeneralFailures.DuplicateValue == id:
+                failuresAccessor.DeleteWarning(f)
+        return FailureProcessingResult.Continue
+
 
 def get_all_openings(doc):
     """Returns a list of all the openings in the model."""
-    opening_names = [
-        "Round Face Opening",
-        "Rectangular Face Opening",
-        "CIRC_FLOOR OPENING",
-        "CIRC_WALL OPENING",
-        "REC_FLOOR OPENING",
-        "REC_WALL OPENING",
-    ]
     openings = []
     generic_models = (
         FilteredElementCollector(doc)
@@ -422,4 +438,8 @@ def execute_all_functions(doc, opening):
         results["message"] = "Completed with warnings."
     else:
         results["message"] = "Completed successfully."
+
+    temp_storage = TempElementStorage(OPENING_ST_TEMP_FILE_ID)
+    temp_storage.remove_element(opening.Id)
+
     return results

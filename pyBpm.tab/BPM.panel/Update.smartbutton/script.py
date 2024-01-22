@@ -16,6 +16,7 @@ root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
 sys.path.append(os.path.join(root_path, "lib"))
 import HttpRequest  # type: ignore
 import pyUtils  # type: ignore
+import Config  # type: ignore
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -42,7 +43,7 @@ def __selfinit__(script_cmp, ui_button_cmp, __rvt__):
 
 
 if __name__ == "__main__":
-    env_mode = pyUtils.env_mode()
+    env_mode = Config.get_env_mode()
     if env_mode == "dev":
         Update.dev_run()
     else:
