@@ -37,6 +37,11 @@ if len(opening_ids) > 0:
     for opening_id in opening_ids:
         opening = doc.GetElement(opening_id)
         if not opening:
-            print("Opening not found")
+            print(
+                "Opening not found"
+            )  # TODO: Remove. and wrap with try/except all this file
+            temp_storage.remove_element(opening_id)
             continue
         execute_all_functions(doc, opening)
+
+    t.Commit()
