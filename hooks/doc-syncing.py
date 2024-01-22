@@ -50,5 +50,7 @@ try:
 
     run()
 except Exception as ex:
+    from Config import get_env_mode  # type: ignore
+
     if get_env_mode() == "dev":
         print(ex)
