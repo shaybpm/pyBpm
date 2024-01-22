@@ -1,47 +1,58 @@
 # -*- coding: utf-8 -*-
-from Autodesk.Revit.DB import Transaction
+def run():
+    try:
+        from Autodesk.Revit.DB import Transaction
 
-from pyrevit import EXEC_PARAMS
+        from pyrevit import EXEC_PARAMS
 
-from PyRevitUtils import TempElementStorage  # type: ignore
-from Config import OPENING_ST_TEMP_FILE_ID  # type: ignore
+        from PyRevitUtils import TempElementStorage  # type: ignore
+        from Config import OPENING_ST_TEMP_FILE_ID  # type: ignore
 
-import sys, os
+        import sys, os
 
-sys.path.append(
-    os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "pyBpm.tab",
-        "Openings.panel",
-        "OpeningSet.pushbutton",
-        "lib",
-    )
-)
-from OpeningSet import Preprocessor, execute_all_functions  # type: ignore
+        sys.path.append(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "pyBpm.tab",
+                "Openings.panel",
+                "OpeningSet.pushbutton",
+                "lib",
+            )
+        )
+        from OpeningSet import Preprocessor, execute_all_functions  # type: ignore
 
-doc = EXEC_PARAMS.event_args.Document
+        doc = EXEC_PARAMS.event_args.Document
 
-temp_storage = TempElementStorage(OPENING_ST_TEMP_FILE_ID)
-opening_ids = temp_storage.get_element_ids()
+        # run only for projects with specific GUIDs:
+        # - # ALONEI YAM (R23) - 8047be81-f81e-4b24-92c8-796eded8ffff
+        project_guids = ["8047be81-f81e-4b24-92c8-796eded8ffff"]
+        if not doc.IsModelInCloud:
+            return
+        cloudModelPath = doc.GetCloudModelPath()
+        projectGuid = cloudModelPath.GetProjectGUID().ToString()
+        if projectGuid not in project_guids:
+            return
 
-if len(opening_ids) > 0:
-    t = Transaction(doc, "BPM | Opening Set")
-    t.Start()
+        temp_storage = TempElementStorage(OPENING_ST_TEMP_FILE_ID)
+        opening_ids = temp_storage.get_element_ids()
 
-    failOpt = t.GetFailureHandlingOptions()
-    preprocessor = Preprocessor()
-    failOpt.SetFailuresPreprocessor(preprocessor)
-    t.SetFailureHandlingOptions(failOpt)
+        if len(opening_ids) > 0:
+            t = Transaction(doc, "BPM | Opening Set")
+            t.Start()
 
-    for opening_id in opening_ids:
-        opening = doc.GetElement(opening_id)
-        if not opening:
-            print(
-                "Opening not found"
-            )  # TODO: Remove after testing and before margin branch. and wrap with try/except all this file
-            temp_storage.remove_element(opening_id)
-            continue
-        execute_all_functions(doc, opening)
+            failOpt = t.GetFailureHandlingOptions()
+            preprocessor = Preprocessor()
+            failOpt.SetFailuresPreprocessor(preprocessor)
+            t.SetFailureHandlingOptions(failOpt)
 
-    t.Commit()
+            for opening_id in opening_ids:
+                opening = doc.GetElement(opening_id)
+                if not opening:
+                    temp_storage.remove_element(opening_id)
+                    continue
+                execute_all_functions(doc, opening)
+
+            t.Commit()
+    except:
+        pass
