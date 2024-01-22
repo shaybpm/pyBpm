@@ -39,7 +39,7 @@ if len(opening_ids) > 0:
         if not opening:
             print(
                 "Opening not found"
-            )  # TODO: Remove. and wrap with try/except all this file
+            )  # TODO: Remove after testing and before margin branch. and wrap with try/except all this file
             temp_storage.remove_element(opening_id)
             continue
         execute_all_functions(doc, opening)
