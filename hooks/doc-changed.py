@@ -10,7 +10,7 @@ try:
     from pyrevit import EXEC_PARAMS
 
     from PyRevitUtils import TempElementStorage  # type: ignore
-    from Config import OPENING_ST_TEMP_FILE_ID, is_to_run_opening_set_by_hooks, get_env_mode  # type: ignore
+    from Config import OPENING_SET_TEMP_FILE_ID, is_to_run_opening_set_by_hooks, get_env_mode  # type: ignore
     from RevitUtils import getElementName  # type: ignore
 
     def filter_ids_by_elem_name(doc, elem_ids):
@@ -64,7 +64,7 @@ try:
         if (len(added_and_modified_elements) == 0) and (len(deleted_elements) == 0):
             return
 
-        temp_storage = TempElementStorage(OPENING_ST_TEMP_FILE_ID)
+        temp_storage = TempElementStorage(OPENING_SET_TEMP_FILE_ID)
         if len(added_and_modified_elements) > 0:
             temp_storage.add_elements(added_and_modified_elements)
 
