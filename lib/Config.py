@@ -5,7 +5,7 @@ def get_env_mode():
         return "prod"
 
 
-OPENING_SET_TEMP_FILE_ID = "OPENING_SET_TEMP_FILE_ID"
+OPENING_SET_TEMP_FILE_ID = "OPENING_SET"
 
 
 def is_to_run_opening_set_by_hooks(doc):
