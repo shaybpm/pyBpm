@@ -1,37 +1,30 @@
 # -*- coding: utf-8 -*-
-def run():
-    try:
-        from Autodesk.Revit.DB import Transaction
+try:
+    from Autodesk.Revit.DB import Transaction
 
-        from pyrevit import EXEC_PARAMS
+    from pyrevit import EXEC_PARAMS
 
-        from PyRevitUtils import TempElementStorage  # type: ignore
-        from Config import OPENING_ST_TEMP_FILE_ID  # type: ignore
+    from PyRevitUtils import TempElementStorage  # type: ignore
+    from Config import OPENING_ST_TEMP_FILE_ID, is_to_run_opening_set_by_hooks  # type: ignore
 
-        import sys, os
+    import sys, os
 
-        sys.path.append(
-            os.path.join(
-                os.path.dirname(__file__),
-                "..",
-                "pyBpm.tab",
-                "Openings.panel",
-                "OpeningSet.pushbutton",
-                "lib",
-            )
+    sys.path.append(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "pyBpm.tab",
+            "Openings.panel",
+            "OpeningSet.pushbutton",
+            "lib",
         )
-        from OpeningSet import Preprocessor, execute_all_functions  # type: ignore
+    )
+    from OpeningSet import Preprocessor, execute_all_functions  # type: ignore
 
-        doc = EXEC_PARAMS.event_args.Document
+    doc = EXEC_PARAMS.event_args.Document
 
-        # run only for projects with specific GUIDs:
-        # - # ALONEI YAM (R23) - 8047be81-f81e-4b24-92c8-796eded8ffff
-        project_guids = ["8047be81-f81e-4b24-92c8-796eded8ffff"]
-        if not doc.IsModelInCloud:
-            return
-        cloudModelPath = doc.GetCloudModelPath()
-        projectGuid = cloudModelPath.GetProjectGUID().ToString()
-        if projectGuid not in project_guids:
+    def run():
+        if not is_to_run_opening_set_by_hooks(doc):
             return
 
         temp_storage = TempElementStorage(OPENING_ST_TEMP_FILE_ID)
@@ -54,5 +47,7 @@ def run():
                 execute_all_functions(doc, opening)
 
             t.Commit()
-    except:
-        pass
+
+    run()
+except:
+    pass
