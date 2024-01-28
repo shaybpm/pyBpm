@@ -70,3 +70,21 @@ def get_comp_link(doc):
         ):
             return link
     return None
+
+
+def get_model_info(doc):
+    if not doc.IsModelInCloud:
+        raise Exception("Model is not in cloud")
+    pathName = doc.PathName
+    splitPathName = pathName.split("/")
+    projectName = splitPathName[len(splitPathName) - 2]
+    modelName = doc.Title  # splitPathName[len(splitPathName) - 1]
+    cloudModelPath = doc.GetCloudModelPath()
+    projectGuid = cloudModelPath.GetProjectGUID().ToString()
+    modelGuid = cloudModelPath.GetModelGUID().ToString()
+    return {
+        "projectName": projectName,
+        "modelName": modelName,
+        "projectGuid": projectGuid,
+        "modelGuid": modelGuid,
+    }

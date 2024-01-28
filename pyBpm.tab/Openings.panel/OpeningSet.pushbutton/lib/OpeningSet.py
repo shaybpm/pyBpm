@@ -448,6 +448,15 @@ def execute_all_functions(doc, opening):
 
 def execute_all_functions_for_all_openings(doc, all_openings):
     """Executes all the functions for all the given openings."""
+    # import HttpRequest  # type: ignore
+    # from Config import db_url  # type: ignore
+
+    # res = HttpRequest.get_request(db_url + "api")
+    from Config import ServerPermissions  # type: ignore
+
+    server_permissions = ServerPermissions(doc)
+    print(server_permissions.get_openings_tracking_permission())
+
     results = []
     for opening in all_openings:
         opening_results = execute_all_functions(doc, opening)
