@@ -114,10 +114,7 @@ def run():
     failOpt.SetFailuresPreprocessor(preprocessor)
     t.SetFailureHandlingOptions(failOpt)
 
-    results = []
-    for opening in all_openings:
-        opening_results = OpeningSet.execute_all_functions(doc, opening)
-        results.append(opening_results)
+    results = OpeningSet.execute_all_functions_for_all_openings(doc, all_openings)
 
     if __shiftclick__:  # type: ignore
         print_full_results(results)

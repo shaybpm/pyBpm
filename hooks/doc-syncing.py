@@ -19,7 +19,7 @@ try:
             "lib",
         )
     )
-    from OpeningSet import Preprocessor, execute_all_functions  # type: ignore
+    from OpeningSet import Preprocessor, execute_all_functions_for_all_openings  # type: ignore
 
     doc = EXEC_PARAMS.event_args.Document
 
@@ -40,12 +40,14 @@ try:
             failOpt.SetFailuresPreprocessor(preprocessor)
             t.SetFailureHandlingOptions(failOpt)
 
+            openings = []
             for opening_id in opening_ids:
                 opening = doc.GetElement(opening_id)
                 if not opening:
                     temp_storage.remove_element(opening_id)
                     continue
-                execute_all_functions(doc, opening)
+                openings.append(opening)
+            results = execute_all_functions_for_all_openings(doc, openings)
 
             t.Commit()
 

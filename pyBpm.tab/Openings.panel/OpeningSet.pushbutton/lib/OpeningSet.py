@@ -444,3 +444,12 @@ def execute_all_functions(doc, opening):
     temp_storage.remove_element(opening.Id)
 
     return results
+
+
+def execute_all_functions_for_all_openings(doc, all_openings):
+    """Executes all the functions for all the given openings."""
+    results = []
+    for opening in all_openings:
+        opening_results = execute_all_functions(doc, opening)
+        results.append(opening_results)
+    return results
