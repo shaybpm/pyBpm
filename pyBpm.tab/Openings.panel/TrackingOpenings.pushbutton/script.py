@@ -11,6 +11,11 @@ __highlight__ = "new"
 from ServerUtils import ServerPermissions  # type: ignore
 from pyrevit import forms
 
+import sys, os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
+from TrackingOpeningsDialog import TrackingOpeningsDialog  # type: ignore
+
 # -------------------------------
 # -------------MAIN--------------
 # -------------------------------
@@ -33,6 +38,12 @@ def run():
             title="אין גישה לפרויקט",
         )
         return
+    dialog = TrackingOpeningsDialog(doc)
+
+    if __shiftclick__:  # type: ignore
+        dialog.ShowDialog()
+    else:
+        dialog.Show()
 
 
 run()
