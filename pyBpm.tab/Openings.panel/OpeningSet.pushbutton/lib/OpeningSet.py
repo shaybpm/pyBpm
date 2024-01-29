@@ -502,7 +502,7 @@ def post_openings_data(doc, openings, to_print=False):
         opening_symbol = opening.Symbol
         param__Description = opening_symbol.LookupParameter("Description")
         if param__Description:
-            discipline = param__Description.AsString()
+            discipline = param__Description.AsString() or "?"
         if not discipline:
             continue
 
