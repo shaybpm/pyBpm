@@ -4,13 +4,12 @@ __title__ = "Tracking\nOpenings"
 __author__ = "BPM"
 __highlight__ = "new"
 
-
 # -------------------------------
 # ------------IMPORTS------------
 # -------------------------------
 
-import HttpRequest  # type: ignore
-import ServerUtils  # type: ignore
+from ServerUtils import ServerPermissions  # type: ignore
+from pyrevit import forms
 
 # -------------------------------
 # -------------MAIN--------------
@@ -19,13 +18,21 @@ import ServerUtils  # type: ignore
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 
+
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
 
 
 def run():
-    print("Hi")
+    server_permissions = ServerPermissions(doc)
+    openings_tracking_permission = server_permissions.get_openings_tracking_permission()
+    if not openings_tracking_permission:
+        forms.alert(
+            "אין לפרויקט זה גישה לאפשרות זו",
+            title="אין גישה לפרויקט",
+        )
+        return
 
 
 run()
