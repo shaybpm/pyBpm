@@ -3,7 +3,7 @@
 families:
 - BPM Opening Tag (R20).rfa
 - BPM Opening Tag (R22).rfa """
-__title__ = "Tag Families"
+__title__ = "Tag\nFamilies"
 __author__ = "Eyal Sinay"
 
 # -------------------------------

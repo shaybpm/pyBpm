@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """ This script replaces the family type of all the tags of the Generic Model category in the view with the type of BPM tags in the Compilation model. """
-__title__ = "Replace family type"
+__title__ = "Replace\nfamily type"
 __author__ = "Eyal Sinay"
 
 # -------------------------------
