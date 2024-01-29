@@ -8,7 +8,7 @@ try:
     doc = EXEC_PARAMS.event_args.Document
 
     server_permissions = ServerPermissions(doc)
-    server_permissions.set_all_permissions()
+    server_permissions.set_project_permissions()
 except Exception as ex:
     from Config import get_env_mode  # type: ignore
 

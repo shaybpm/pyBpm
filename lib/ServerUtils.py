@@ -25,23 +25,16 @@ class ServerPermissions:
             data = json.loads(data)
             return data
 
-    def set_openings_tracking_permission(self):
-        opening_tracking_permission_data = get(
-            server_url
-            + "api/openings/tracking/permission-status/"
-            + self.model_info["projectGuid"]
-        )
-        bool_result = opening_tracking_permission_data["bool"]
-        current_data = self.get_data()
-        current_data["openings_tracking"] = bool_result
-        with open(self.file_path, "w") as f:
-            f.write(json.dumps(current_data))
-
     def get_openings_tracking_permission(self):
         current_data = self.get_data()
         if "openings_tracking" not in current_data:
-            return None
+            current_data = self.set_project_permissions()
         return current_data["openings_tracking"]
 
-    def set_all_permissions(self):
-        self.set_openings_tracking_permission()
+    def set_project_permissions(self):
+        project_permission_data = get(
+            server_url + "api/info/permission-status/" + self.model_info["projectGuid"]
+        )
+        with open(self.file_path, "w") as f:
+            f.write(json.dumps(project_permission_data))
+        return project_permission_data
