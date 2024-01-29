@@ -10,8 +10,9 @@ try:
     from pyrevit import EXEC_PARAMS
 
     from PyRevitUtils import TempElementStorage  # type: ignore
-    from Config import get_opening_set_temp_file_id, is_to_run_opening_set_by_hooks  # type: ignore
+    from Config import get_opening_set_temp_file_id  # type: ignore
     from RevitUtils import getElementName  # type: ignore
+    from ServerUtils import ServerPermissions  # type: ignore
 
     def filter_ids_by_elem_name(doc, elem_ids):
         import sys, os
@@ -38,7 +39,8 @@ try:
 
     def run():
         doc = EXEC_PARAMS.event_args.GetDocument()
-        if not is_to_run_opening_set_by_hooks(doc):
+        server_permissions = ServerPermissions(doc)
+        if not server_permissions.get_openings_tracking_permission():
             return
 
         category_filter = ElementCategoryFilter(BuiltInCategory.OST_GenericModel)
