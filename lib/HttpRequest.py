@@ -12,3 +12,10 @@ def get(url):
     web_client = Net.WebClient()
     res = web_client.DownloadString(Uri(url))
     return json.loads(res)
+
+
+def post(url, data):
+    web_client = Net.WebClient()
+    web_client.Headers[Net.HttpRequestHeader.ContentType] = "application/json"
+    res = web_client.UploadString(Uri(url), "POST", json.dumps(data))
+    return json.loads(res)

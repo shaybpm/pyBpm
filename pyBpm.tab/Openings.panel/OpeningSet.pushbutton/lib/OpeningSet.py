@@ -22,14 +22,17 @@ from Config import get_opening_set_temp_file_id  # type: ignore
 # -------------SCRIPT-------------
 # --------------------------------
 
-opening_names = [
-    "Round Face Opening",
-    "Rectangular Face Opening",
-    "CIRC_FLOOR OPENING",
-    "CIRC_WALL OPENING",
-    "REC_FLOOR OPENING",
-    "REC_WALL OPENING",
-]
+shapes = {
+    "rectangular": [
+        "Rectangular Face Opening",
+        "REC_FLOOR OPENING",
+        "REC_WALL OPENING",
+    ],
+    "circular": ["Round Face Opening", "CIRC_FLOOR OPENING", "CIRC_WALL OPENING"],
+}
+opening_names = shapes["rectangular"] + shapes["circular"]
+
+param_mct_probable_names = ["Detail - Yes / No"]
 
 
 class Preprocessor(IFailuresPreprocessor):
@@ -442,16 +445,103 @@ def execute_all_functions(doc, opening):
     return results
 
 
-def execute_all_functions_for_all_openings(doc, all_openings):
-    """Executes all the functions for all the given openings."""
-    # import HttpRequest  # type: ignore
-    # from Config import server_url  # type: ignore
-
-    # res = HttpRequest.get(server_url + "api")
+def post_openings_data(doc, openings):
+    """Posts the openings data to the server if this project has the openings tracking permission."""
     from ServerUtils import ServerPermissions  # type: ignore
 
     server_permissions = ServerPermissions(doc)
-    print(server_permissions.get_openings_tracking_permission())
+    if not server_permissions.get_openings_tracking_permission():
+        return
+
+    from HttpRequest import post  # type: ignore
+    from Config import server_url  # type: ignore
+
+    openings_data = []
+    for opening in openings:
+        bbox = opening.get_BoundingBox(None)
+        if not bbox:
+            continue
+
+        mct = None
+        for param_name in param_mct_probable_names:
+            param = opening.LookupParameter(param_name)
+            if not param:
+                continue
+            if param.AsInteger() == 1:
+                mct = True
+                break
+            elif param.AsInteger() == 0:
+                mct = False
+                break
+        if mct is None:
+            continue
+
+        scheduledLevel = None
+        param__schedule_level = opening.get_Parameter(
+            BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM
+        )
+        id__schedule_level = param__schedule_level.AsElementId()
+        if id__schedule_level == ElementId.InvalidElementId:
+            scheduledLevel = "None"
+        else:
+            scheduledLevelElement = doc.GetElement(id__schedule_level)
+            if not scheduledLevelElement:
+                scheduledLevel = "None"
+            else:
+                scheduledLevel = scheduledLevelElement.Name
+
+        shape = None
+        for shape_name in shapes:
+            if opening.Name in shapes[shape_name]:
+                shape = shape_name
+                break
+        if not shape:
+            continue
+
+        opening_data = {
+            "uniqueId": opening.UniqueId,
+            "isFloorOpening": is_floor(opening),
+            "state": {
+                "boundingBox": {
+                    "min": {
+                        "x": bbox.Min.X,
+                        "y": bbox.Min.Y,
+                        "z": bbox.Min.Z,
+                    },
+                    "max": {
+                        "x": bbox.Max.X,
+                        "y": bbox.Max.Y,
+                        "z": bbox.Max.Z,
+                    },
+                },
+                "mct": mct,
+                "scheduledLevel": scheduledLevel,
+                "shape": shape,
+            },
+        }
+        openings_data.append(opening_data)
+
+    if len(openings_data) != len(openings):
+        print("Some openings were not posted to the server.")
+
+    model_info = RevitUtils.get_model_info(doc)
+    data = {
+        "projectGuid": model_info["projectGuid"],
+        "modelGuid": model_info["modelGuid"],
+        "modelPathName": model_info["modelPathName"],
+        "openings": openings_data,
+    }
+
+    try:
+        post(server_url + "api/openings/tracking/opening-set", data)
+    except Exception as e:
+        print(e)
+
+
+def execute_all_functions_for_all_openings(doc, all_openings):
+    """Executes all the functions for all the given openings."""
+
+    post_openings_data(doc, all_openings)
 
     results = []
     for opening in all_openings:

@@ -87,4 +87,5 @@ def get_model_info(doc):
         "modelName": modelName,
         "projectGuid": projectGuid,
         "modelGuid": modelGuid,
+        "modelPathName": pathName,
     }
