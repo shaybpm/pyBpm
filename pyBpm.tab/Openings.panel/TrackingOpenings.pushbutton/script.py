@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-""" Get the history changes of the project's openings """
+""" Get information about opening changes in this project """
 __title__ = "Tracking\nOpenings"
 __author__ = "BPM"
 __highlight__ = "new"
