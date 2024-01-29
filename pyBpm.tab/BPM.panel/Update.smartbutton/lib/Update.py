@@ -25,9 +25,11 @@ import HttpRequest  # type: ignore
 # -------------SCRIPT-------------
 # --------------------------------
 
+output = script.get_output()
+output.close_others()
+
 
 def run(do_not_print=False, do_not_reload=False):
-    output = script.get_output()
     if not do_not_print:
         output.print_html("<h2>Update pyBpm...</h2>")
 
@@ -84,7 +86,6 @@ def run(do_not_print=False, do_not_reload=False):
 
 
 def dev_run():
-    output = script.get_output()
     print("dev_run")
     output.print_html("<strong>Update pyBpm...</strong>")
     output.print_html('<div style="color:red;">The update failed.</div>')

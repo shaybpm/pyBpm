@@ -39,7 +39,6 @@ def alert(msg):
 
 
 def print_results(results):
-    output = script.get_output()
     output.print_html("<h1>Opening Set</h1>")
     output.print_html(
         '<div style="color:gray">Number of openings found: {}</div>'.format(
