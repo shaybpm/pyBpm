@@ -8,7 +8,7 @@ def download_file(download_url, filename):
     web_client.DownloadFile(Uri(download_url), filename)
 
 
-def get_request(url):
+def get(url):
     web_client = Net.WebClient()
     res = web_client.DownloadString(Uri(url))
     return json.loads(res)

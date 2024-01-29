@@ -2,9 +2,8 @@ try:
     from pyrevit import EXEC_PARAMS
     import os, sys
 
-    root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
-    sys.path.append(os.path.join(root_path, "lib"))
-    from Config import ServerPermissions  # type: ignore
+    sys.path.append(os.path.join("..", "lib"))
+    from ServerUtils import ServerPermissions  # type: ignore
 
     doc = EXEC_PARAMS.event_args.Document
 

@@ -18,9 +18,6 @@ clr.AddReference("System")
 clr.AddReference("System.Net")
 clr.AddReference("System.IO.Compression.FileSystem")
 
-root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
-sys.path.append(os.path.join(root_path, "lib"))
-
 from System.IO.Compression import ZipFile
 import HttpRequest  # type: ignore
 
@@ -29,9 +26,10 @@ import HttpRequest  # type: ignore
 # --------------------------------
 
 
-def run():
+def run(do_not_print=False, do_not_reload=False):
     output = script.get_output()
-    output.print_html("<h2>Update pyBpm...</h2>")
+    if not do_not_print:
+        output.print_html("<h2>Update pyBpm...</h2>")
 
     pyBpm_folder_name = "pyBpm.extension"
 
@@ -39,13 +37,15 @@ def run():
     extensions_folder = __file__[: index_of_extension - 1]
 
     if not os.path.isdir(extensions_folder):
-        output.print_html('<div style="color:red;">The update failed.</div>')
+        if not do_not_print:
+            output.print_html('<div style="color:red;">The update failed.</div>')
         return
 
     pyBpm_folder = os.path.join(extensions_folder, pyBpm_folder_name)
 
     if not os.path.isdir(pyBpm_folder):
-        output.print_html('<div style="color:red;">The update failed.</div>')
+        if not do_not_print:
+            output.print_html('<div style="color:red;">The update failed.</div>')
         return
 
     # TODO: check if the folder or some sub folder or file are in use
@@ -57,9 +57,9 @@ def run():
     try:
         HttpRequest.download_file(download_url, zip_filename)
     except Exception as e:
-        output.print_html('<div style="color:red;">The update failed.</div>')
-        print("Make sure you are connected to the internet and try again.")
-        # print(e)
+        if not do_not_print:
+            output.print_html('<div style="color:red;">The update failed.</div>')
+            print("Make sure you are connected to the internet and try again.")
         return
 
     ZipFile.ExtractToDirectory(zip_filename, extensions_folder)
@@ -70,6 +70,9 @@ def run():
     os.remove(zip_filename)
 
     output.print_html('<div style="color:green;">The update was successful.</div>')
+
+    if do_not_reload:
+        return
 
     # Reload pyrevit:
     logger = script.get_logger()

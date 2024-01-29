@@ -13,10 +13,6 @@ from Autodesk.Revit.DB import (
     BuiltInFailures,
 )
 
-import os, sys
-
-root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
-sys.path.append(os.path.join(root_path, "lib"))
 import pyUtils  # type: ignore
 import RevitUtils  # type: ignore
 from PyRevitUtils import TempElementStorage  # type: ignore
@@ -449,10 +445,10 @@ def execute_all_functions(doc, opening):
 def execute_all_functions_for_all_openings(doc, all_openings):
     """Executes all the functions for all the given openings."""
     # import HttpRequest  # type: ignore
-    # from Config import db_url  # type: ignore
+    # from Config import server_url  # type: ignore
 
-    # res = HttpRequest.get_request(db_url + "api")
-    from Config import ServerPermissions  # type: ignore
+    # res = HttpRequest.get(server_url + "api")
+    from ServerUtils import ServerPermissions  # type: ignore
 
     server_permissions = ServerPermissions(doc)
     print(server_permissions.get_openings_tracking_permission())
