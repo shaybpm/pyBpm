@@ -445,7 +445,7 @@ def execute_all_functions(doc, opening):
     return results
 
 
-def post_openings_data(doc, openings):
+def post_openings_data(doc, openings, to_print=False):
     """Posts the openings data to the server if this project has the openings tracking permission."""
     from ServerUtils import ServerPermissions  # type: ignore
 
@@ -498,9 +498,26 @@ def post_openings_data(doc, openings):
         if not shape:
             continue
 
+        discipline = None
+        opening_symbol = opening.Symbol
+        param__Description = opening_symbol.LookupParameter("Description")
+        if param__Description:
+            discipline = param__Description.AsString()
+        if not discipline:
+            continue
+
+        mark = None
+        param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
+        if param__mark:
+            mark = param__mark.AsString()
+        if not mark:
+            continue
+
         opening_data = {
             "uniqueId": opening.UniqueId,
             "isFloorOpening": is_floor(opening),
+            "discipline": discipline,
+            "mark": mark,
             "state": {
                 "boundingBox": {
                     "min": {
@@ -521,7 +538,7 @@ def post_openings_data(doc, openings):
         }
         openings_data.append(opening_data)
 
-    if len(openings_data) != len(openings):
+    if to_print and len(openings_data) != len(openings):
         print("Some openings were not posted to the server.")
 
     model_info = RevitUtils.get_model_info(doc)
@@ -535,13 +552,15 @@ def post_openings_data(doc, openings):
     try:
         post(server_url + "api/openings/tracking/opening-set", data)
     except Exception as e:
-        print(e)
+        if to_print:
+            print("Failed to post openings data to the server.")
+            print(e)
 
 
 def execute_all_functions_for_all_openings(doc, all_openings):
     """Executes all the functions for all the given openings."""
 
-    post_openings_data(doc, all_openings)
+    post_openings_data(doc, all_openings, to_print=True)
 
     results = []
     for opening in all_openings:
