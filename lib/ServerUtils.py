@@ -50,3 +50,13 @@ def patch_deleted_elements(doc, deleted_element_ids):
         "internalDocIds": deleted_element_ids_int,
     }
     patch(server_url + "api/openings/tracking/opening-deleted", data)
+
+
+def get_openings_changes(doc, start_time_str, end_time_str):
+    model_info = get_model_info(doc)
+    return get(
+        server_url
+        + "api/openings/tracking/time/{}?start={}&end={}".format(
+            model_info["projectGuid"], start_time_str, end_time_str
+        )
+    )
