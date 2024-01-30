@@ -51,8 +51,17 @@ class TrackingOpeningsDialog(Windows.Window):
 
     @openings.setter
     def openings(self, value):
-        print(value)
         self._openings = value
+        list_box = self.data_listbox
+        list_box.Items.Clear()
+        opening_titles = {
+            "discipline": "Discipline",
+            "mark": "Mark",
+            "changeType": "Change Type",
+        }
+        list_box.Items.Add(ListBoxItemOpening(opening_titles))
+        for opening in self._openings:
+            list_box.Items.Add(ListBoxItemOpening(opening))
 
     def add_nums_to_Combobox(self, combobox, start, end):
         for i in range(start, end):
@@ -136,6 +145,54 @@ class TrackingOpeningsDialog(Windows.Window):
             )
         except Exception as ex:
             print(ex)
+
+
+class ListBoxItemOpening(Windows.Controls.ListBoxItem):
+    def __init__(self, opening):
+        self.opening = opening
+
+        # Row format:
+        # changeType | discipline | mark
+
+        self.grid = Windows.Controls.Grid()
+        if self.opening["changeType"] == "added":
+            self.grid.Background = Windows.Media.Brushes.LightGreen
+        elif self.opening["changeType"] == "deleted":
+            self.grid.Background = Windows.Media.Brushes.LightPink
+        elif self.opening["changeType"] == "updated":
+            self.grid.Background = Windows.Media.Brushes.LightYellow
+
+        self.grid.Margin = Windows.Thickness(0, 0, 0, 2)
+
+        sizes = [64, 60]
+        sizes.append(380 - sum(sizes))
+        for size in sizes:
+            grid_column = Windows.Controls.ColumnDefinition()
+            self.grid.ColumnDefinitions.Add(grid_column)
+            grid_column.Width = Windows.GridLength(size)
+
+        self.discipline_textBlock = Windows.Controls.TextBlock()
+        self.discipline_textBlock.Text = self.opening["discipline"]
+        self.discipline_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
+        self.discipline_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
+        self.grid.Children.Add(self.discipline_textBlock)
+        Windows.Controls.Grid.SetColumn(self.discipline_textBlock, 0)
+
+        self.mark_textBlock = Windows.Controls.TextBlock()
+        self.mark_textBlock.Text = self.opening["mark"]
+        self.mark_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
+        self.mark_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
+        self.grid.Children.Add(self.mark_textBlock)
+        Windows.Controls.Grid.SetColumn(self.mark_textBlock, 1)
+
+        self.changeType_textBlock = Windows.Controls.TextBlock()
+        self.changeType_textBlock.Text = self.opening["changeType"]
+        self.changeType_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
+        self.changeType_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
+        self.grid.Children.Add(self.changeType_textBlock)
+        Windows.Controls.Grid.SetColumn(self.changeType_textBlock, 2)
+
+        self.Content = self.grid
 
 
 # example of openings:
