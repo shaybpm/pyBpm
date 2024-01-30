@@ -5,7 +5,7 @@
     <Grid FlowDirection="RightToLeft" Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="94"/>
-            <RowDefinition Height="80"/>
+            <RowDefinition Height="68"/>
             <RowDefinition/>
         </Grid.RowDefinitions>
 
