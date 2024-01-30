@@ -26,9 +26,9 @@
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" />
+                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" x:Name="start_date_DatePicker" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
-                        <ComboBox>
+                        <ComboBox x:Name="start_hour_ComboBox">
                             <ComboBoxItem Content="00" IsSelected="True"/>
                             <ComboBoxItem Content="01" />
                             <ComboBoxItem Content="02" />
@@ -54,7 +54,7 @@
                             <ComboBoxItem Content="22" />
                             <ComboBoxItem Content="23" />
                         </ComboBox>
-                        <ComboBox>
+                        <ComboBox x:Name="start_minute_ComboBox">
                             <ComboBoxItem Content="00" IsSelected="True"/>
                             <ComboBoxItem Content="01" />
                             <ComboBoxItem Content="02" />
@@ -125,9 +125,9 @@
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" />
+                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" x:Name="end_date_DatePicker" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
-                        <ComboBox>
+                        <ComboBox x:Name="end_hour_ComboBox">
                             <ComboBoxItem Content="00" IsSelected="True"/>
                             <ComboBoxItem Content="01" />
                             <ComboBoxItem Content="02" />
@@ -153,7 +153,7 @@
                             <ComboBoxItem Content="22" />
                             <ComboBoxItem Content="23" />
                         </ComboBox>
-                        <ComboBox>
+                        <ComboBox x:Name="end_minute_ComboBox">
                             <ComboBoxItem Content="00" IsSelected="True"/>
                             <ComboBoxItem Content="01" />
                             <ComboBoxItem Content="02" />
