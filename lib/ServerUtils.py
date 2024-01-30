@@ -1,6 +1,6 @@
 import json, os
 from pyrevit import script
-from HttpRequest import get
+from HttpRequest import get, patch
 from RevitUtils import get_model_info
 from Config import server_url
 
@@ -38,3 +38,15 @@ class ServerPermissions:
         with open(self.file_path, "w") as f:
             f.write(json.dumps(project_permission_data))
         return project_permission_data
+
+
+def patch_deleted_elements(doc, deleted_element_ids):
+    model_info = get_model_info(doc)
+    deleted_element_ids_int = [x.IntegerValue for x in deleted_element_ids]
+    data = {
+        "projectGuid": model_info["projectGuid"],
+        "modelGuid": model_info["modelGuid"],
+        "modelPathName": model_info["modelPathName"],
+        "internalDocIds": deleted_element_ids_int,
+    }
+    patch(server_url + "api/openings/tracking/opening-deleted", data)

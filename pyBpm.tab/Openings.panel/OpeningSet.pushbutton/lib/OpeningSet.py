@@ -460,12 +460,18 @@ def post_openings_data(doc, openings, to_print=False):
     for opening in openings:
         bbox = opening.get_BoundingBox(None)
         if not bbox:
+            if to_print:
+                print("Opening {} has no bounding box.".format(opening.Id))
             continue
 
         mct = None
         for param_name in param_mct_probable_names:
             param = opening.LookupParameter(param_name)
             if not param:
+                if to_print:
+                    print(
+                        "Opening {} has no {} parameter.".format(opening.Id, param_name)
+                    )
                 continue
             if param.AsInteger() == 1:
                 mct = True
@@ -474,6 +480,8 @@ def post_openings_data(doc, openings, to_print=False):
                 mct = False
                 break
         if mct is None:
+            if to_print:
+                print("Opening {} has no MCT parameter.".format(opening.Id))
             continue
 
         scheduledLevel = None
@@ -496,6 +504,8 @@ def post_openings_data(doc, openings, to_print=False):
                 shape = shape_name
                 break
         if not shape:
+            if to_print:
+                print("Opening {} has no shape.".format(opening.Id))
             continue
 
         discipline = None
@@ -511,10 +521,13 @@ def post_openings_data(doc, openings, to_print=False):
         if param__mark:
             mark = param__mark.AsString()
         if not mark:
+            if to_print:
+                print("Opening {} has no mark.".format(opening.Id))
             continue
 
         opening_data = {
             "uniqueId": opening.UniqueId,
+            "internalDocId": opening.Id.IntegerValue,
             "isFloorOpening": is_floor(opening),
             "discipline": discipline,
             "mark": mark,
@@ -557,13 +570,13 @@ def post_openings_data(doc, openings, to_print=False):
             print(e)
 
 
-def execute_all_functions_for_all_openings(doc, all_openings):
+def execute_all_functions_for_all_openings(doc, all_openings, print_post_func=False):
     """Executes all the functions for all the given openings."""
-
-    post_openings_data(doc, all_openings, to_print=True)
 
     results = []
     for opening in all_openings:
         opening_results = execute_all_functions(doc, opening)
         results.append(opening_results)
+
+    post_openings_data(doc, all_openings, print_post_func)
     return results

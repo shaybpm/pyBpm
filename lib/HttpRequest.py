@@ -19,3 +19,10 @@ def post(url, data):
     web_client.Headers[Net.HttpRequestHeader.ContentType] = "application/json"
     res = web_client.UploadString(Uri(url), "POST", json.dumps(data))
     return json.loads(res)
+
+
+def patch(url, data):
+    web_client = Net.WebClient()
+    web_client.Headers[Net.HttpRequestHeader.ContentType] = "application/json"
+    res = web_client.UploadString(Uri(url), "PATCH", json.dumps(data))
+    return json.loads(res)

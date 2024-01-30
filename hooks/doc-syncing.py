@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 try:
     from Autodesk.Revit.DB import Transaction
-
+    from Config import get_env_mode  # type: ignore
     from pyrevit import EXEC_PARAMS
 
     from PyRevitUtils import TempElementStorage  # type: ignore
@@ -49,13 +49,13 @@ try:
                     temp_storage.remove_element(opening_id)
                     continue
                 openings.append(opening)
-            results = execute_all_functions_for_all_openings(doc, openings)
+            results = execute_all_functions_for_all_openings(
+                doc, openings, get_env_mode() == "dev"
+            )
 
             t.Commit()
 
     run()
 except Exception as ex:
-    from Config import get_env_mode  # type: ignore
-
     if get_env_mode() == "dev":
         print(ex)

@@ -113,7 +113,7 @@ def run():
     failOpt.SetFailuresPreprocessor(preprocessor)
     t.SetFailureHandlingOptions(failOpt)
 
-    results = OpeningSet.execute_all_functions_for_all_openings(doc, all_openings)
+    results = OpeningSet.execute_all_functions_for_all_openings(doc, all_openings, True)
 
     if __shiftclick__:  # type: ignore
         print_full_results(results)
