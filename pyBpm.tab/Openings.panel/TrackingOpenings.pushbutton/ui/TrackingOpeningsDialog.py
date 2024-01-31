@@ -42,6 +42,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.doc = doc
 
         self._openings = []
+        self._display_openings = []
         self._current_selected_opening = []
 
         self.start_time_str = None
@@ -95,6 +96,22 @@ class TrackingOpeningsDialog(Windows.Window):
 
         self.data_listbox.SelectionChanged += self.data_listbox_selection_changed
 
+        # TODO: FILTERS
+        # number_of_data_TextBlock
+        # number_of_displayed_data_TextBlock
+
+    @property
+    def display_openings(self):
+        return self._display_openings
+
+    @display_openings.setter
+    def display_openings(self, value):
+        self._display_openings = value
+        list_box = self.data_listbox
+        list_box.Items.Clear()
+        for opening in self._display_openings:
+            list_box.Items.Add(ListBoxItemOpening(opening, self.data_table_col_sizes))
+
     @property
     def openings(self):
         return self._openings
@@ -102,10 +119,7 @@ class TrackingOpeningsDialog(Windows.Window):
     @openings.setter
     def openings(self, value):
         self._openings = value
-        list_box = self.data_listbox
-        list_box.Items.Clear()
-        for opening in self._openings:
-            list_box.Items.Add(ListBoxItemOpening(opening, self.data_table_col_sizes))
+        self.display_openings = value
 
     @property
     def current_selected_opening(self):

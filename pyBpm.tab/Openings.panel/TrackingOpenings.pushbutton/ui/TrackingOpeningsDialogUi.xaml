@@ -101,9 +101,24 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="20"/>
                     <RowDefinition/>
+                    <RowDefinition Height="20"/>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" x:Name="title_data_grid" Margin="8 0 4 0" />
                 <ListBox Grid.Row="1" x:Name="data_listbox" SelectionMode="Extended" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+                <Grid Grid.Row="2" x:Name="ditail_data_grid" FlowDirection="RightToLeft" >
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <TextBlock Text='סה"כ פתחים: ' FontWeight="Bold" />
+                        <TextBlock x:Name="number_of_data_TextBlock" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="מוצגים: " FontWeight="Bold" />
+                        <TextBlock x:Name="number_of_displayed_data_TextBlock" />
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Border>
 
