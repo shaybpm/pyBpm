@@ -42,6 +42,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.doc = doc
 
         self._openings = []
+        self._current_selected_opening = []
 
         self.start_time_str = None
         self.end_time_str = None
@@ -92,6 +93,8 @@ class TrackingOpeningsDialog(Windows.Window):
         self.data_table_col_sizes.append(384 - sum(self.data_table_col_sizes))
         self.init_title_data_grid()
 
+        self.data_listbox.SelectionChanged += self.data_listbox_selection_changed
+
     @property
     def openings(self):
         return self._openings
@@ -103,6 +106,43 @@ class TrackingOpeningsDialog(Windows.Window):
         list_box.Items.Clear()
         for opening in self._openings:
             list_box.Items.Add(ListBoxItemOpening(opening, self.data_table_col_sizes))
+
+    @property
+    def current_selected_opening(self):
+        return self._current_selected_opening
+
+    @current_selected_opening.setter
+    def current_selected_opening(self, value):
+        self._current_selected_opening = value
+        self.update_more_data_info()
+
+    def data_listbox_selection_changed(self, sender, e):
+        list_box = sender
+        selected_items = [item.opening for item in list_box.SelectedItems]
+        self.current_selected_opening = selected_items
+
+    def update_more_data_info(self):
+        if len(self.current_selected_opening) != 1:
+            return
+        opening = self.current_selected_opening[0]
+        self.more_info_internalDocId_TextBlock.Text = str(opening["internalDocId"])
+        self.more_info_isNotThereMoreUpdatedStates_TextBlock.Text = str(
+            not opening["isThereMoreUpdatedStates"]
+        )
+        self.more_info_isFloorOpening_TextBlock.Text = (
+            "Yes" if opening["isFloorOpening"] else "No"
+        )
+
+        # TODO:
+        # more_info_currentScheduledLevel_TextBlock
+        # more_info_currentShape_TextBlock
+        # more_info_currentMct_TextBlock
+        # more_info_lastScheduledLevel_TextBlock
+        # more_info_lastShape_TextBlock
+        # more_info_lastMct_TextBlock
+        # x_location_changes_TextBlock
+        # y_location_changes_TextBlock
+        # z_location_changes_TextBlock
 
     def get_date_by_time_string(self, time_str):
         if time_str is None:
