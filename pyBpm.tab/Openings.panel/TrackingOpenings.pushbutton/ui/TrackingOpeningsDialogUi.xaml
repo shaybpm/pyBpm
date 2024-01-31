@@ -5,7 +5,7 @@
     <Grid FlowDirection="RightToLeft" Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="94"/>
-            <RowDefinition Height="68"/>
+            <RowDefinition Height="100"/>
             <RowDefinition/>
         </Grid.RowDefinitions>
 
@@ -60,11 +60,24 @@
         <Border Grid.Row="1" Margin="4" BorderBrush="Gray" BorderThickness="0 1 0 0">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="52"/>
-                    <RowDefinition/>
+                    <RowDefinition Height="36"/>
+                    <RowDefinition Height="56"/>
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="מתאריך:" FontWeight="Bold" Margin="0 0 4 0"/>
+                            <TextBlock x:Name="current_start_date_TextBlock" Text="-"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="עד תאריך:" FontWeight="Bold" Margin="0 0 4 0"/>
+                            <TextBlock x:Name="current_end_date_TextBlock" Text="-"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
