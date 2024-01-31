@@ -89,10 +89,16 @@ class TrackingOpeningsDialog(Windows.Window):
         self.update_start_date()
         self.update_end_date()
 
-        self.current_sort_key = None
+        self._current_sort_key = None
         self.data_table_col_sizes = [64, 60, 80, 120]
         self.data_table_col_sizes.append(384 - sum(self.data_table_col_sizes))
-        self.init_title_data_grid()
+        (
+            self.sort_discipline_btn,
+            self.sort_mark_btn,
+            self.sort_changeType_btn,
+            self.sort_scheduleLevel_btn,
+            self.sort_floor_btn,
+        ) = self.init_title_data_grid()
 
         self.data_listbox.SelectionChanged += self.data_listbox_selection_changed
 
@@ -145,6 +151,39 @@ class TrackingOpeningsDialog(Windows.Window):
     def current_selected_opening(self, value):
         self._current_selected_opening = value
         self.update_more_data_info()
+
+    @property
+    def current_sort_key(self):
+        return self._current_sort_key
+
+    @current_sort_key.setter
+    def current_sort_key(self, value):
+        try:
+            self._current_sort_key = value
+            self.sort_discipline_btn.Background = Windows.Media.Brushes.White
+            self.sort_mark_btn.Background = Windows.Media.Brushes.White
+            self.sort_changeType_btn.Background = Windows.Media.Brushes.White
+            self.sort_scheduleLevel_btn.Background = Windows.Media.Brushes.White
+            self.sort_floor_btn.Background = Windows.Media.Brushes.White
+            if value is None:
+                return
+            if value == "discipline":
+                self.sort_discipline_btn.Background = Windows.Media.Brushes.LightBlue
+                return
+            if value == "mark":
+                self.sort_mark_btn.Background = Windows.Media.Brushes.LightBlue
+                return
+            if value == "changeType":
+                self.sort_changeType_btn.Background = Windows.Media.Brushes.LightBlue
+                return
+            if value == "currentScheduledLevel":
+                self.sort_scheduleLevel_btn.Background = Windows.Media.Brushes.LightBlue
+                return
+            if value == "isFloorOpening":
+                self.sort_floor_btn.Background = Windows.Media.Brushes.LightBlue
+                return
+        except Exception as ex:
+            print(ex)
 
     def data_listbox_selection_changed(self, sender, e):
         list_box = sender
@@ -199,32 +238,45 @@ class TrackingOpeningsDialog(Windows.Window):
         sort_discipline_btn = Windows.Controls.Button()
         sort_discipline_btn.Content = "Discipline"
         sort_discipline_btn.Click += self.sort_discipline_btn_click
+        sort_discipline_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_discipline_btn)
         Windows.Controls.Grid.SetColumn(sort_discipline_btn, 0)
 
         sort_mark_btn = Windows.Controls.Button()
         sort_mark_btn.Content = "Mark"
         sort_mark_btn.Click += self.sort_mark_btn_click
+        sort_mark_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_mark_btn)
         Windows.Controls.Grid.SetColumn(sort_mark_btn, 1)
 
         sort_changeType_btn = Windows.Controls.Button()
         sort_changeType_btn.Content = "Change Type"
         sort_changeType_btn.Click += self.sort_changeType_btn_click
+        sort_changeType_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_changeType_btn)
         Windows.Controls.Grid.SetColumn(sort_changeType_btn, 2)
 
         sort_scheduleLevel_btn = Windows.Controls.Button()
         sort_scheduleLevel_btn.Content = "Level"
         sort_scheduleLevel_btn.Click += self.sort_scheduleLevel_btn_click
+        sort_scheduleLevel_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_scheduleLevel_btn)
         Windows.Controls.Grid.SetColumn(sort_scheduleLevel_btn, 3)
 
         sort_floor_btn = Windows.Controls.Button()
         sort_floor_btn.Content = "Floor"
         sort_floor_btn.Click += self.sort_floor_btn_click
+        sort_floor_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_floor_btn)
         Windows.Controls.Grid.SetColumn(sort_floor_btn, 4)
+
+        return (
+            sort_discipline_btn,
+            sort_mark_btn,
+            sort_changeType_btn,
+            sort_scheduleLevel_btn,
+            sort_floor_btn,
+        )
 
     def sort_data_by(self, key):
         self.display_openings = sorted(
