@@ -53,6 +53,10 @@ def patch_deleted_elements(doc, deleted_element_ids):
 
 
 def get_openings_changes(doc, start_time_str, end_time_str):
+    import urllib
+
+    start_time_str = urllib.quote_plus(start_time_str)
+    end_time_str = urllib.quote_plus(end_time_str)
     model_info = get_model_info(doc)
     return get(
         server_url

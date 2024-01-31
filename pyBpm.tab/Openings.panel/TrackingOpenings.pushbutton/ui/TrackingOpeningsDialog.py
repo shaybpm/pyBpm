@@ -16,21 +16,15 @@ from ServerUtils import get_openings_changes  # type: ignore
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
 
-def get_utc_offset_str(encoded=False):
+def get_utc_offset_str():
     time_now = DateTime.Now
     utc_offset_number = int(TimeZoneInfo.Local.GetUtcOffset(time_now).TotalHours)
     if utc_offset_number > 0:
         utc_offset_num_digits = len(str(utc_offset_number))
         if utc_offset_num_digits == 1:
-            utc_offset_str = "+0{}:00".format(utc_offset_number)
-            if encoded:
-                utc_offset_str = utc_offset_str.replace("+", "%2B")
-            return utc_offset_str
+            return "+0{}:00".format(utc_offset_number)
         elif utc_offset_num_digits == 2:
-            utc_offset_str = "+{}:00".format(utc_offset_number)
-            if encoded:
-                utc_offset_str = utc_offset_str.replace("+", "%2B")
-            return utc_offset_str
+            return "+{}:00".format(utc_offset_number)
     elif utc_offset_number < 0:
         utc_offset_num_digits = len(str(utc_offset_number))
         if utc_offset_num_digits == 2:
@@ -58,7 +52,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.start_date_DatePicker.SelectedDate = time_yesterday
 
         self.time_string_format = "yyyy-MM-ddTHH:mm:00.000Z".replace(
-            "Z", get_utc_offset_str(True)
+            "Z", get_utc_offset_str()
         )
         time_now_str = time_now.ToString(self.time_string_format)
 
@@ -204,7 +198,7 @@ class TrackingOpeningsDialog(Windows.Window):
             return None
         return "{}T{}:{}:00.000Z".format(
             date.ToString("yyyy-MM-dd"), hour, minute
-        ).replace("Z", get_utc_offset_str(True))
+        ).replace("Z", get_utc_offset_str())
 
     def is_time_validate(self):
         if self.end_date_DatePicker.SelectedDate is None:
