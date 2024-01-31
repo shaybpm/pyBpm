@@ -234,17 +234,6 @@ class TrackingOpeningsDialog(Windows.Window):
             "Yes" if opening["isFloorOpening"] else "No"
         )
 
-        # TODO:
-        # more_info_currentScheduledLevel_TextBlock
-        # more_info_currentShape_TextBlock
-        # more_info_currentMct_TextBlock
-        # more_info_lastScheduledLevel_TextBlock
-        # more_info_lastShape_TextBlock
-        # more_info_lastMct_TextBlock
-        # x_location_changes_TextBlock
-        # y_location_changes_TextBlock
-        # z_location_changes_TextBlock
-
         get_short_shape = lambda shape: "○" if shape == "circular" else "◻"
 
         self.more_info_currentScheduledLevel_TextBlock.Text = (
