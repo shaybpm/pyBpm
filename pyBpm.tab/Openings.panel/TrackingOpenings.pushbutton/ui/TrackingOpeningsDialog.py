@@ -45,6 +45,11 @@ class TrackingOpeningsDialog(Windows.Window):
         self.end_hour_ComboBox.SelectionChanged += self.update_end_date
         self.end_minute_ComboBox.SelectionChanged += self.update_end_date
 
+        self.current_sort_key = None
+        self.data_table_col_sizes = [64, 60]
+        self.data_table_col_sizes.append(384 - sum(self.data_table_col_sizes))
+        self.init_title_data_grid()
+
     @property
     def openings(self):
         return self._openings
@@ -54,14 +59,59 @@ class TrackingOpeningsDialog(Windows.Window):
         self._openings = value
         list_box = self.data_listbox
         list_box.Items.Clear()
-        opening_titles = {
-            "discipline": "Discipline",
-            "mark": "Mark",
-            "changeType": "Change Type",
-        }
-        list_box.Items.Add(ListBoxItemOpening(opening_titles))
         for opening in self._openings:
-            list_box.Items.Add(ListBoxItemOpening(opening))
+            list_box.Items.Add(ListBoxItemOpening(opening, self.data_table_col_sizes))
+
+    def init_title_data_grid(self):
+        grid = self.title_data_grid
+        for size in self.data_table_col_sizes:
+            grid_column = Windows.Controls.ColumnDefinition()
+            grid.ColumnDefinitions.Add(grid_column)
+            grid_column.Width = Windows.GridLength(size)
+
+        last_grid_column = grid.ColumnDefinitions[2]
+        last_grid_column.Width = Windows.GridLength(
+            self.data_table_col_sizes[len(self.data_table_col_sizes) - 1] + 20
+        )
+
+        sort_discipline_btn = Windows.Controls.Button()
+        sort_discipline_btn.Content = "Discipline"
+        sort_discipline_btn.Click += self.sort_discipline_btn_click
+        sort_discipline_btn.Margin = Windows.Thickness(0, 0, 0, 0)
+        grid.Children.Add(sort_discipline_btn)
+        Windows.Controls.Grid.SetColumn(sort_discipline_btn, 0)
+
+        sort_mark_btn = Windows.Controls.Button()
+        sort_mark_btn.Content = "Mark"
+        sort_mark_btn.Click += self.sort_mark_btn_click
+        sort_mark_btn.Margin = Windows.Thickness(0, 0, 0, 0)
+        grid.Children.Add(sort_mark_btn)
+        Windows.Controls.Grid.SetColumn(sort_mark_btn, 1)
+
+        sort_changeType_btn = Windows.Controls.Button()
+        sort_changeType_btn.Content = "Change Type"
+        sort_changeType_btn.Click += self.sort_changeType_btn_click
+        sort_changeType_btn.Margin = Windows.Thickness(0, 0, 0, 0)
+        grid.Children.Add(sort_changeType_btn)
+        Windows.Controls.Grid.SetColumn(sort_changeType_btn, 2)
+
+    def sort_data_by(self, key):
+        self.openings = sorted(
+            self.openings, key=lambda k: k[key], reverse=self.current_sort_key == key
+        )
+        if self.current_sort_key == key:
+            self.current_sort_key = None
+        else:
+            self.current_sort_key = key
+
+    def sort_discipline_btn_click(self, sender, e):
+        self.sort_data_by("discipline")
+
+    def sort_mark_btn_click(self, sender, e):
+        self.sort_data_by("mark")
+
+    def sort_changeType_btn_click(self, sender, e):
+        self.sort_data_by("changeType")
 
     def add_nums_to_Combobox(self, combobox, start, end):
         for i in range(start, end):
@@ -148,7 +198,7 @@ class TrackingOpeningsDialog(Windows.Window):
 
 
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):
-    def __init__(self, opening):
+    def __init__(self, opening, sizes):
         self.opening = opening
 
         # Row format:
@@ -164,8 +214,6 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
 
         self.grid.Margin = Windows.Thickness(0, 0, 0, 2)
 
-        sizes = [64, 60]
-        sizes.append(380 - sum(sizes))
         for size in sizes:
             grid_column = Windows.Controls.ColumnDefinition()
             self.grid.ColumnDefinitions.Add(grid_column)
