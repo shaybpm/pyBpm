@@ -268,11 +268,12 @@ class TrackingOpeningsDialog(Windows.Window):
             self.openings = get_openings_changes(
                 self.doc, self.start_time_str, self.end_time_str
             )
+            format_display = "dd.MM.yyyy, HH:mm"
             start_time_display_str = DateTime.Parse(self.start_time_str).ToString(
-                "dd.MM.yyyy, HH:mm"
+                format_display
             )
             end_time_display_str = DateTime.Parse(self.end_time_str).ToString(
-                "dd.MM.yyyy, HH:mm"
+                format_display
             )
             self.current_start_date_TextBlock.Text = start_time_display_str
             self.current_end_date_TextBlock.Text = end_time_display_str
