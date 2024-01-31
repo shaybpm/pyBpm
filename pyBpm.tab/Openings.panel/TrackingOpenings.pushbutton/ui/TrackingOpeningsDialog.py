@@ -97,8 +97,22 @@ class TrackingOpeningsDialog(Windows.Window):
         self.data_listbox.SelectionChanged += self.data_listbox_selection_changed
 
         # TODO: FILTERS
-        # number_of_data_TextBlock
-        # number_of_displayed_data_TextBlock
+        # level_filter_ComboBox
+        # shape_filter_ComboBox
+        # discipline_filter_ComboBox
+        # floor_filter_ComboBox
+
+        self.level_filter_ComboBox.Items.Add("All Levels")
+        self.level_filter_ComboBox.SelectedIndex = 0
+
+        self.shape_filter_ComboBox.Items.Add("All Shapes")
+        self.shape_filter_ComboBox.SelectedIndex = 0
+
+        self.discipline_filter_ComboBox.Items.Add("All Disciplines")
+        self.discipline_filter_ComboBox.SelectedIndex = 0
+
+        self.floor_filter_ComboBox.Items.Add("Walls And Floors")
+        self.floor_filter_ComboBox.SelectedIndex = 0
 
     @property
     def display_openings(self):
@@ -111,6 +125,7 @@ class TrackingOpeningsDialog(Windows.Window):
         list_box.Items.Clear()
         for opening in self._display_openings:
             list_box.Items.Add(ListBoxItemOpening(opening, self.data_table_col_sizes))
+        self.number_of_displayed_data_TextBlock.Text = str(len(self._display_openings))
 
     @property
     def openings(self):
@@ -120,6 +135,7 @@ class TrackingOpeningsDialog(Windows.Window):
     def openings(self, value):
         self._openings = value
         self.display_openings = value
+        self.number_of_data_TextBlock.Text = str(len(self._openings))
 
     @property
     def current_selected_opening(self):
@@ -204,15 +220,19 @@ class TrackingOpeningsDialog(Windows.Window):
         grid.Children.Add(sort_scheduleLevel_btn)
         Windows.Controls.Grid.SetColumn(sort_scheduleLevel_btn, 3)
 
-        sort_currentMct_btn = Windows.Controls.Button()
-        sort_currentMct_btn.Content = "MCT"
-        sort_currentMct_btn.Click += self.sort_currentMct_btn_click
-        grid.Children.Add(sort_currentMct_btn)
-        Windows.Controls.Grid.SetColumn(sort_currentMct_btn, 4)
+        sort_floor_btn = Windows.Controls.Button()
+        sort_floor_btn.Content = "Floor"
+        sort_floor_btn.Click += self.sort_floor_btn_click
+        grid.Children.Add(sort_floor_btn)
+        Windows.Controls.Grid.SetColumn(sort_floor_btn, 4)
 
     def sort_data_by(self, key):
-        self.openings = sorted(
-            self.openings, key=lambda k: k[key], reverse=self.current_sort_key == key
+        self.display_openings = sorted(
+            self.display_openings,
+            key=lambda k: int(k[key])
+            if type(k[key]) is str and k[key].isdigit()
+            else k[key],
+            reverse=self.current_sort_key == key,
         )
         if self.current_sort_key == key:
             self.current_sort_key = None
@@ -231,8 +251,8 @@ class TrackingOpeningsDialog(Windows.Window):
     def sort_scheduleLevel_btn_click(self, sender, e):
         self.sort_data_by("currentScheduledLevel")
 
-    def sort_currentMct_btn_click(self, sender, e):
-        self.sort_data_by("currentMct")
+    def sort_floor_btn_click(self, sender, e):
+        self.sort_data_by("isFloorOpening")
 
     def add_nums_to_Combobox(self, combobox, start, end):
         for i in range(start, end):
@@ -359,13 +379,13 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             "mark",
             "changeType",
             "currentScheduledLevel",
-            "currentMct",
+            "isFloorOpening",
         ]
         for i, data_key in enumerate(data_key_list):
             text_block = Windows.Controls.TextBlock()
 
             text = ""
-            if data_key == "currentMct":
+            if data_key == "isFloorOpening":
                 if self.opening[data_key] is None:
                     text = ""
                 elif self.opening[data_key]:
