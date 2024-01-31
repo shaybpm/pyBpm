@@ -2,9 +2,11 @@
 
 import clr
 
+clr.AddReferenceByPartialName("System")
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
+from System import DateTime, TimeZoneInfo
 import wpf
 from System import Windows
 import os
@@ -14,8 +16,31 @@ from ServerUtils import get_openings_changes  # type: ignore
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
 
-# time_str_format = "YYYY-MM-DDTHH:mm:ss.sssZ"
-# time_str_example = "2019-01-01T00:00:00.000Z"
+def get_utc_offset_str(encoded=False):
+    time_now = DateTime.Now
+    utc_offset_number = int(TimeZoneInfo.Local.GetUtcOffset(time_now).TotalHours)
+    if utc_offset_number > 0:
+        utc_offset_num_digits = len(str(utc_offset_number))
+        if utc_offset_num_digits == 1:
+            utc_offset_str = "+0{}:00".format(utc_offset_number)
+            if encoded:
+                utc_offset_str = utc_offset_str.replace("+", "%2B")
+            return utc_offset_str
+        elif utc_offset_num_digits == 2:
+            utc_offset_str = "+{}:00".format(utc_offset_number)
+            if encoded:
+                utc_offset_str = utc_offset_str.replace("+", "%2B")
+            return utc_offset_str
+    elif utc_offset_number < 0:
+        utc_offset_num_digits = len(str(utc_offset_number))
+        if utc_offset_num_digits == 2:
+            return "-0{}:00".format(abs(utc_offset_number))
+        elif utc_offset_num_digits == 3:
+            return "-{}:00".format(abs(utc_offset_number))
+    else:
+        return "Z"
+
+
 class TrackingOpeningsDialog(Windows.Window):
     def __init__(self, doc):
         wpf.LoadComponent(self, xaml_file)
@@ -26,24 +51,47 @@ class TrackingOpeningsDialog(Windows.Window):
 
         self.start_time_str = None
         self.end_time_str = None
-        self.show_openings_btn.IsEnabled = False
+
+        time_now = DateTime.Now
+        self.end_date_DatePicker.SelectedDate = time_now
+        time_yesterday = time_now.AddDays(-1)
+        self.start_date_DatePicker.SelectedDate = time_yesterday
+
+        self.time_string_format = "yyyy-MM-ddTHH:mm:00.000Z".replace(
+            "Z", get_utc_offset_str(True)
+        )
+        time_now_str = time_now.ToString(self.time_string_format)
+
+        time_yesterday_str = time_yesterday.ToString(self.time_string_format)
+        self.start_time_str = time_yesterday_str
 
         self.add_minutes_to_Combobox(self.start_minute_ComboBox)
-        self.start_minute_ComboBox.SelectedIndex = 0
+        self.start_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
+            time_yesterday_str
+        )
         self.add_minutes_to_Combobox(self.end_minute_ComboBox)
-        self.end_minute_ComboBox.SelectedIndex = 0
+        self.end_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
+            time_now_str
+        )
         self.add_hours_to_Combobox(self.start_hour_ComboBox)
-        self.start_hour_ComboBox.SelectedIndex = 0
+        self.start_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
+            time_yesterday_str
+        )
         self.add_hours_to_Combobox(self.end_hour_ComboBox)
-        self.end_hour_ComboBox.SelectedIndex = 0
+        self.end_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
+            time_now_str
+        )
 
-        self.start_date_DatePicker.SelectedDateChanged += self.update_start_date
-        self.start_hour_ComboBox.SelectionChanged += self.update_start_date
-        self.start_minute_ComboBox.SelectionChanged += self.update_start_date
+        self.start_date_DatePicker.SelectedDateChanged += self.update_start_date_event
+        self.start_hour_ComboBox.SelectionChanged += self.update_start_date_event
+        self.start_minute_ComboBox.SelectionChanged += self.update_start_date_event
 
-        self.end_date_DatePicker.SelectedDateChanged += self.update_end_date
-        self.end_hour_ComboBox.SelectionChanged += self.update_end_date
-        self.end_minute_ComboBox.SelectionChanged += self.update_end_date
+        self.end_date_DatePicker.SelectedDateChanged += self.update_end_date_event
+        self.end_hour_ComboBox.SelectionChanged += self.update_end_date_event
+        self.end_minute_ComboBox.SelectionChanged += self.update_end_date_event
+
+        self.update_start_date()
+        self.update_end_date()
 
         self.current_sort_key = None
         self.data_table_col_sizes = [64, 60, 80, 120]
@@ -61,6 +109,21 @@ class TrackingOpeningsDialog(Windows.Window):
         list_box.Items.Clear()
         for opening in self._openings:
             list_box.Items.Add(ListBoxItemOpening(opening, self.data_table_col_sizes))
+
+    def get_date_by_time_string(self, time_str):
+        if time_str is None:
+            return None
+        return DateTime.Parse(time_str)
+
+    def get_hour_by_time_string(self, time_str):
+        if time_str is None:
+            return None
+        return time_str[11:13]
+
+    def get_minute_by_time_string(self, time_str):
+        if time_str is None:
+            return None
+        return time_str[14:16]
 
     def init_title_data_grid(self):
         grid = self.title_data_grid
@@ -139,7 +202,9 @@ class TrackingOpeningsDialog(Windows.Window):
     def get_time_str(self, date, hour, minute):
         if date is None or hour is None or minute is None:
             return None
-        return "{}T{}:{}:00.000Z".format(date.ToString("yyyy-MM-dd"), hour, minute)
+        return "{}T{}:{}:00.000Z".format(
+            date.ToString("yyyy-MM-dd"), hour, minute
+        ).replace("Z", get_utc_offset_str(True))
 
     def is_time_validate(self):
         if self.end_date_DatePicker.SelectedDate is None:
@@ -175,7 +240,7 @@ class TrackingOpeningsDialog(Windows.Window):
         else:
             self.show_openings_btn.IsEnabled = False
 
-    def update_start_date(self, sender, e):
+    def update_start_date(self):
         if not self.start_date_DatePicker.SelectedDate:
             return
         self.start_time_str = self.get_time_str(
@@ -185,7 +250,10 @@ class TrackingOpeningsDialog(Windows.Window):
         )
         self.handle_show_openings_btn_enabled()
 
-    def update_end_date(self, sender, e):
+    def update_start_date_event(self, sender, e):
+        self.update_start_date()
+
+    def update_end_date(self):
         if not self.end_date_DatePicker.SelectedDate:
             return
         self.end_time_str = self.get_time_str(
@@ -194,6 +262,9 @@ class TrackingOpeningsDialog(Windows.Window):
             self.end_minute_ComboBox.SelectedValue,
         )
         self.handle_show_openings_btn_enabled()
+
+    def update_end_date_event(self, sender, e):
+        self.update_end_date()
 
     def get_dates_by_latest_sheet_versions_btn_click(self, sender, e):
         pass
@@ -210,9 +281,6 @@ class TrackingOpeningsDialog(Windows.Window):
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):
     def __init__(self, opening, sizes):
         self.opening = opening
-
-        # Row format:
-        # changeType | discipline | mark
 
         self.grid = Windows.Controls.Grid()
         if self.opening["changeType"] == "added":
@@ -256,34 +324,6 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             text_block.VerticalAlignment = Windows.VerticalAlignment.Center
             self.grid.Children.Add(text_block)
             Windows.Controls.Grid.SetColumn(text_block, i)
-
-        # self.discipline_textBlock = Windows.Controls.TextBlock()
-        # self.discipline_textBlock.Text = self.opening["discipline"]
-        # self.discipline_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
-        # self.discipline_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
-        # self.grid.Children.Add(self.discipline_textBlock)
-        # Windows.Controls.Grid.SetColumn(self.discipline_textBlock, 0)
-
-        # self.mark_textBlock = Windows.Controls.TextBlock()
-        # self.mark_textBlock.Text = self.opening["mark"]
-        # self.mark_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
-        # self.mark_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
-        # self.grid.Children.Add(self.mark_textBlock)
-        # Windows.Controls.Grid.SetColumn(self.mark_textBlock, 1)
-
-        # self.changeType_textBlock = Windows.Controls.TextBlock()
-        # self.changeType_textBlock.Text = self.opening["changeType"]
-        # self.changeType_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
-        # self.changeType_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
-        # self.grid.Children.Add(self.changeType_textBlock)
-        # Windows.Controls.Grid.SetColumn(self.changeType_textBlock, 2)
-
-        # self.scheduleLevel_textBlock = Windows.Controls.TextBlock()
-        # self.scheduleLevel_textBlock.Text = self.opening["currentScheduledLevel"]
-        # self.scheduleLevel_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
-        # self.scheduleLevel_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
-        # self.grid.Children.Add(self.scheduleLevel_textBlock)
-        # Windows.Controls.Grid.SetColumn(self.scheduleLevel_textBlock, 3)
 
         self.Content = self.grid
 
