@@ -12,6 +12,7 @@ from System import Windows
 import os
 
 from ServerUtils import get_openings_changes  # type: ignore
+from RevitUtils import convertRevitNumToCm  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
@@ -33,6 +34,37 @@ def get_utc_offset_str():
             return "-{}:00".format(abs(utc_offset_number))
     else:
         return "Z"
+
+
+def get_center(bbox, axis):
+    if axis == "x":
+        return (bbox["max"]["x"] + bbox["min"]["x"]) / 2
+    elif axis == "y":
+        return (bbox["max"]["y"] + bbox["min"]["y"]) / 2
+    elif axis == "z":
+        return (bbox["max"]["z"] + bbox["min"]["z"]) / 2
+
+
+def get_location_changes(doc, opening):
+    if opening["currentBBox"] is None or opening["lastBBox"] is None:
+        return "", "", ""
+
+    x_current_center = get_center(opening["currentBBox"], "x")
+    y_current_center = get_center(opening["currentBBox"], "y")
+    z_current_center = get_center(opening["currentBBox"], "z")
+
+    x_last_center = get_center(opening["lastBBox"], "x")
+    y_last_center = get_center(opening["lastBBox"], "y")
+    z_last_center = get_center(opening["lastBBox"], "z")
+
+    return (
+        str(round(convertRevitNumToCm(doc, x_current_center - x_last_center), 2))
+        + " cm",
+        str(round(convertRevitNumToCm(doc, y_current_center - y_last_center), 2))
+        + " cm",
+        str(round(convertRevitNumToCm(doc, z_current_center - z_last_center), 2))
+        + " cm",
+    )
 
 
 class TrackingOpeningsDialog(Windows.Window):
@@ -212,6 +244,30 @@ class TrackingOpeningsDialog(Windows.Window):
         # x_location_changes_TextBlock
         # y_location_changes_TextBlock
         # z_location_changes_TextBlock
+
+        get_short_shape = lambda shape: "○" if shape == "circular" else "◻"
+
+        self.more_info_currentScheduledLevel_TextBlock.Text = (
+            opening["currentScheduledLevel"] if opening["currentScheduledLevel"] else ""
+        )
+        self.more_info_currentShape_TextBlock.Text = (
+            get_short_shape(opening["currentShape"]) if opening["currentShape"] else ""
+        )
+        self.more_info_currentMct_TextBlock.Text = (
+            "Yes" if opening["currentMct"] else "No"
+        )
+        self.more_info_lastScheduledLevel_TextBlock.Text = (
+            opening["lastScheduledLevel"] if opening["lastScheduledLevel"] else ""
+        )
+        self.more_info_lastShape_TextBlock.Text = (
+            get_short_shape(opening["lastShape"]) if opening["lastShape"] else ""
+        )
+        self.more_info_lastMct_TextBlock.Text = "Yes" if opening["lastMct"] else "No"
+        (
+            self.x_location_changes_TextBlock.Text,
+            self.y_location_changes_TextBlock.Text,
+            self.z_location_changes_TextBlock.Text,
+        ) = get_location_changes(self.doc, opening)
 
     def get_date_by_time_string(self, time_str):
         if time_str is None:
