@@ -87,7 +87,7 @@
                     <RowDefinition Height="20"/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
-                <Grid Grid.Row="0" x:Name="title_data_grid" />
+                <Grid Grid.Row="0" x:Name="title_data_grid" Margin="8 0 4 0" />
                 <ListBox Grid.Row="1" x:Name="data_listbox" SelectionMode="Extended" />
             </Grid>
         </Border>

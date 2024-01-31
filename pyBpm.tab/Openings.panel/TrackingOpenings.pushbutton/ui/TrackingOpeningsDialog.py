@@ -46,7 +46,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.end_minute_ComboBox.SelectionChanged += self.update_end_date
 
         self.current_sort_key = None
-        self.data_table_col_sizes = [64, 60]
+        self.data_table_col_sizes = [64, 60, 80, 120]
         self.data_table_col_sizes.append(384 - sum(self.data_table_col_sizes))
         self.init_title_data_grid()
 
@@ -69,31 +69,35 @@ class TrackingOpeningsDialog(Windows.Window):
             grid.ColumnDefinitions.Add(grid_column)
             grid_column.Width = Windows.GridLength(size)
 
-        last_grid_column = grid.ColumnDefinitions[2]
-        last_grid_column.Width = Windows.GridLength(
-            self.data_table_col_sizes[len(self.data_table_col_sizes) - 1] + 20
-        )
-
         sort_discipline_btn = Windows.Controls.Button()
         sort_discipline_btn.Content = "Discipline"
         sort_discipline_btn.Click += self.sort_discipline_btn_click
-        sort_discipline_btn.Margin = Windows.Thickness(0, 0, 0, 0)
         grid.Children.Add(sort_discipline_btn)
         Windows.Controls.Grid.SetColumn(sort_discipline_btn, 0)
 
         sort_mark_btn = Windows.Controls.Button()
         sort_mark_btn.Content = "Mark"
         sort_mark_btn.Click += self.sort_mark_btn_click
-        sort_mark_btn.Margin = Windows.Thickness(0, 0, 0, 0)
         grid.Children.Add(sort_mark_btn)
         Windows.Controls.Grid.SetColumn(sort_mark_btn, 1)
 
         sort_changeType_btn = Windows.Controls.Button()
         sort_changeType_btn.Content = "Change Type"
         sort_changeType_btn.Click += self.sort_changeType_btn_click
-        sort_changeType_btn.Margin = Windows.Thickness(0, 0, 0, 0)
         grid.Children.Add(sort_changeType_btn)
         Windows.Controls.Grid.SetColumn(sort_changeType_btn, 2)
+
+        sort_scheduleLevel_btn = Windows.Controls.Button()
+        sort_scheduleLevel_btn.Content = "Level"
+        sort_scheduleLevel_btn.Click += self.sort_scheduleLevel_btn_click
+        grid.Children.Add(sort_scheduleLevel_btn)
+        Windows.Controls.Grid.SetColumn(sort_scheduleLevel_btn, 3)
+
+        sort_currentMct_btn = Windows.Controls.Button()
+        sort_currentMct_btn.Content = "MCT"
+        sort_currentMct_btn.Click += self.sort_currentMct_btn_click
+        grid.Children.Add(sort_currentMct_btn)
+        Windows.Controls.Grid.SetColumn(sort_currentMct_btn, 4)
 
     def sort_data_by(self, key):
         self.openings = sorted(
@@ -112,6 +116,12 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def sort_changeType_btn_click(self, sender, e):
         self.sort_data_by("changeType")
+
+    def sort_scheduleLevel_btn_click(self, sender, e):
+        self.sort_data_by("currentScheduledLevel")
+
+    def sort_currentMct_btn_click(self, sender, e):
+        self.sort_data_by("currentMct")
 
     def add_nums_to_Combobox(self, combobox, start, end):
         for i in range(start, end):
@@ -219,26 +229,61 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             self.grid.ColumnDefinitions.Add(grid_column)
             grid_column.Width = Windows.GridLength(size)
 
-        self.discipline_textBlock = Windows.Controls.TextBlock()
-        self.discipline_textBlock.Text = self.opening["discipline"]
-        self.discipline_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
-        self.discipline_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
-        self.grid.Children.Add(self.discipline_textBlock)
-        Windows.Controls.Grid.SetColumn(self.discipline_textBlock, 0)
+        data_key_list = [
+            "discipline",
+            "mark",
+            "changeType",
+            "currentScheduledLevel",
+            "currentMct",
+        ]
+        for i, data_key in enumerate(data_key_list):
+            text_block = Windows.Controls.TextBlock()
 
-        self.mark_textBlock = Windows.Controls.TextBlock()
-        self.mark_textBlock.Text = self.opening["mark"]
-        self.mark_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
-        self.mark_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
-        self.grid.Children.Add(self.mark_textBlock)
-        Windows.Controls.Grid.SetColumn(self.mark_textBlock, 1)
+            text = ""
+            if data_key == "currentMct":
+                if self.opening[data_key] is None:
+                    text = ""
+                elif self.opening[data_key]:
+                    text = "Yes"
+                else:
+                    text = "No"
+            else:
+                text = self.opening[data_key] if data_key in self.opening else ""
 
-        self.changeType_textBlock = Windows.Controls.TextBlock()
-        self.changeType_textBlock.Text = self.opening["changeType"]
-        self.changeType_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
-        self.changeType_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
-        self.grid.Children.Add(self.changeType_textBlock)
-        Windows.Controls.Grid.SetColumn(self.changeType_textBlock, 2)
+            text_block.Text = text
+
+            text_block.HorizontalAlignment = Windows.HorizontalAlignment.Center
+            text_block.VerticalAlignment = Windows.VerticalAlignment.Center
+            self.grid.Children.Add(text_block)
+            Windows.Controls.Grid.SetColumn(text_block, i)
+
+        # self.discipline_textBlock = Windows.Controls.TextBlock()
+        # self.discipline_textBlock.Text = self.opening["discipline"]
+        # self.discipline_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
+        # self.discipline_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
+        # self.grid.Children.Add(self.discipline_textBlock)
+        # Windows.Controls.Grid.SetColumn(self.discipline_textBlock, 0)
+
+        # self.mark_textBlock = Windows.Controls.TextBlock()
+        # self.mark_textBlock.Text = self.opening["mark"]
+        # self.mark_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
+        # self.mark_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
+        # self.grid.Children.Add(self.mark_textBlock)
+        # Windows.Controls.Grid.SetColumn(self.mark_textBlock, 1)
+
+        # self.changeType_textBlock = Windows.Controls.TextBlock()
+        # self.changeType_textBlock.Text = self.opening["changeType"]
+        # self.changeType_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
+        # self.changeType_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
+        # self.grid.Children.Add(self.changeType_textBlock)
+        # Windows.Controls.Grid.SetColumn(self.changeType_textBlock, 2)
+
+        # self.scheduleLevel_textBlock = Windows.Controls.TextBlock()
+        # self.scheduleLevel_textBlock.Text = self.opening["currentScheduledLevel"]
+        # self.scheduleLevel_textBlock.HorizontalAlignment = Windows.HorizontalAlignment.Left
+        # self.scheduleLevel_textBlock.VerticalAlignment = Windows.VerticalAlignment.Center
+        # self.grid.Children.Add(self.scheduleLevel_textBlock)
+        # Windows.Controls.Grid.SetColumn(self.scheduleLevel_textBlock, 3)
 
         self.Content = self.grid
 
