@@ -589,10 +589,13 @@ class TrackingOpeningsDialog(Windows.Window):
             return
 
         bbox_key_name = "currentBBox" if current else "lastBBox"
-        if not bbox_key_name in opening or opening[bbox_key_name] is None:
-            self.alert(
-                'לא נמצא מיקום הפתח הנבחר.\nאם זהו פתח שנמחק, לחץ על "הצג מיקום קודם".'
+        if bbox_key_name not in opening or opening[bbox_key_name] is None:
+            msg = "לא נמצא מיקום הפתח הנבחר.\n{}".format(
+                'מפני שזהו אלמנט חדש, עליך ללחוץ על "הצג פתח".'
+                if not current
+                else 'מפני שזהו אלמנט שנמחק, עליך ללחוץ על "הצג מיקום קודם".'
             )
+            self.alert(msg)
             return
         db_bbox = opening[bbox_key_name]
 
@@ -613,29 +616,37 @@ class TrackingOpeningsDialog(Windows.Window):
             return
         return ui_view
 
+    def show_opening(self, current):
+        opening = self.get_current_selected_opening()
+        if not opening:
+            return
+
+        bbox = self.get_bbox(opening, current)
+        if not bbox:
+            return
+
+        ui_view = self.get_ui_view()
+        if not ui_view:
+            return
+
+        zoom_increment = 0.08
+        zoom_viewCorner1 = bbox.Min.Add(
+            XYZ(-zoom_increment, -zoom_increment, -zoom_increment)
+        )
+        zoom_viewCorner2 = bbox.Max.Add(
+            XYZ(zoom_increment, zoom_increment, zoom_increment)
+        )
+        ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
+
     def show_opening_btn_click(self, sender, e):
         try:
-            opening = self.get_current_selected_opening()
-            if not opening:
-                return
+            self.show_opening(current=True)
+        except Exception as ex:
+            print(ex)
 
-            current = "currentBBox" in opening and opening["currentBBox"] is not None
-            bbox = self.get_bbox(opening, current)
-            if not bbox:
-                return
-
-            ui_view = self.get_ui_view()
-            if not ui_view:
-                return
-
-            zoom_increment = 3
-            zoom_viewCorner1 = bbox.Min.Add(
-                XYZ(-zoom_increment, -zoom_increment, -zoom_increment)
-            )
-            zoom_viewCorner2 = bbox.Max.Add(
-                XYZ(zoom_increment, zoom_increment, zoom_increment)
-            )
-            ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
+    def show_previous_location_btn_click(self, sender, e):
+        try:
+            self.show_opening(current=False)
         except Exception as ex:
             print(ex)
 
