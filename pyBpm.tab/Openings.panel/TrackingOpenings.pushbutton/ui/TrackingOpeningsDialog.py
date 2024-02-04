@@ -13,7 +13,14 @@ from Autodesk.Revit.DB import (
     Transaction,
     TransactionGroup,
     Color,
+    ViewType,
+    Revision,
+    RevisionCloud,
+    Line,
+    Curve,
 )
+
+from System.Collections.Generic import List
 
 from System import DateTime, TimeZoneInfo
 import wpf
@@ -603,7 +610,7 @@ class TrackingOpeningsDialog(Windows.Window):
             return
         return self.current_selected_opening[0]
 
-    def get_bbox(self, opening, current=True):
+    def get_bbox(self, opening, current=True, prompt_alert=True):
         transform = get_transform_by_model_guid(self.doc, opening["modelGuid"])
         if not transform:
             self.alert("לא נמצא הלינק של הפתח הנבחר")
@@ -611,12 +618,13 @@ class TrackingOpeningsDialog(Windows.Window):
 
         bbox_key_name = "currentBBox" if current else "lastBBox"
         if bbox_key_name not in opening or opening[bbox_key_name] is None:
-            msg = "לא נמצא מיקום הפתח הנבחר.\n{}".format(
-                'מפני שזהו אלמנט חדש, עליך ללחוץ על "הצג פתח".'
-                if not current
-                else 'מפני שזהו אלמנט שנמחק, עליך ללחוץ על "הצג מיקום קודם".'
-            )
-            self.alert(msg)
+            if prompt_alert:
+                msg = "לא נמצא מיקום הפתח הנבחר.\n{}".format(
+                    'מפני שזהו אלמנט חדש, עליך ללחוץ על "הצג פתח".'
+                    if not current
+                    else 'מפני שזהו אלמנט שנמחק, עליך ללחוץ על "הצג מיקום קודם".'
+                )
+                self.alert(msg)
             return
         db_bbox = opening[bbox_key_name]
 
@@ -749,6 +757,116 @@ class TrackingOpeningsDialog(Windows.Window):
 
         try:
             self.show_opening_3d(current=False)
+        except Exception as ex:
+            print(ex)
+
+    def get_opening_revision(self):
+        all_revisions_ids = Revision.GetAllRevisionIds(self.doc)
+        all_revisions = [self.doc.GetElement(x) for x in all_revisions_ids]
+
+        ISSUED_BY_STR = "PYBPM_OPENINGS"
+        rev_strings = []
+        for rev in all_revisions:
+            issued_by = rev.IssuedBy
+            if issued_by != ISSUED_BY_STR:
+                continue
+            date = rev.RevisionDate
+            description = rev.Description
+            rev_strings.append("{} - {}".format(date.ToString(), description))
+
+        CREATE_NEW_REVISION = "צור מהדורה חדשה"
+        rev_strings.append(CREATE_NEW_REVISION)
+
+        selected_rev_str = forms.SelectFromList.show(
+            rev_strings, title="בחר מהדורה", multiselect=False
+        )
+        if not selected_rev_str:
+            return
+
+        if selected_rev_str == CREATE_NEW_REVISION:
+            t = Transaction(self.doc, "pyBpm | Create New Revision")
+            t.Start()
+            rev = Revision.Create(self.doc)
+            rev.IssuedBy = ISSUED_BY_STR
+            time_now = DateTime.Now
+            rev.RevisionDate = time_now.ToString("dd/MM/yyyy")
+            rev.Description = "עדכון פתחים"
+            utc_time_now = DateTime.UtcNow
+            rev.IssuedTo = utc_time_now.ToString(self.time_string_format)
+            t.Commit()
+            return rev
+
+        selected_rev_index = rev_strings.index(selected_rev_str)
+        return all_revisions[selected_rev_index]
+
+    def create_revision_clouds(self):
+        active_view = self.uidoc.ActiveView
+        if active_view.ViewType not in [
+            ViewType.FloorPlan,
+            ViewType.CeilingPlan,
+        ]:
+            self.alert("לא זמין במבט זה")
+            return
+
+        current_selected_opening = self.current_selected_opening
+        if len(current_selected_opening) == 0:
+            self.alert("יש לבחור פתחים")
+            return
+
+        bboxes = []
+        for opening in current_selected_opening:
+            bbox = self.get_bbox(opening, current=not opening["isDeleted"])
+            if bbox:
+                bboxes.append(bbox)
+
+        if len(bboxes) == 0:
+            return
+
+        t_group = TransactionGroup(self.doc, "pyBpm | Create Cloud")
+        t_group.Start()
+
+        revision = self.get_opening_revision()
+        if not revision:
+            t_group.RollBack()
+            return
+
+        level = active_view.GenLevel
+        project_elevation = level.Elevation
+
+        t = Transaction(self.doc, "pyBpm | Create Clouds")
+        t.Start()
+
+        for bbox in bboxes:
+            point1 = XYZ(bbox.Min.X, bbox.Min.Y, project_elevation)
+            point2 = XYZ(bbox.Min.X, bbox.Max.Y, project_elevation)
+            point3 = XYZ(bbox.Max.X, bbox.Max.Y, project_elevation)
+            point4 = XYZ(bbox.Max.X, bbox.Min.Y, project_elevation)
+
+            line1 = Line.CreateBound(point1, point2)
+            line2 = Line.CreateBound(point2, point3)
+            line3 = Line.CreateBound(point3, point4)
+            line4 = Line.CreateBound(point4, point1)
+
+            curve1 = line1
+            curve2 = line2
+            curve3 = line3
+            curve4 = line4
+
+            i_list_curve = List[Curve]([curve1, curve2, curve3, curve4])
+
+            RevisionCloud.Create(self.doc, active_view, revision.Id, i_list_curve)
+
+        t.Commit()
+
+        t_group.Assimilate()
+
+    def create_cloud_btn_click(self, sender, e):
+        if not self.allow_transactions:
+            self.not_allow_transactions_alert()
+            return
+
+        try:
+            self.create_revision_clouds()
         except Exception as ex:
             print(ex)
 

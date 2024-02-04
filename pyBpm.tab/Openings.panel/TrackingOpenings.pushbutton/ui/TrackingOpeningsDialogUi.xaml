@@ -210,7 +210,7 @@
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Grid.Row="0" Content="הצג פתח" Click="show_opening_btn_click" />
             <Button Grid.Column="0" Grid.Row="1" Content="הצג פתח 3D" Click="show_opening_3D_btn_click" />
-            <Button Grid.Column="0" Grid.Row="2" Content="צור ענן" />
+            <Button Grid.Column="0" Grid.Row="2" Content="צור ענן" Click="create_cloud_btn_click" />
             <Button Grid.Column="1" Grid.Row="0" Content="הצג מיקום קודם" Click="show_previous_location_btn_click" />
             <Button Grid.Column="1" Grid.Row="1" Content="הצג מיקום קודם 3D" Click="show_previous_location_3D_btn_click" />
             <Button Grid.Column="1" Grid.Row="2" Content="Isolate (החזק)" />
