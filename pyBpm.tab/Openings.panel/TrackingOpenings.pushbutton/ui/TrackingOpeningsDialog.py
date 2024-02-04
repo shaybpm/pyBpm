@@ -6,7 +6,14 @@ clr.AddReferenceByPartialName("System")
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
-from Autodesk.Revit.DB import XYZ, BoundingBoxXYZ
+from Autodesk.Revit.DB import (
+    XYZ,
+    BoundingBoxXYZ,
+    CategoryType,
+    Transaction,
+    TransactionGroup,
+    Color,
+)
 
 from System import DateTime, TimeZoneInfo
 import wpf
@@ -16,7 +23,8 @@ import os
 from pyrevit import forms
 
 from ServerUtils import get_openings_changes  # type: ignore
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color  # type: ignore
+from RevitUtilsOpenings import get_opening_filter  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
@@ -77,6 +85,8 @@ class TrackingOpeningsDialog(Windows.Window):
 
         self.uidoc = uidoc
         self.doc = self.uidoc.Document
+
+        self._allow_transactions = False
 
         self._openings = []
         self._display_openings = []
@@ -158,6 +168,14 @@ class TrackingOpeningsDialog(Windows.Window):
         )
 
     @property
+    def allow_transactions(self):
+        return self._allow_transactions
+
+    @allow_transactions.setter
+    def allow_transactions(self, value):
+        self._allow_transactions = value
+
+    @property
     def display_openings(self):
         return self._display_openings
 
@@ -226,6 +244,9 @@ class TrackingOpeningsDialog(Windows.Window):
     def alert(self, message):
         forms.alert(message, title="מעקב פתחים")
         self.Topmost = True
+
+    def not_allow_transactions_alert(self):
+        self.alert("להפעלת אפשרות זו, יש ללחוץ על כפתור הסקריפט בעת החזקת השיפט במקלדת")
 
     def set_all_filters(self):
         self.level_filter_ComboBox.Items.Clear()
@@ -647,6 +668,87 @@ class TrackingOpeningsDialog(Windows.Window):
     def show_previous_location_btn_click(self, sender, e):
         try:
             self.show_opening(current=False)
+        except Exception as ex:
+            print(ex)
+
+    def show_opening_3d(self, current):
+        t_group = TransactionGroup(self.doc, "pyBpm | Show Opening 3D")
+        t_group.Start()
+
+        opening = self.get_current_selected_opening()
+        if not opening:
+            return
+
+        bbox = self.get_bbox(opening, current)
+        if not bbox:
+            return
+
+        ui_view = self.get_ui_view()
+        if not ui_view:
+            return
+
+        view_3d = get_bpm_3d_view(self.doc)
+        if not view_3d:
+            self.alert("תקלה בקבלת תצוגת 3D")
+            return
+        turn_of_categories(
+            self.doc,
+            view_3d,
+            CategoryType.Annotation,
+            except_categories=["Section Boxes"],
+        )
+
+        opening_filter = get_opening_filter(self.doc)
+        yellow = Color(255, 255, 0)
+        ogs = get_ogs_by_color(self.doc, yellow)
+        t1 = Transaction(self.doc, "pyBpm | Set Opening Filter")
+        t1.Start()
+        view_3d.SetFilterOverrides(opening_filter.Id, ogs)
+        t1.Commit()
+
+        self.uidoc.ActiveView = view_3d
+
+        t2 = Transaction(self.doc, "pyBpm | Set Section Boxes")
+        t2.Start()
+        section_box_increment = 0.4
+        bbox_section_box = BoundingBoxXYZ()
+        bbox_section_box.Min = bbox.Min.Add(
+            XYZ(-section_box_increment, -section_box_increment, -section_box_increment)
+        )
+        bbox_section_box.Max = bbox.Max.Add(
+            XYZ(section_box_increment, section_box_increment, section_box_increment)
+        )
+        view_3d.SetSectionBox(bbox_section_box)
+        t2.Commit()
+
+        zoom_increment = 0.8
+        zoom_viewCorner1 = bbox.Min.Add(
+            XYZ(-zoom_increment, -zoom_increment, -zoom_increment)
+        )
+        zoom_viewCorner2 = bbox.Max.Add(
+            XYZ(zoom_increment, zoom_increment, zoom_increment)
+        )
+        ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
+
+        t_group.Assimilate()
+
+    def show_opening_3D_btn_click(self, sender, e):
+        if not self.allow_transactions:
+            self.not_allow_transactions_alert()
+            return
+
+        try:
+            self.show_opening_3d(current=True)
+        except Exception as ex:
+            print(ex)
+
+    def show_previous_location_3D_btn_click(self, sender, e):
+        if not self.allow_transactions:
+            self.not_allow_transactions_alert()
+            return
+
+        try:
+            self.show_opening_3d(current=False)
         except Exception as ex:
             print(ex)
 

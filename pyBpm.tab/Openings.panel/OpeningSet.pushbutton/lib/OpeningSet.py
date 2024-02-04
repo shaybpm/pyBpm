@@ -15,6 +15,7 @@ from Autodesk.Revit.DB import (
 
 import pyUtils  # type: ignore
 import RevitUtils  # type: ignore
+import RevitUtilsOpenings  # type: ignore
 from PyRevitUtils import TempElementStorage  # type: ignore
 from Config import get_opening_set_temp_file_id  # type: ignore
 
@@ -22,15 +23,8 @@ from Config import get_opening_set_temp_file_id  # type: ignore
 # -------------SCRIPT-------------
 # --------------------------------
 
-shapes = {
-    "rectangular": [
-        "Rectangular Face Opening",
-        "REC_FLOOR OPENING",
-        "REC_WALL OPENING",
-    ],
-    "circular": ["Round Face Opening", "CIRC_FLOOR OPENING", "CIRC_WALL OPENING"],
-}
-opening_names = shapes["rectangular"] + shapes["circular"]
+shapes = RevitUtilsOpenings.shapes
+opening_names = RevitUtilsOpenings.opening_names
 
 param_mct_probable_names = ["Detail - Yes / No"]
 
@@ -199,15 +193,15 @@ def set_elevation_params(doc, opening):
     param__opening_absolute_level = opening.LookupParameter("Opening Absolute Level")
     if not param__opening_elevation or not param__opening_absolute_level:
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "No Opening Elevation or Opening Absolute Level parameter found."
+        results["message"] = (
+            "No Opening Elevation or Opening Absolute Level parameter found."
+        )
         return results
     if param__opening_elevation.IsReadOnly or param__opening_absolute_level.IsReadOnly:
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "Opening Elevation or Opening Absolute Level parameter is read only."
+        results["message"] = (
+            "Opening Elevation or Opening Absolute Level parameter is read only."
+        )
         return results
     param__opening_elevation.Set(opening_location_point_z - project_base_point_position)
     param__opening_absolute_level.Set(opening_location_point_z - survey_point_position)
@@ -236,15 +230,15 @@ def set_ref_level_and_mid_elevation(opening):
         or not param__middle_elevation
     ):
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found."
+        results["message"] = (
+            "No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found."
+        )
         return results
     if param__reference_level.IsReadOnly or param__middle_elevation.IsReadOnly:
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter is read only."
+        results["message"] = (
+            "Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter is read only."
+        )
         return results
     param__reference_level.Set(param__schedule_level.AsValueString())
     param__middle_elevation.Set(param__elevation_from_level.AsDouble())
@@ -310,9 +304,9 @@ def is_positioned_correctly(opening):
         or not param__additional_bottom_cut_offset
     ):
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "No Cut Offset or Additional Top Cut Offset or Additional Bottom Cut Offset parameter found."
+        results["message"] = (
+            "No Cut Offset or Additional Top Cut Offset or Additional Bottom Cut Offset parameter found."
+        )
         return results
 
     bbox = opening.get_BoundingBox(None)
@@ -325,16 +319,16 @@ def is_positioned_correctly(opening):
     bb_num = bbox.Max.Z - bbox.Min.Z
     if pyUtils.is_close(h_num, bb_num, 0.001):
         param__insertion_configuration.Set("OK")
-        results[
-            "message"
-        ] = "The position is correct. Insertion Configuration set to OK."
+        results["message"] = (
+            "The position is correct. Insertion Configuration set to OK."
+        )
         return results
     else:
         param__insertion_configuration.Set("NOT-OK")
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "The position is not correct. Insertion Configuration set to NOT-OK. You can fix it by selecting the opening and press spacebar."
+        results["message"] = (
+            "The position is not correct. Insertion Configuration set to NOT-OK. You can fix it by selecting the opening and press spacebar."
+        )
         return results
 
 

@@ -41,6 +41,7 @@ def run():
     dialog = TrackingOpeningsDialog(uidoc)
 
     if __shiftclick__:  # type: ignore
+        dialog.allow_transactions = True
         dialog.ShowDialog()
     else:
         dialog.Show()

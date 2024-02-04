@@ -26,7 +26,7 @@ try:
             "lib",
         )
     )
-    from OpeningSet import opening_names  # type: ignore
+    from RevitUtilsOpenings import opening_names  # type: ignore
 
     def filter_ids_by_elem_name(doc, elem_ids):
         if not elem_ids:
