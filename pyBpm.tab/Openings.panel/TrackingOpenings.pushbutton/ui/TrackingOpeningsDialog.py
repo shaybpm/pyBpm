@@ -134,23 +134,23 @@ class TrackingOpeningsDialog(Windows.Window):
 
         self.data_listbox.SelectionChanged += self.data_listbox_selection_changed
 
-        # TODO: FILTERS
-        # level_filter_ComboBox
-        # shape_filter_ComboBox
-        # discipline_filter_ComboBox
-        # floor_filter_ComboBox
-
-        self.level_filter_ComboBox.Items.Add("All Levels")
-        self.level_filter_ComboBox.SelectedIndex = 0
-
-        self.shape_filter_ComboBox.Items.Add("All Shapes")
-        self.shape_filter_ComboBox.SelectedIndex = 0
-
-        self.discipline_filter_ComboBox.Items.Add("All Disciplines")
-        self.discipline_filter_ComboBox.SelectedIndex = 0
-
-        self.floor_filter_ComboBox.Items.Add("Walls And Floors")
-        self.floor_filter_ComboBox.SelectedIndex = 0
+        self.ALL_LEVELS = "All Levels"
+        self.ALL_SHAPES = "All Shapes"
+        self.ALL_DISCIPLINES = "All Disciplines"
+        self.FLOORS_AND_WALLS = "Floors and Walls"
+        self.set_all_filters()
+        self.level_filter_ComboBox.SelectionChanged += (
+            self.level_filter_ComboBox_SelectionChanged
+        )
+        self.shape_filter_ComboBox.SelectionChanged += (
+            self.shape_filter_ComboBox_SelectionChanged
+        )
+        self.discipline_filter_ComboBox.SelectionChanged += (
+            self.discipline_filter_ComboBox_SelectionChanged
+        )
+        self.floor_filter_ComboBox.SelectionChanged += (
+            self.floor_filter_ComboBox_SelectionChanged
+        )
 
     @property
     def display_openings(self):
@@ -174,6 +174,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self._openings = value
         self.display_openings = value
         self.number_of_data_TextBlock.Text = str(len(self._openings))
+        self.set_all_filters()
 
     @property
     def current_selected_opening(self):
@@ -217,18 +218,133 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
+    def set_all_filters(self):
+        self.level_filter_ComboBox.Items.Clear()
+        self.level_filter_ComboBox.Items.Add(self.ALL_LEVELS)
+        self.level_filter_ComboBox.SelectedIndex = 0
+        current_scheduled_levels = [x["currentScheduledLevel"] for x in self.openings]
+        last_scheduled_levels = [x["lastScheduledLevel"] for x in self.openings]
+        all_scheduled_levels = list(
+            set(current_scheduled_levels + last_scheduled_levels)
+        )
+        all_scheduled_levels = sorted(all_scheduled_levels)
+        for level in all_scheduled_levels:
+            if level is None:
+                continue
+            self.level_filter_ComboBox.Items.Add(level)
+
+        self.shape_filter_ComboBox.Items.Clear()
+        self.shape_filter_ComboBox.Items.Add(self.ALL_SHAPES)
+        self.shape_filter_ComboBox.SelectedIndex = 0
+        current_shapes = [x["currentShape"] for x in self.openings]
+        last_shapes = [x["lastShape"] for x in self.openings]
+        all_shapes = list(set(current_shapes + last_shapes))
+        all_shapes = sorted(all_shapes)
+        for shape in all_shapes:
+            if shape is None:
+                continue
+            self.shape_filter_ComboBox.Items.Add(shape)
+
+        self.discipline_filter_ComboBox.Items.Clear()
+        self.discipline_filter_ComboBox.Items.Add(self.ALL_DISCIPLINES)
+        self.discipline_filter_ComboBox.SelectedIndex = 0
+        disciplines = [x["discipline"] for x in self.openings]
+        all_disciplines = list(set(disciplines))
+        all_disciplines = sorted(all_disciplines)
+        for discipline in all_disciplines:
+            if discipline is None:
+                continue
+            self.discipline_filter_ComboBox.Items.Add(discipline)
+
+        self.floor_filter_ComboBox.Items.Clear()
+        self.floor_filter_ComboBox.Items.Add(self.FLOORS_AND_WALLS)
+        self.floor_filter_ComboBox.SelectedIndex = 0
+        self.floor_filter_ComboBox.Items.Add("Floors")
+        self.floor_filter_ComboBox.Items.Add("Walls")
+
+    def level_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def shape_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def discipline_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def floor_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def filter_openings(self):
+        self.display_openings = self.openings
+        if self.level_filter_ComboBox.SelectedIndex != 0:
+            selected_level = self.level_filter_ComboBox.SelectedValue
+            self.display_openings = [
+                x
+                for x in self.display_openings
+                if x["currentScheduledLevel"] == selected_level
+                # or x["lastScheduledLevel"] == selected_level
+            ]
+        if self.shape_filter_ComboBox.SelectedIndex != 0:
+            selected_shape = self.shape_filter_ComboBox.SelectedValue
+            self.display_openings = [
+                x
+                for x in self.display_openings
+                if x["currentShape"] == selected_shape
+                # or x["lastShape"] == selected_shape
+            ]
+        if self.discipline_filter_ComboBox.SelectedIndex != 0:
+            selected_discipline = self.discipline_filter_ComboBox.SelectedValue
+            self.display_openings = [
+                x
+                for x in self.display_openings
+                if x["discipline"] == selected_discipline
+            ]
+        if self.floor_filter_ComboBox.SelectedIndex != 0:
+            selected_floor = self.floor_filter_ComboBox.SelectedValue
+            if selected_floor == "Floors":
+                self.display_openings = [
+                    x for x in self.display_openings if x["isFloorOpening"]
+                ]
+            elif selected_floor == "Walls":
+                self.display_openings = [
+                    x for x in self.display_openings if not x["isFloorOpening"]
+                ]
+
     def data_listbox_selection_changed(self, sender, e):
         list_box = sender
         selected_items = [item.opening for item in list_box.SelectedItems]
         self.current_selected_opening = selected_items
 
+    def clear_more_data_info(self):
+        self.more_info_internalDocId_TextBlock.Text = ""
+        self.more_info_isNotThereMoreUpdatedStates_TextBlock.Text = ""
+        self.more_info_isNotThereMoreUpdatedStates_TextBlock.Background = (
+            Windows.Media.Brushes.Transparent
+        )
+        self.more_info_isFloorOpening_TextBlock.Text = ""
+        self.more_info_currentScheduledLevel_TextBlock.Text = ""
+        self.more_info_currentShape_TextBlock.Text = ""
+        self.more_info_currentMct_TextBlock.Text = ""
+        self.more_info_lastScheduledLevel_TextBlock.Text = ""
+        self.more_info_lastShape_TextBlock.Text = ""
+        self.more_info_lastMct_TextBlock.Text = ""
+        self.x_location_changes_TextBlock.Text = ""
+        self.y_location_changes_TextBlock.Text = ""
+        self.z_location_changes_TextBlock.Text = ""
+
     def update_more_data_info(self):
         if len(self.current_selected_opening) != 1:
+            self.clear_more_data_info()
             return
         opening = self.current_selected_opening[0]
         self.more_info_internalDocId_TextBlock.Text = str(opening["internalDocId"])
-        self.more_info_isNotThereMoreUpdatedStates_TextBlock.Text = str(
-            not opening["isThereMoreUpdatedStates"]
+        self.more_info_isNotThereMoreUpdatedStates_TextBlock.Text = (
+            "Yes" if not opening["isThereMoreUpdatedStates"] else "No"
+        )
+        self.more_info_isNotThereMoreUpdatedStates_TextBlock.Background = (
+            Windows.Media.Brushes.LightPink
+            if opening["isThereMoreUpdatedStates"]
+            else Windows.Media.Brushes.Transparent
         )
         self.more_info_isFloorOpening_TextBlock.Text = (
             "Yes" if opening["isFloorOpening"] else "No"
@@ -326,9 +442,9 @@ class TrackingOpeningsDialog(Windows.Window):
     def sort_data_by(self, key):
         self.display_openings = sorted(
             self.display_openings,
-            key=lambda k: int(k[key])
-            if type(k[key]) is str and k[key].isdigit()
-            else k[key],
+            key=lambda k: (
+                int(k[key]) if type(k[key]) is str and k[key].isdigit() else k[key]
+            ),
             reverse=self.current_sort_key == key,
         )
         if self.current_sort_key == key:
