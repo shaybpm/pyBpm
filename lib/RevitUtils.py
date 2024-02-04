@@ -89,3 +89,48 @@ def get_model_info(doc):
         "modelGuid": modelGuid,
         "modelPathName": pathName,
     }
+
+
+def get_ui_view(uidoc):
+    doc = uidoc.Document
+    ui_views = uidoc.GetOpenUIViews()
+    for ui_view in ui_views:
+        if ui_view.ViewId == doc.ActiveView.Id:
+            return ui_view
+    return None
+
+
+def get_all_link_instances(doc):
+    from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory
+
+    return (
+        FilteredElementCollector(doc)
+        .OfCategory(BuiltInCategory.OST_RvtLinks)
+        .WhereElementIsNotElementType()
+        .ToElements()
+    )
+
+
+def get_link_by_model_guid(doc, model_guid):
+    all_links = get_all_link_instances(doc)
+    for link in all_links:
+        link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
+        link_info = get_model_info(link_doc)
+        if link_info["modelGuid"] == model_guid:
+            return link
+    return None
+
+
+def get_transform_by_model_guid(doc, model_guid):
+    from Autodesk.Revit.DB import Transform
+
+    model_info = get_model_info(doc)
+    if model_info["modelGuid"] == model_guid:
+        return Transform.Identity
+
+    link = get_link_by_model_guid(doc, model_guid)
+    if not link:
+        return None
+    return link.GetTotalTransform()

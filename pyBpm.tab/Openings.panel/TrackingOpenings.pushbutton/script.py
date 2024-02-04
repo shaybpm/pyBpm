@@ -38,7 +38,7 @@ def run():
             title="אין גישה לפרויקט",
         )
         return
-    dialog = TrackingOpeningsDialog(doc)
+    dialog = TrackingOpeningsDialog(uidoc)
 
     if __shiftclick__:  # type: ignore
         dialog.ShowDialog()

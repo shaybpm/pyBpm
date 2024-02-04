@@ -6,13 +6,17 @@ clr.AddReferenceByPartialName("System")
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
+from Autodesk.Revit.DB import XYZ, BoundingBoxXYZ
+
 from System import DateTime, TimeZoneInfo
 import wpf
 from System import Windows
 import os
 
+from pyrevit import forms
+
 from ServerUtils import get_openings_changes  # type: ignore
-from RevitUtils import convertRevitNumToCm  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
@@ -68,10 +72,11 @@ def get_location_changes(doc, opening):
 
 
 class TrackingOpeningsDialog(Windows.Window):
-    def __init__(self, doc):
+    def __init__(self, uidoc):
         wpf.LoadComponent(self, xaml_file)
 
-        self.doc = doc
+        self.uidoc = uidoc
+        self.doc = self.uidoc.Document
 
         self._openings = []
         self._display_openings = []
@@ -217,6 +222,10 @@ class TrackingOpeningsDialog(Windows.Window):
                 return
         except Exception as ex:
             print(ex)
+
+    def alert(self, message):
+        forms.alert(message, title="מעקב פתחים")
+        self.Topmost = True
 
     def set_all_filters(self):
         self.level_filter_ComboBox.Items.Clear()
@@ -567,6 +576,69 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
+    def get_current_selected_opening(self):
+        if len(self.current_selected_opening) != 1:
+            self.alert("יש לבחור פתח אחד בלבד")
+            return
+        return self.current_selected_opening[0]
+
+    def get_bbox(self, opening, current=True):
+        transform = get_transform_by_model_guid(self.doc, opening["modelGuid"])
+        if not transform:
+            self.alert("לא נמצא הלינק של הפתח הנבחר")
+            return
+
+        bbox_key_name = "currentBBox" if current else "lastBBox"
+        if not bbox_key_name in opening or opening[bbox_key_name] is None:
+            self.alert(
+                'לא נמצא מיקום הפתח הנבחר.\nאם זהו פתח שנמחק, לחץ על "הצג מיקום קודם".'
+            )
+            return
+        db_bbox = opening[bbox_key_name]
+
+        bbox = BoundingBoxXYZ()
+        bbox.Min = transform.OfPoint(
+            XYZ(db_bbox["min"]["x"], db_bbox["min"]["y"], db_bbox["min"]["z"])
+        )
+        bbox.Max = transform.OfPoint(
+            XYZ(db_bbox["max"]["x"], db_bbox["max"]["y"], db_bbox["max"]["z"])
+        )
+
+        return bbox
+
+    def get_ui_view(self):
+        ui_view = ru_get_ui_doc(self.uidoc)
+        if not ui_view:
+            self.alert("לא נמצא תצוגה פעילה")
+            return
+        return ui_view
+
+    def show_opening_btn_click(self, sender, e):
+        try:
+            opening = self.get_current_selected_opening()
+            if not opening:
+                return
+
+            current = "currentBBox" in opening and opening["currentBBox"] is not None
+            bbox = self.get_bbox(opening, current)
+            if not bbox:
+                return
+
+            ui_view = self.get_ui_view()
+            if not ui_view:
+                return
+
+            zoom_increment = 3
+            zoom_viewCorner1 = bbox.Min.Add(
+                XYZ(-zoom_increment, -zoom_increment, -zoom_increment)
+            )
+            zoom_viewCorner2 = bbox.Max.Add(
+                XYZ(zoom_increment, zoom_increment, zoom_increment)
+            )
+            ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
+        except Exception as ex:
+            print(ex)
+
 
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):
     def __init__(self, opening, sizes):
@@ -616,158 +688,3 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             Windows.Controls.Grid.SetColumn(text_block, i)
 
         self.Content = self.grid
-
-
-# example of openings:
-# openings = [
-#     {
-#         "lastScheduledLevel": None,
-#         "currentShape": None,
-#         "discipline": "E",
-#         "currentMct": None,
-#         "_id": "65b8e34d5497961932dec70b",
-#         "changeType": "deleted",
-#         "internalDocId": 1910275,
-#         "currentBBox": None,
-#         "mark": "2",
-#         "lastShape": None,
-#         "uniqueId": "1b446db6-31d7-48bd-9893-092057fd3381-001d2603",
-#         "isFloorOpening": False,
-#         "deletedAt": "2024-01-30T11:54:14.195Z",
-#         "lastBBox": None,
-#         "lastMct": None,
-#         "currentScheduledLevel": None,
-#         "isThereMoreUpdatedStates": False,
-#         "isDeleted": True,
-#     },
-#     {
-#         "lastScheduledLevel": None,
-#         "currentShape": None,
-#         "discipline": "E",
-#         "currentMct": None,
-#         "_id": "65b8e34d5497961932dec70d",
-#         "changeType": "deleted",
-#         "internalDocId": 1912473,
-#         "currentBBox": None,
-#         "mark": "7",
-#         "lastShape": None,
-#         "uniqueId": "53f9eff0-b4e8-4f95-9f2c-02b56a1d1cbf-001d2e99",
-#         "isFloorOpening": True,
-#         "deletedAt": "2024-01-30T12:23:45.193Z",
-#         "lastBBox": None,
-#         "lastMct": None,
-#         "currentScheduledLevel": None,
-#         "isThereMoreUpdatedStates": False,
-#         "isDeleted": True,
-#     },
-#     {
-#         "lastScheduledLevel": None,
-#         "currentShape": None,
-#         "discipline": "E",
-#         "currentMct": None,
-#         "_id": "65b8e36b5497961932dec716",
-#         "changeType": "deleted",
-#         "internalDocId": 1912502,
-#         "currentBBox": None,
-#         "mark": "2",
-#         "lastShape": None,
-#         "uniqueId": "59a56166-fd50-427f-a8ff-56ba95383a3a-001d2eb6",
-#         "isFloorOpening": True,
-#         "deletedAt": "2024-01-30T12:23:45.193Z",
-#         "lastBBox": None,
-#         "lastMct": None,
-#         "currentScheduledLevel": None,
-#         "isThereMoreUpdatedStates": False,
-#         "isDeleted": True,
-#     },
-#     {
-#         "lastScheduledLevel": None,
-#         "currentShape": "circular",
-#         "discipline": "E",
-#         "currentMct": False,
-#         "_id": "65b8ea595497961932dec727",
-#         "changeType": "added",
-#         "internalDocId": 1903714,
-#         "currentBBox": {
-#             "max": {
-#                 "z": 14.107611548556445,
-#                 "y": 33.353914375793082,
-#                 "x": 102.13648721403683,
-#             },
-#             "min": {
-#                 "z": 13.779527559055106,
-#                 "y": 33.025830386291595,
-#                 "x": 101.31627724028321,
-#             },
-#         },
-#         "mark": "1",
-#         "lastShape": None,
-#         "uniqueId": "ea127f05-3e56-403d-b980-29aad8edcc2e-001d0c62",
-#         "isFloorOpening": False,
-#         "currentScheduledLevel": "00",
-#         "lastBBox": None,
-#         "lastMct": None,
-#         "isThereMoreUpdatedStates": False,
-#         "isDeleted": False,
-#     },
-#     {
-#         "lastScheduledLevel": None,
-#         "currentShape": "circular",
-#         "discipline": "E",
-#         "currentMct": False,
-#         "_id": "65b8ea595497961932dec729",
-#         "changeType": "added",
-#         "internalDocId": 1909917,
-#         "currentBBox": {
-#             "max": {
-#                 "z": 13.287401574803289,
-#                 "y": 34.469399940097553,
-#                 "x": 92.184652872196736,
-#             },
-#             "min": {
-#                 "z": 12.467191601049681,
-#                 "y": 34.141315950596073,
-#                 "x": 91.856568882695399,
-#             },
-#         },
-#         "mark": "4",
-#         "lastShape": None,
-#         "uniqueId": "8081ce52-d981-4c40-9767-9c2b68710e59-001d249d",
-#         "isFloorOpening": True,
-#         "currentScheduledLevel": "00",
-#         "lastBBox": None,
-#         "lastMct": None,
-#         "isThereMoreUpdatedStates": False,
-#         "isDeleted": False,
-#     },
-#     {
-#         "lastScheduledLevel": None,
-#         "currentShape": "rectangular",
-#         "discipline": "E",
-#         "currentMct": False,
-#         "_id": "65b8ea595497961932dec72b",
-#         "changeType": "added",
-#         "internalDocId": 1910394,
-#         "currentBBox": {
-#             "max": {
-#                 "z": 14.435695538057757,
-#                 "y": 36.634754270806219,
-#                 "x": 102.13648721403671,
-#             },
-#             "min": {
-#                 "z": 13.451443569553794,
-#                 "y": 35.978586291803559,
-#                 "x": 101.31627724028326,
-#             },
-#         },
-#         "mark": "3",
-#         "lastShape": None,
-#         "uniqueId": "30c9be85-2877-4c4b-b5f5-189c164c1380-001d267a",
-#         "isFloorOpening": True,
-#         "currentScheduledLevel": "None",
-#         "lastBBox": None,
-#         "lastMct": None,
-#         "isThereMoreUpdatedStates": False,
-#         "isDeleted": False,
-#     },
-# ]
