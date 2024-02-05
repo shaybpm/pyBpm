@@ -324,7 +324,7 @@ def turn_off_isolate_mode(doc, view):
 def get_start_end_dates(dates):
     date_dict = {}
     last_last_date = dates[0]
-    str_1 = "מהתאריך: {} עד עכשיו.".format(last_last_date.ToString("dd/MM/yyyy"))
+    str_1 = "מהתאריך: {} עד עכשיו.".format(last_last_date.ToString("dd.MM.yyyy"))
     date_dict[str_1] = {
         "start": last_last_date,
         "end": DateTime.Now,
@@ -333,7 +333,7 @@ def get_start_end_dates(dates):
         last_date = dates[i - 1]
         current_date = dates[i]
         str_i = "מהתאריך: {} עד התאריך: {}.".format(
-            last_date.ToString("dd/MM/yyyy"), current_date.ToString("dd/MM/yyyy")
+            last_date.ToString("dd.MM.yyyy"), current_date.ToString("dd.MM.yyyy")
         )
         date_dict[str_i] = {
             "start": current_date,

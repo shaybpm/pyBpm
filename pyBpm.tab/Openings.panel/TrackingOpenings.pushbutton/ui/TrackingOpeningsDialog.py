@@ -599,30 +599,28 @@ class TrackingOpeningsDialog(Windows.Window):
             self.alert("מודל הקומפילציה לא טעון")
             return
 
-        # TODO: We need to provide dialog that will show the revisions *per sheet* and not all revisions
-        all_view_sheets = (
-            FilteredElementCollector(comp_doc).OfClass(ViewSheet).ToElements()
-        )
-        all_revisions_ids = []
-        for view_sheet in all_view_sheets:
+        def filter_sheets(view_sheet):
             folder_param = view_sheet.LookupParameter("Folder")
             if not folder_param:
-                continue
+                return False
             folder = folder_param.AsString()
             if not folder:
-                continue
+                return False
             if not folder.startswith("04_"):
-                continue
-            revision_ids = view_sheet.GetAllRevisionIds()
-            for rev_id in revision_ids:
-                if rev_id in all_revisions_ids:
-                    continue
-                all_revisions_ids.append(rev_id)
+                return False
+            return True
 
-        all_revisions = [comp_doc.GetElement(x) for x in all_revisions_ids]
+        view_sheet = forms.select_sheets(
+            "בחר גיליון", doc=comp_doc, filterfunc=filter_sheets, multiple=False
+        )
+        if not view_sheet:
+            return
+
+        revision_ids = view_sheet.GetAllRevisionIds()
+        revisions = [comp_doc.GetElement(x) for x in revision_ids]
 
         dates = []
-        for rev in all_revisions:
+        for rev in revisions:
             issued_by = rev.IssuedBy
             if issued_by != self.ISSUED_BY_STR:
                 continue
