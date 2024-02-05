@@ -9,14 +9,10 @@ clr.AddReference("IronPython.Wpf")
 from Autodesk.Revit.DB import (
     XYZ,
     BoundingBoxXYZ,
-    CategoryType,
-    Transaction,
     TransactionGroup,
-    Color,
     ViewType,
     ViewSheet,
     FilteredElementCollector,
-    ElementId,
 )
 
 from System import DateTime, TimeZoneInfo
@@ -27,8 +23,7 @@ import os
 from pyrevit import forms
 
 from ServerUtils import get_openings_changes  # type: ignore
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color, get_comp_link  # type: ignore
-from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_comp_link  # type: ignore
 
 import Utils
 
