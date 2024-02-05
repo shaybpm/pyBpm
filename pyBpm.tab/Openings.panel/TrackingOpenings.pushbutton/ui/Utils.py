@@ -14,11 +14,18 @@ from Autodesk.Revit.DB import (
     SetComparisonResult,
     RevisionCloud,
     Revision,
+    CategoryType,
+    Color,
+    BoundingBoxXYZ,
 )
 
 from System.Collections.Generic import List
 
 from pyrevit import forms
+
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color, get_comp_link  # type: ignore
+
+from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter  # type: ignore
 
 
 def get_opening_revision(doc):
@@ -233,3 +240,43 @@ def create_revision_clouds(doc, view, bboxes):
     t.Commit()
 
     t_group.Assimilate()
+
+
+def show_opening_3d(uidoc, ui_view, view_3d, bbox):
+    doc = uidoc.Document
+    turn_of_categories(
+        doc,
+        view_3d,
+        CategoryType.Annotation,
+        except_categories=["Section Boxes"],
+    )
+
+    opening_filter = get_opening_filter(doc)
+    yellow = Color(255, 255, 0)
+    ogs = get_ogs_by_color(doc, yellow)
+    t1 = Transaction(doc, "pyBpm | Set Opening Filter")
+    t1.Start()
+    view_3d.SetFilterOverrides(opening_filter.Id, ogs)
+    t1.Commit()
+
+    uidoc.ActiveView = view_3d
+
+    t2 = Transaction(doc, "pyBpm | Set Section Boxes")
+    t2.Start()
+    section_box_increment = 0.4
+    bbox_section_box = BoundingBoxXYZ()
+    bbox_section_box.Min = bbox.Min.Add(
+        XYZ(-section_box_increment, -section_box_increment, -section_box_increment)
+    )
+    bbox_section_box.Max = bbox.Max.Add(
+        XYZ(section_box_increment, section_box_increment, section_box_increment)
+    )
+    view_3d.SetSectionBox(bbox_section_box)
+    t2.Commit()
+
+    zoom_increment = 0.8
+    zoom_viewCorner1 = bbox.Min.Add(
+        XYZ(-zoom_increment, -zoom_increment, -zoom_increment)
+    )
+    zoom_viewCorner2 = bbox.Max.Add(XYZ(zoom_increment, zoom_increment, zoom_increment))
+    ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)

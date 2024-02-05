@@ -798,45 +798,7 @@ class TrackingOpeningsDialog(Windows.Window):
         if not view_3d:
             self.alert("תקלה בקבלת תצוגת 3D")
             return
-        turn_of_categories(
-            self.doc,
-            view_3d,
-            CategoryType.Annotation,
-            except_categories=["Section Boxes"],
-        )
-
-        opening_filter = get_opening_filter(self.doc)
-        yellow = Color(255, 255, 0)
-        ogs = get_ogs_by_color(self.doc, yellow)
-        t1 = Transaction(self.doc, "pyBpm | Set Opening Filter")
-        t1.Start()
-        view_3d.SetFilterOverrides(opening_filter.Id, ogs)
-        t1.Commit()
-
-        self.uidoc.ActiveView = view_3d
-
-        t2 = Transaction(self.doc, "pyBpm | Set Section Boxes")
-        t2.Start()
-        section_box_increment = 0.4
-        bbox_section_box = BoundingBoxXYZ()
-        bbox_section_box.Min = bbox.Min.Add(
-            XYZ(-section_box_increment, -section_box_increment, -section_box_increment)
-        )
-        bbox_section_box.Max = bbox.Max.Add(
-            XYZ(section_box_increment, section_box_increment, section_box_increment)
-        )
-        view_3d.SetSectionBox(bbox_section_box)
-        t2.Commit()
-
-        zoom_increment = 0.8
-        zoom_viewCorner1 = bbox.Min.Add(
-            XYZ(-zoom_increment, -zoom_increment, -zoom_increment)
-        )
-        zoom_viewCorner2 = bbox.Max.Add(
-            XYZ(zoom_increment, zoom_increment, zoom_increment)
-        )
-        ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
-
+        Utils.show_opening_3d(self.uidoc, ui_view, view_3d, bbox)
         t_group.Assimilate()
 
     def show_opening_3D_btn_click(self, sender, e):
