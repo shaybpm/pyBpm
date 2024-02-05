@@ -643,45 +643,24 @@ class TrackingOpeningsDialog(Windows.Window):
 
         dates = sorted(dates, reverse=True)
 
-        date_dict = {}
-        last_last_date = dates[0]
-        str_1 = "מהתאריך: {} עד עכשיו.".format(last_last_date.ToString("dd/MM/yyyy"))
-        date_dict[str_1] = {
-            "start": last_last_date,
-            "end": DateTime.Now,
-        }
-        for i in range(1, len(dates)):
-            last_date = dates[i - 1]
-            current_date = dates[i]
-            str_i = "מהתאריך: {} עד התאריך: {}.".format(
-                last_date.ToString("dd/MM/yyyy"), current_date.ToString("dd/MM/yyyy")
-            )
-            date_dict[str_i] = {
-                "start": current_date,
-                "end": last_date,
-            }
-
-        string_list = list(date_dict.keys())
-        selected_date_str = forms.SelectFromList.show(
-            string_list, title="בחר תאריכים", multiselect=False
-        )
-        if not selected_date_str:
+        start, end = Utils.get_start_end_dates(dates)
+        if not start or not end:
             return
 
-        self.start_date_DatePicker.SelectedDate = date_dict[selected_date_str]["start"]
-        self.end_date_DatePicker.SelectedDate = date_dict[selected_date_str]["end"]
+        self.start_date_DatePicker.SelectedDate = start
+        self.end_date_DatePicker.SelectedDate = end
 
         self.start_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
-            date_dict[selected_date_str]["start"].ToString(self.time_string_format)
+            start.ToString(self.time_string_format)
         )
         self.start_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
-            date_dict[selected_date_str]["start"].ToString(self.time_string_format)
+            start.ToString(self.time_string_format)
         )
         self.end_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
-            date_dict[selected_date_str]["end"].ToString(self.time_string_format)
+            end.ToString(self.time_string_format)
         )
         self.end_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
-            date_dict[selected_date_str]["end"].ToString(self.time_string_format)
+            end.ToString(self.time_string_format)
         )
         self.update_start_date()
         self.update_end_date()
