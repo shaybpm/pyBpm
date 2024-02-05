@@ -11,8 +11,6 @@ from Autodesk.Revit.DB import (
     BoundingBoxXYZ,
     TransactionGroup,
     ViewType,
-    ViewSheet,
-    FilteredElementCollector,
 )
 
 from System import DateTime, TimeZoneInfo
