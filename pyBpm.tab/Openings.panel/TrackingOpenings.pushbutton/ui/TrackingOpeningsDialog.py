@@ -96,6 +96,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.doc = self.uidoc.Document
 
         self._allow_transactions = False
+        self.handle_transaction_buttons_state(self._allow_transactions)
 
         self._openings = []
         self._display_openings = []
@@ -185,6 +186,7 @@ class TrackingOpeningsDialog(Windows.Window):
     @allow_transactions.setter
     def allow_transactions(self, value):
         self._allow_transactions = value
+        self.handle_transaction_buttons_state(value)
 
     @property
     def display_openings(self):
@@ -258,6 +260,12 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def not_allow_transactions_alert(self):
         self.alert("להפעלת אפשרות זו, יש ללחוץ על כפתור הסקריפט בעת החזקת השיפט במקלדת")
+
+    def handle_transaction_buttons_state(self, value):
+        self.show_opening_3D_btn.IsEnabled = value
+        self.create_cloud_btn.IsEnabled = value
+        self.show_previous_location_3D_btn.IsEnabled = value
+        self.isolate_btn.IsEnabled = value
 
     def set_all_filters(self):
         self.level_filter_ComboBox.Items.Clear()
@@ -678,7 +686,8 @@ class TrackingOpeningsDialog(Windows.Window):
         self.end_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
             date_dict[selected_date_str]["end"].ToString(self.time_string_format)
         )
-        self.handle_show_openings_btn_enabled()
+        self.update_start_date()
+        self.update_end_date()
 
     def show_openings_btn_click(self, sender, e):
         try:
@@ -951,6 +960,18 @@ class TrackingOpeningsDialog(Windows.Window):
             self.create_revision_clouds()
         except Exception as ex:
             print(ex)
+
+    def isolate_btn_mouse_down(self, sender, e):
+        if not self.allow_transactions:
+            self.not_allow_transactions_alert()
+            return
+        print("isolate_btn_mouse_down")
+
+    def isolate_btn_mouse_up(self, sender, e):
+        if not self.allow_transactions:
+            self.not_allow_transactions_alert()
+            return
+        print("isolate_btn_mouse_up")
 
 
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):
