@@ -857,42 +857,6 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
-    def turn_on_isolate_mode(self, view):
-        t_group = TransactionGroup(self.doc, "pyBpm | Turn On Isolate Mode")
-        t_group.Start()
-
-        t1 = Transaction(self.doc, "pyBpm | Turn On Isolate Mode")
-        t1.Start()
-        view.EnableTemporaryViewPropertiesMode(view.Id)
-        t1.Commit()
-
-        turn_of_categories(self.doc, view, CategoryType.Annotation)
-        turn_of_categories(
-            self.doc, view, CategoryType.Model, ["RVT Links", "Generic Models"]
-        )
-
-        opening_filter = get_opening_filter(self.doc)
-        yellow = Color(255, 255, 0)
-        ogs = get_ogs_by_color(self.doc, yellow)
-        t2 = Transaction(self.doc, "pyBpm | Set Opening Filter")
-        t2.Start()
-        view.SetFilterOverrides(opening_filter.Id, ogs)
-        t2.Commit()
-
-        not_opening = get_not_opening_filter(self.doc)
-        t3 = Transaction(self.doc, "pyBpm | Set Not Opening Filter")
-        t3.Start()
-        view.SetFilterVisibility(not_opening.Id, False)
-        t3.Commit()
-
-        t_group.Assimilate()
-
-    def turn_off_isolate_mode(self, view):
-        t = Transaction(self.doc, "pyBpm | Turn Off Isolate Mode")
-        t.Start()
-        view.EnableTemporaryViewPropertiesMode(ElementId.InvalidElementId)
-        t.Commit()
-
     def isolate_btn_mouse_down(self, sender, e):
         if not self.allow_transactions:
             self.not_allow_transactions_alert()
@@ -907,7 +871,7 @@ class TrackingOpeningsDialog(Windows.Window):
             self.alert("לא זמין במבט הנוכחי.")
             return
         try:
-            self.turn_on_isolate_mode(active_view)
+            Utils.turn_on_isolate_mode(self.doc, active_view)
         except Exception as ex:
             print(ex)
 
@@ -922,7 +886,7 @@ class TrackingOpeningsDialog(Windows.Window):
         if not active_view.IsTemporaryViewPropertiesModeEnabled():
             return
         try:
-            self.turn_off_isolate_mode(active_view)
+            Utils.turn_off_isolate_mode(self.doc, active_view)
         except Exception as ex:
             print(ex)
 
