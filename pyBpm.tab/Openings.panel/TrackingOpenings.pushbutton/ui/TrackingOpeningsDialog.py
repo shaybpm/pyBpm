@@ -599,6 +599,7 @@ class TrackingOpeningsDialog(Windows.Window):
             self.alert("מודל הקומפילציה לא טעון")
             return
 
+        # TODO: We need to provide dialog that will show the revisions *per sheet* and not all revisions
         all_view_sheets = (
             FilteredElementCollector(comp_doc).OfClass(ViewSheet).ToElements()
         )
@@ -637,7 +638,6 @@ class TrackingOpeningsDialog(Windows.Window):
 
         dates = sorted(dates, reverse=True)
 
-        # string_list = []
         date_dict = {}
         last_last_date = dates[0]
         str_1 = "מהתאריך: {} עד עכשיו.".format(last_last_date.ToString("dd/MM/yyyy"))
