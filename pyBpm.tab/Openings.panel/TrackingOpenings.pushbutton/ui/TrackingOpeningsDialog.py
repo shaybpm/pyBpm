@@ -18,6 +18,8 @@ from Autodesk.Revit.DB import (
     RevisionCloud,
     Line,
     Curve,
+    ViewSheet,
+    FilteredElementCollector,
 )
 
 from System.Collections.Generic import List
@@ -30,7 +32,7 @@ import os
 from pyrevit import forms
 
 from ServerUtils import get_openings_changes  # type: ignore
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color, get_comp_link  # type: ignore
 from RevitUtilsOpenings import get_opening_filter  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
@@ -173,6 +175,8 @@ class TrackingOpeningsDialog(Windows.Window):
         self.floor_filter_ComboBox.SelectionChanged += (
             self.floor_filter_ComboBox_SelectionChanged
         )
+
+        self.ISSUED_BY_STR = "PYBPM_OPENINGS"
 
     @property
     def allow_transactions(self):
@@ -585,7 +589,96 @@ class TrackingOpeningsDialog(Windows.Window):
         self.update_end_date()
 
     def get_dates_by_latest_sheet_versions_btn_click(self, sender, e):
-        pass
+        comp_link = get_comp_link(self.doc)
+        if not comp_link:
+            self.alert("מודל הקומפילציה לא נמצא")
+            return
+
+        comp_doc = comp_link.GetLinkDocument()
+        if not comp_doc:
+            self.alert("מודל הקומפילציה לא טעון")
+            return
+
+        all_view_sheets = (
+            FilteredElementCollector(comp_doc).OfClass(ViewSheet).ToElements()
+        )
+        all_revisions_ids = []
+        for view_sheet in all_view_sheets:
+            folder_param = view_sheet.LookupParameter("Folder")
+            if not folder_param:
+                continue
+            folder = folder_param.AsString()
+            if not folder:
+                continue
+            if not folder.startswith("04_"):
+                continue
+            revision_ids = view_sheet.GetAllRevisionIds()
+            for rev_id in revision_ids:
+                if rev_id in all_revisions_ids:
+                    continue
+                all_revisions_ids.append(rev_id)
+
+        all_revisions = [comp_doc.GetElement(x) for x in all_revisions_ids]
+
+        dates = []
+        for rev in all_revisions:
+            issued_by = rev.IssuedBy
+            if issued_by != self.ISSUED_BY_STR:
+                continue
+            issued_to = rev.IssuedTo
+            try:
+                dates.append(self.get_date_by_time_string(issued_to))
+            except:
+                pass
+
+        if len(dates) == 0:
+            self.alert("לא נמצאו תאריכים")
+            return
+
+        dates = sorted(dates, reverse=True)
+
+        # string_list = []
+        date_dict = {}
+        last_last_date = dates[0]
+        str_1 = "מהתאריך: {} עד עכשיו.".format(last_last_date.ToString("dd/MM/yyyy"))
+        date_dict[str_1] = {
+            "start": last_last_date,
+            "end": DateTime.Now,
+        }
+        for i in range(1, len(dates)):
+            last_date = dates[i - 1]
+            current_date = dates[i]
+            str_i = "מהתאריך: {} עד התאריך: {}.".format(
+                last_date.ToString("dd/MM/yyyy"), current_date.ToString("dd/MM/yyyy")
+            )
+            date_dict[str_i] = {
+                "start": current_date,
+                "end": last_date,
+            }
+
+        string_list = list(date_dict.keys())
+        selected_date_str = forms.SelectFromList.show(
+            string_list, title="בחר תאריכים", multiselect=False
+        )
+        if not selected_date_str:
+            return
+
+        self.start_date_DatePicker.SelectedDate = date_dict[selected_date_str]["start"]
+        self.end_date_DatePicker.SelectedDate = date_dict[selected_date_str]["end"]
+
+        self.start_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
+            date_dict[selected_date_str]["start"].ToString(self.time_string_format)
+        )
+        self.start_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
+            date_dict[selected_date_str]["start"].ToString(self.time_string_format)
+        )
+        self.end_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
+            date_dict[selected_date_str]["end"].ToString(self.time_string_format)
+        )
+        self.end_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
+            date_dict[selected_date_str]["end"].ToString(self.time_string_format)
+        )
+        self.handle_show_openings_btn_enabled()
 
     def show_openings_btn_click(self, sender, e):
         try:
@@ -763,16 +856,9 @@ class TrackingOpeningsDialog(Windows.Window):
     def get_opening_revision(self):
         all_revisions_ids = Revision.GetAllRevisionIds(self.doc)
         all_revisions = [self.doc.GetElement(x) for x in all_revisions_ids]
-
-        ISSUED_BY_STR = "PYBPM_OPENINGS"
-        rev_strings = []
-        for rev in all_revisions:
-            issued_by = rev.IssuedBy
-            if issued_by != ISSUED_BY_STR:
-                continue
-            date = rev.RevisionDate
-            description = rev.Description
-            rev_strings.append("{} - {}".format(date.ToString(), description))
+        rev_strings = [
+            "{} - {}".format(rev.RevisionDate, rev.Description) for rev in all_revisions
+        ]
 
         CREATE_NEW_REVISION = "צור מהדורה חדשה"
         rev_strings.append(CREATE_NEW_REVISION)
@@ -787,12 +873,8 @@ class TrackingOpeningsDialog(Windows.Window):
             t = Transaction(self.doc, "pyBpm | Create New Revision")
             t.Start()
             rev = Revision.Create(self.doc)
-            rev.IssuedBy = ISSUED_BY_STR
-            time_now = DateTime.Now
-            rev.RevisionDate = time_now.ToString("dd/MM/yyyy")
+            rev.RevisionDate = DateTime.Now.ToString("dd/MM/yyyy")
             rev.Description = "עדכון פתחים"
-            utc_time_now = DateTime.UtcNow
-            rev.IssuedTo = utc_time_now.ToString(self.time_string_format)
             t.Commit()
             return rev
 

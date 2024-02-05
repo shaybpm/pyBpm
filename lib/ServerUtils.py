@@ -31,6 +31,12 @@ class ServerPermissions:
             current_data = self.set_project_permissions()
         return current_data["openings_tracking"]
 
+    def get_opening_set_by_synch_permission(self):
+        current_data = self.get_data()
+        if "opening_set_by_synch" not in current_data:
+            current_data = self.set_project_permissions()
+        return current_data["opening_set_by_synch"]
+
     def set_project_permissions(self):
         project_permission_data = get(
             server_url + "api/info/permission-status/" + self.model_info["projectGuid"]

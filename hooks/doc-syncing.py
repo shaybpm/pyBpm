@@ -26,7 +26,7 @@ try:
 
     def run():
         server_permissions = ServerPermissions(doc)
-        if not server_permissions.get_openings_tracking_permission():
+        if not server_permissions.get_opening_set_by_synch_permission():
             return
 
         opening_set_temp_file_id = get_opening_set_temp_file_id(doc)

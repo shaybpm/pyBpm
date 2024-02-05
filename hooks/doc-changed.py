@@ -41,7 +41,7 @@ try:
     def run():
         doc = EXEC_PARAMS.event_args.GetDocument()
         server_permissions = ServerPermissions(doc)
-        if not server_permissions.get_openings_tracking_permission():
+        if not server_permissions.get_opening_set_by_synch_permission():
             return
 
         category_filter = ElementCategoryFilter(BuiltInCategory.OST_GenericModel)
