@@ -34,7 +34,7 @@ from pyrevit import forms
 
 from ServerUtils import get_openings_changes  # type: ignore
 from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color, get_comp_link  # type: ignore
-from RevitUtilsOpenings import get_opening_filter  # type: ignore
+from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
@@ -966,15 +966,29 @@ class TrackingOpeningsDialog(Windows.Window):
         t_group = TransactionGroup(self.doc, "pyBpm | Turn On Isolate Mode")
         t_group.Start()
 
-        t = Transaction(self.doc, "pyBpm | Turn On Isolate Mode")
-        t.Start()
+        t1 = Transaction(self.doc, "pyBpm | Turn On Isolate Mode")
+        t1.Start()
         view.EnableTemporaryViewPropertiesMode(view.Id)
-        t.Commit()
+        t1.Commit()
 
         turn_of_categories(self.doc, view, CategoryType.Annotation)
         turn_of_categories(
             self.doc, view, CategoryType.Model, ["RVT Links", "Generic Models"]
         )
+
+        opening_filter = get_opening_filter(self.doc)
+        yellow = Color(255, 255, 0)
+        ogs = get_ogs_by_color(self.doc, yellow)
+        t2 = Transaction(self.doc, "pyBpm | Set Opening Filter")
+        t2.Start()
+        view.SetFilterOverrides(opening_filter.Id, ogs)
+        t2.Commit()
+
+        not_opening = get_not_opening_filter(self.doc)
+        t3 = Transaction(self.doc, "pyBpm | Set Not Opening Filter")
+        t3.Start()
+        view.SetFilterVisibility(not_opening.Id, False)
+        t3.Commit()
 
         t_group.Assimilate()
 
