@@ -20,6 +20,7 @@ from Autodesk.Revit.DB import (
     Curve,
     ViewSheet,
     FilteredElementCollector,
+    ElementId,
 )
 
 from System.Collections.Generic import List
@@ -961,17 +962,60 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
+    def turn_on_isolate_mode(self, view):
+        t_group = TransactionGroup(self.doc, "pyBpm | Turn On Isolate Mode")
+        t_group.Start()
+
+        t = Transaction(self.doc, "pyBpm | Turn On Isolate Mode")
+        t.Start()
+        view.EnableTemporaryViewPropertiesMode(view.Id)
+        t.Commit()
+
+        turn_of_categories(self.doc, view, CategoryType.Annotation)
+        turn_of_categories(
+            self.doc, view, CategoryType.Model, ["RVT Links", "Generic Models"]
+        )
+
+        t_group.Assimilate()
+
+    def turn_off_isolate_mode(self, view):
+        t = Transaction(self.doc, "pyBpm | Turn Off Isolate Mode")
+        t.Start()
+        view.EnableTemporaryViewPropertiesMode(ElementId.InvalidElementId)
+        t.Commit()
+
     def isolate_btn_mouse_down(self, sender, e):
         if not self.allow_transactions:
             self.not_allow_transactions_alert()
             return
-        print("isolate_btn_mouse_down")
+        active_view = self.uidoc.ActiveView
+        if not active_view:
+            self.alert("לא נמצא מבט פעיל")
+            return
+        if active_view.IsTemporaryViewPropertiesModeEnabled():
+            return
+        if not active_view.CanEnableTemporaryViewPropertiesMode():
+            self.alert("לא זמין במבט הנוכחי.")
+            return
+        try:
+            self.turn_on_isolate_mode(active_view)
+        except Exception as ex:
+            print(ex)
 
     def isolate_btn_mouse_up(self, sender, e):
         if not self.allow_transactions:
             self.not_allow_transactions_alert()
             return
-        print("isolate_btn_mouse_up")
+        active_view = self.uidoc.ActiveView
+        if not active_view:
+            self.alert("לא נמצא מבט פעיל")
+            return
+        if not active_view.IsTemporaryViewPropertiesModeEnabled():
+            return
+        try:
+            self.turn_off_isolate_mode(active_view)
+        except Exception as ex:
+            print(ex)
 
 
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):
