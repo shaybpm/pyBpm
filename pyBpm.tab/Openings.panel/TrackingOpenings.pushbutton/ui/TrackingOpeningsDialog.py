@@ -599,25 +599,9 @@ class TrackingOpeningsDialog(Windows.Window):
             self.alert("מודל הקומפילציה לא טעון")
             return
 
-        def filter_sheets(view_sheet):
-            folder_param = view_sheet.LookupParameter("Folder")
-            if not folder_param:
-                return False
-            folder = folder_param.AsString()
-            if not folder:
-                return False
-            if not folder.startswith("04_"):
-                return False
-            return True
-
-        view_sheet = forms.select_sheets(
-            "בחר גיליון", doc=comp_doc, filterfunc=filter_sheets, multiple=False
-        )
-        if not view_sheet:
+        revisions = Utils.get_revisions(comp_doc)
+        if not revisions:
             return
-
-        revision_ids = view_sheet.GetAllRevisionIds()
-        revisions = [comp_doc.GetElement(x) for x in revision_ids]
 
         dates = []
         for rev in revisions:
