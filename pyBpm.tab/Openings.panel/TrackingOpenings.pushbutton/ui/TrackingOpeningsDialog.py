@@ -896,6 +896,7 @@ class TrackingOpeningsDialog(Windows.Window):
         if active_view.ViewType not in [
             ViewType.FloorPlan,
             ViewType.CeilingPlan,
+            ViewType.EngineeringPlan,
         ]:
             self.alert("לא זמין במבט זה")
             return
