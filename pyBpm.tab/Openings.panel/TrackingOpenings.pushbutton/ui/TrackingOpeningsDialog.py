@@ -682,12 +682,22 @@ class TrackingOpeningsDialog(Windows.Window):
         db_bbox = opening[bbox_key_name]
 
         bbox = BoundingBoxXYZ()
-        bbox.Min = transform.OfPoint(
+        point_1 = transform.OfPoint(
             XYZ(db_bbox["min"]["x"], db_bbox["min"]["y"], db_bbox["min"]["z"])
         )
-        bbox.Max = transform.OfPoint(
+        point_2 = transform.OfPoint(
             XYZ(db_bbox["max"]["x"], db_bbox["max"]["y"], db_bbox["max"]["z"])
         )
+
+        min_x = min(point_1.X, point_2.X)
+        min_y = min(point_1.Y, point_2.Y)
+        min_z = min(point_1.Z, point_2.Z)
+        max_x = max(point_1.X, point_2.X)
+        max_y = max(point_1.Y, point_2.Y)
+        max_z = max(point_1.Z, point_2.Z)
+
+        bbox.Min = XYZ(min_x, min_y, min_z)
+        bbox.Max = XYZ(max_x, max_y, max_z)
 
         return bbox
 
