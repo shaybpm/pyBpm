@@ -41,17 +41,17 @@ try:
             current_version_list = current_version.split(".")
             current_version_list = [int(x) for x in current_version_list]
 
-            if version_update_required_list[0] > current_version_list[0]:
-                Update.run(do_not_print=True)
-            elif (
-                version_update_required_list[0] == current_version_list[0]
-                and version_update_required_list[1] > current_version_list[1]
-            ):
-                Update.run(do_not_print=True)
-            elif (
-                version_update_required_list[0] == current_version_list[0]
-                and version_update_required_list[1] == current_version_list[1]
-                and version_update_required_list[2] > current_version_list[2]
+            if (
+                (version_update_required_list[0] > current_version_list[0])
+                or (
+                    version_update_required_list[0] == current_version_list[0]
+                    and version_update_required_list[1] > current_version_list[1]
+                )
+                or (
+                    version_update_required_list[0] == current_version_list[0]
+                    and version_update_required_list[1] == current_version_list[1]
+                    and version_update_required_list[2] > current_version_list[2]
+                )
             ):
                 Update.run(do_not_print=True)
 

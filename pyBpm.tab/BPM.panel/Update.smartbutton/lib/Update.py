@@ -71,7 +71,8 @@ def run(do_not_print=False, do_not_reload=False):
     os.rename(zipped_folder, pyBpm_folder)
     os.remove(zip_filename)
 
-    output.print_html('<div style="color:green;">The update was successful.</div>')
+    if not do_not_print:
+        output.print_html('<div style="color:green;">The update was successful.</div>')
 
     if do_not_reload:
         return
