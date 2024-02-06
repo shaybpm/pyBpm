@@ -6,6 +6,8 @@ from Autodesk.Revit.DB import FilteredElementCollector, Family
 from pyrevit import script
 
 # ------------------------------------------------------------
+output = script.get_output()
+output.close_others()
 
 
 def get_family_path(family_name):
@@ -14,7 +16,6 @@ def get_family_path(family_name):
 
 
 def run(doc, family_names):
-    output = script.get_output()
     output.print_html("<h1>Load Opening Families</h1>")
 
     some_family_already_exist = False

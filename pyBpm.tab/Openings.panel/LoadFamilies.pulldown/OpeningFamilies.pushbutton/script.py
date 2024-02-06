@@ -3,7 +3,7 @@
 families:
 - M_Rectangular Face Opening Solid.rfa
 - M_Round Face Opening Solid.rfa """
-__title__ = "Opening Families"
+__title__ = "Opening\nFamilies"
 __author__ = "Eyal Sinay"
 
 # -------------------------------

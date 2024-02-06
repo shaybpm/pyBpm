@@ -13,12 +13,9 @@ from Autodesk.Revit.DB import (
     BuiltInFailures,
 )
 
-import os, sys
-
-root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
-sys.path.append(os.path.join(root_path, "lib"))
 import pyUtils  # type: ignore
 import RevitUtils  # type: ignore
+import RevitUtilsOpenings  # type: ignore
 from PyRevitUtils import TempElementStorage  # type: ignore
 from Config import get_opening_set_temp_file_id  # type: ignore
 
@@ -26,14 +23,10 @@ from Config import get_opening_set_temp_file_id  # type: ignore
 # -------------SCRIPT-------------
 # --------------------------------
 
-opening_names = [
-    "Round Face Opening",
-    "Rectangular Face Opening",
-    "CIRC_FLOOR OPENING",
-    "CIRC_WALL OPENING",
-    "REC_FLOOR OPENING",
-    "REC_WALL OPENING",
-]
+shapes = RevitUtilsOpenings.shapes
+opening_names = RevitUtilsOpenings.opening_names
+
+param_mct_probable_names = ["Detail - Yes / No"]
 
 
 class Preprocessor(IFailuresPreprocessor):
@@ -200,15 +193,15 @@ def set_elevation_params(doc, opening):
     param__opening_absolute_level = opening.LookupParameter("Opening Absolute Level")
     if not param__opening_elevation or not param__opening_absolute_level:
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "No Opening Elevation or Opening Absolute Level parameter found."
+        results["message"] = (
+            "No Opening Elevation or Opening Absolute Level parameter found."
+        )
         return results
     if param__opening_elevation.IsReadOnly or param__opening_absolute_level.IsReadOnly:
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "Opening Elevation or Opening Absolute Level parameter is read only."
+        results["message"] = (
+            "Opening Elevation or Opening Absolute Level parameter is read only."
+        )
         return results
     param__opening_elevation.Set(opening_location_point_z - project_base_point_position)
     param__opening_absolute_level.Set(opening_location_point_z - survey_point_position)
@@ -237,15 +230,15 @@ def set_ref_level_and_mid_elevation(opening):
         or not param__middle_elevation
     ):
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found."
+        results["message"] = (
+            "No Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter found."
+        )
         return results
     if param__reference_level.IsReadOnly or param__middle_elevation.IsReadOnly:
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter is read only."
+        results["message"] = (
+            "Schedule Level or ##Reference Level or Elevation from Level or ##Middle Elevation parameter is read only."
+        )
         return results
     param__reference_level.Set(param__schedule_level.AsValueString())
     param__middle_elevation.Set(param__elevation_from_level.AsDouble())
@@ -311,9 +304,9 @@ def is_positioned_correctly(opening):
         or not param__additional_bottom_cut_offset
     ):
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "No Cut Offset or Additional Top Cut Offset or Additional Bottom Cut Offset parameter found."
+        results["message"] = (
+            "No Cut Offset or Additional Top Cut Offset or Additional Bottom Cut Offset parameter found."
+        )
         return results
 
     bbox = opening.get_BoundingBox(None)
@@ -326,16 +319,16 @@ def is_positioned_correctly(opening):
     bb_num = bbox.Max.Z - bbox.Min.Z
     if pyUtils.is_close(h_num, bb_num, 0.001):
         param__insertion_configuration.Set("OK")
-        results[
-            "message"
-        ] = "The position is correct. Insertion Configuration set to OK."
+        results["message"] = (
+            "The position is correct. Insertion Configuration set to OK."
+        )
         return results
     else:
         param__insertion_configuration.Set("NOT-OK")
         results["status"] = "WARNING"
-        results[
-            "message"
-        ] = "The position is not correct. Insertion Configuration set to NOT-OK. You can fix it by selecting the opening and press spacebar."
+        results["message"] = (
+            "The position is not correct. Insertion Configuration set to NOT-OK. You can fix it by selecting the opening and press spacebar."
+        )
         return results
 
 
@@ -446,10 +439,138 @@ def execute_all_functions(doc, opening):
     return results
 
 
-def execute_all_functions_for_all_openings(doc, all_openings):
+def post_openings_data(doc, openings, to_print=False):
+    """Posts the openings data to the server if this project has the openings tracking permission."""
+    from ServerUtils import ServerPermissions  # type: ignore
+
+    server_permissions = ServerPermissions(doc)
+    if not server_permissions.get_openings_tracking_permission():
+        return
+
+    from HttpRequest import post  # type: ignore
+    from Config import server_url  # type: ignore
+
+    openings_data = []
+    for opening in openings:
+        bbox = opening.get_BoundingBox(None)
+        if not bbox:
+            if to_print:
+                print("Opening {} has no bounding box.".format(opening.Id))
+            continue
+
+        mct = None
+        for param_name in param_mct_probable_names:
+            param = opening.LookupParameter(param_name)
+            if not param:
+                if to_print:
+                    print(
+                        "Opening {} has no {} parameter.".format(opening.Id, param_name)
+                    )
+                continue
+            if param.AsInteger() == 1:
+                mct = True
+                break
+            elif param.AsInteger() == 0:
+                mct = False
+                break
+        if mct is None:
+            if to_print:
+                print("Opening {} has no MCT parameter.".format(opening.Id))
+            continue
+
+        scheduledLevel = None
+        param__schedule_level = opening.get_Parameter(
+            BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM
+        )
+        id__schedule_level = param__schedule_level.AsElementId()
+        if id__schedule_level == ElementId.InvalidElementId:
+            scheduledLevel = "None"
+        else:
+            scheduledLevelElement = doc.GetElement(id__schedule_level)
+            if not scheduledLevelElement:
+                scheduledLevel = "None"
+            else:
+                scheduledLevel = scheduledLevelElement.Name
+
+        shape = None
+        for shape_name in shapes:
+            if opening.Name in shapes[shape_name]:
+                shape = shape_name
+                break
+        if not shape:
+            if to_print:
+                print("Opening {} has no shape.".format(opening.Id))
+            continue
+
+        discipline = None
+        opening_symbol = opening.Symbol
+        param__Description = opening_symbol.LookupParameter("Description")
+        if param__Description:
+            discipline = param__Description.AsString() or "?"
+        if not discipline:
+            continue
+
+        mark = None
+        param__mark = opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
+        if param__mark:
+            mark = param__mark.AsString()
+        if not mark:
+            if to_print:
+                print("Opening {} has no mark.".format(opening.Id))
+            continue
+
+        opening_data = {
+            "uniqueId": opening.UniqueId,
+            "internalDocId": opening.Id.IntegerValue,
+            "isFloorOpening": is_floor(opening),
+            "discipline": discipline,
+            "mark": mark,
+            "state": {
+                "boundingBox": {
+                    "min": {
+                        "x": bbox.Min.X,
+                        "y": bbox.Min.Y,
+                        "z": bbox.Min.Z,
+                    },
+                    "max": {
+                        "x": bbox.Max.X,
+                        "y": bbox.Max.Y,
+                        "z": bbox.Max.Z,
+                    },
+                },
+                "mct": mct,
+                "scheduledLevel": scheduledLevel,
+                "shape": shape,
+            },
+        }
+        openings_data.append(opening_data)
+
+    if to_print and len(openings_data) != len(openings):
+        print("Some openings were not posted to the server.")
+
+    model_info = RevitUtils.get_model_info(doc)
+    data = {
+        "projectGuid": model_info["projectGuid"],
+        "modelGuid": model_info["modelGuid"],
+        "modelPathName": model_info["modelPathName"],
+        "openings": openings_data,
+    }
+
+    try:
+        post(server_url + "api/openings/tracking/opening-set", data)
+    except Exception as e:
+        if to_print:
+            print("Failed to post openings data to the server.")
+            print(e)
+
+
+def execute_all_functions_for_all_openings(doc, all_openings, print_post_func=False):
     """Executes all the functions for all the given openings."""
+
     results = []
     for opening in all_openings:
         opening_results = execute_all_functions(doc, opening)
         results.append(opening_results)
+
+    post_openings_data(doc, all_openings, print_post_func)
     return results

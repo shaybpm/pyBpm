@@ -39,7 +39,6 @@ def alert(msg):
 
 
 def print_results(results):
-    output = script.get_output()
     output.print_html("<h1>Opening Set</h1>")
     output.print_html(
         '<div style="color:gray">Number of openings found: {}</div>'.format(
@@ -114,7 +113,7 @@ def run():
     failOpt.SetFailuresPreprocessor(preprocessor)
     t.SetFailureHandlingOptions(failOpt)
 
-    results = OpeningSet.execute_all_functions_for_all_openings(doc, all_openings)
+    results = OpeningSet.execute_all_functions_for_all_openings(doc, all_openings, True)
 
     if __shiftclick__:  # type: ignore
         print_full_results(results)

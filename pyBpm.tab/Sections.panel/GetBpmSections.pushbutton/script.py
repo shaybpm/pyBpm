@@ -27,10 +27,6 @@ from Autodesk.Revit.UI import TaskDialog
 
 from pyrevit import forms
 
-import sys, os
-
-root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
-sys.path.append(os.path.join(root_path, "lib"))
 import RevitUtils, pyUtils  # type: ignore
 
 # -------------------------------

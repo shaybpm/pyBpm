@@ -7,13 +7,10 @@ __author__ = "Eyal Sinay"
 # ------------IMPORTS------------
 # -------------------------------
 
-import os, sys
+import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 import Update  # type: ignore
 
-root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
-sys.path.append(os.path.join(root_path, "lib"))
 import HttpRequest  # type: ignore
 import pyUtils  # type: ignore
 import Config  # type: ignore
@@ -25,12 +22,12 @@ import Config  # type: ignore
 
 def __selfinit__(script_cmp, ui_button_cmp, __rvt__):
     try:
-        github_extension_file = HttpRequest.get_request(
+        github_extension_file = HttpRequest.get(
             "https://raw.githubusercontent.com/shaybpm/pyBpm/main/extension.json"
         )
         last_version = github_extension_file["version"]
 
-        local_extension_path = os.path.join(root_path, "extension.json")
+        local_extension_path = os.path.join(Config.root_path, "extension.json")
         local_extension_file = pyUtils.get_json_from_file(local_extension_path)
         current_version = local_extension_file["version"]
 
