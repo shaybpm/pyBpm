@@ -8,7 +8,9 @@ def get_env_mode():
 
 # TODO: change the prod url
 server_url = (
-    "http://localhost:5000/" if get_env_mode() == "dev" else "http://localhost:5000/"
+    "http://localhost:5000/"
+    if get_env_mode() == "dev"
+    else "https://pybpm.azurewebsites.net/"
 )
 
 root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
