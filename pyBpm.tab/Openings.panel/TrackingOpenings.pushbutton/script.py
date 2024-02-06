@@ -30,6 +30,12 @@ doc = uidoc.Document
 
 
 def run():
+    if not doc.IsModelInCloud:
+        forms.alert(
+            "אפשרות זו זמינה רק עבור פרויקטים בענן",
+            title="פרויקט לא בענן",
+        )
+        return
     server_permissions = ServerPermissions(doc)
     openings_tracking_permission = server_permissions.get_openings_tracking_permission()
     if not openings_tracking_permission:
