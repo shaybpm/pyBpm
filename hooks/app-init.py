@@ -3,7 +3,6 @@ from Config import get_env_mode  # type: ignore
 try:
     if get_env_mode() == "prod":
         import os, sys
-        import sys, os
 
         sys.path.append(
             os.path.join(
