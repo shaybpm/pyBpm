@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-""" Get information about opening changes in this project """
+""" Get information about opening changes in this project.
+
+To get all options available for the user, run the script with the shift key pressed. """
 __title__ = "Tracking\nOpenings"
 __author__ = "BPM"
 __highlight__ = "new"
