@@ -155,18 +155,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.ALL_DISCIPLINES = "All Disciplines"
         self.FLOORS_AND_WALLS = "Floors and Walls"
         self.set_all_filters()
-        self.level_filter_ComboBox.SelectionChanged += (
-            self.level_filter_ComboBox_SelectionChanged
-        )
-        self.shape_filter_ComboBox.SelectionChanged += (
-            self.shape_filter_ComboBox_SelectionChanged
-        )
-        self.discipline_filter_ComboBox.SelectionChanged += (
-            self.discipline_filter_ComboBox_SelectionChanged
-        )
-        self.floor_filter_ComboBox.SelectionChanged += (
-            self.floor_filter_ComboBox_SelectionChanged
-        )
 
         self.ISSUED_BY_STR = "PYBPM_OPENINGS"
 
@@ -302,6 +290,21 @@ class TrackingOpeningsDialog(Windows.Window):
         self.floor_filter_ComboBox.Items.Add("Floors")
         self.floor_filter_ComboBox.Items.Add("Walls")
 
+        self.changeType_filter_ComboBox.Items.Clear()
+        self.changeType_filter_ComboBox.Items.Add("All Changes")
+        self.changeType_filter_ComboBox.SelectedIndex = 0
+        self.changeType_filter_ComboBox.Items.Add("added")
+        self.changeType_filter_ComboBox.Items.Add("updated")
+        self.changeType_filter_ComboBox.Items.Add("deleted")
+
+        self.approved_filter_ComboBox.Items.Clear()
+        self.approved_filter_ComboBox.Items.Add("All Approved")
+        self.approved_filter_ComboBox.SelectedIndex = 0
+        self.approved_filter_ComboBox.Items.Add("approved")
+        self.approved_filter_ComboBox.Items.Add("approved but later modified")
+        self.approved_filter_ComboBox.Items.Add("not approved")
+        self.approved_filter_ComboBox.Items.Add("not treated")
+
     def level_filter_ComboBox_SelectionChanged(self, sender, e):
         self.filter_openings()
 
@@ -312,6 +315,12 @@ class TrackingOpeningsDialog(Windows.Window):
         self.filter_openings()
 
     def floor_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def changeType_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def approved_filter_ComboBox_SelectionChanged(self, sender, e):
         self.filter_openings()
 
     def filter_openings(self):
@@ -349,6 +358,18 @@ class TrackingOpeningsDialog(Windows.Window):
                 self.display_openings = [
                     x for x in self.display_openings if not x["isFloorOpening"]
                 ]
+        if self.changeType_filter_ComboBox.SelectedIndex != 0:
+            selected_changeType = self.changeType_filter_ComboBox.SelectedValue
+            self.display_openings = [
+                x
+                for x in self.display_openings
+                if x["changeType"] == selected_changeType
+            ]
+        if self.approved_filter_ComboBox.SelectedIndex != 0:
+            selected_approved = self.approved_filter_ComboBox.SelectedValue
+            self.display_openings = [
+                x for x in self.display_openings if x["approved"] == selected_approved
+            ]
 
     def data_listbox_selection_changed(self, sender, e):
         list_box = sender
@@ -865,6 +886,12 @@ class TrackingOpeningsDialog(Windows.Window):
             Utils.turn_off_isolate_mode(self.doc, active_view)
         except Exception as ex:
             print(ex)
+
+    def change_approved_status_btn_click(self, sender, e):
+        pass
+
+    def export_to_excel_btn_click(self, sender, e):
+        pass
 
 
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):

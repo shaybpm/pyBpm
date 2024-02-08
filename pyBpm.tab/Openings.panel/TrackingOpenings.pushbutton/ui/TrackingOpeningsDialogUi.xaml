@@ -83,14 +83,19 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
+                        <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <ComboBox Margin="4 4 2 4" x:Name="level_filter_ComboBox" />
-                        <ComboBox Margin="4 0 2 4" x:Name="shape_filter_ComboBox" />
+                        <ComboBox Margin="4 4 2 4" x:Name="level_filter_ComboBox" SelectionChanged="level_filter_ComboBox_SelectionChanged" />
+                        <ComboBox Margin="4 0 2 4" x:Name="shape_filter_ComboBox" SelectionChanged="shape_filter_ComboBox_SelectionChanged" />
                     </StackPanel>
                     <StackPanel Grid.Column="1">
-                        <ComboBox Margin="2 4 4 4" x:Name="discipline_filter_ComboBox" />
-                        <ComboBox Margin="2 0 4 4" x:Name="floor_filter_ComboBox" />
+                        <ComboBox Margin="2 4 2 4" x:Name="discipline_filter_ComboBox" SelectionChanged="discipline_filter_ComboBox_SelectionChanged" />
+                        <ComboBox Margin="2 0 2 4" x:Name="floor_filter_ComboBox" SelectionChanged="floor_filter_ComboBox_SelectionChanged" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <ComboBox Margin="2 4 4 4" x:Name="changeType_filter_ComboBox" SelectionChanged="changeType_filter_ComboBox_SelectionChanged" />
+                        <ComboBox Margin="2 0 4 4" x:Name="approved_filter_ComboBox" SelectionChanged="approved_filter_ComboBox_SelectionChanged" />
                     </StackPanel>
                 </Grid>
 
@@ -105,7 +110,7 @@
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" x:Name="title_data_grid" Margin="8 0 4 0" />
                 <ListBox Grid.Row="1" x:Name="data_listbox" SelectionMode="Extended" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
-                <Grid Grid.Row="2" x:Name="ditail_data_grid" FlowDirection="RightToLeft" >
+                <Grid Grid.Row="2" x:Name="ditail_data_grid" FlowDirection="RightToLeft">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
@@ -130,7 +135,7 @@
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                
+
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="More Info" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
@@ -146,7 +151,7 @@
                         <TextBlock x:Name="more_info_isFloorOpening_TextBlock" />
                     </StackPanel>
                 </StackPanel>
-                
+
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="Current Ditails" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
@@ -162,7 +167,7 @@
                         <TextBlock x:Name="more_info_currentMct_TextBlock" />
                     </StackPanel>
                 </StackPanel>
-                
+
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Last Ditails" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
@@ -207,13 +212,19 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
+                <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Grid.Row="0" x:Name="show_opening_btn" Content="הצג פתח" Click="show_opening_btn_click" />
             <Button Grid.Column="0" Grid.Row="1" x:Name="show_opening_3D_btn" Content="הצג פתח 3D" Click="show_opening_3D_btn_click" />
             <Button Grid.Column="0" Grid.Row="2" x:Name="create_cloud_btn" Content="צור עננים" Click="create_cloud_btn_click" />
+
             <Button Grid.Column="1" Grid.Row="0" x:Name="show_previous_location_btn" Content="הצג מיקום קודם" Click="show_previous_location_btn_click" />
             <Button Grid.Column="1" Grid.Row="1" x:Name="show_previous_location_3D_btn" Content="הצג מיקום קודם 3D" Click="show_previous_location_3D_btn_click" />
             <Button Grid.Column="1" Grid.Row="2" x:Name="isolate_btn" Content="מבט פתחים זמני (החזק לחיצה)" PreviewMouseDown="isolate_btn_mouse_down" PreviewMouseUp="isolate_btn_mouse_up" />
+
+            <Button Grid.Column="2" Grid.Row="0" x:Name="placeholder_btn" Content="" IsEnabled="False" />
+            <Button Grid.Column="2" Grid.Row="1" x:Name="change_approved_status_btn" Content="שנה סטטוס אישורים" Click="change_approved_status_btn_click" />
+            <Button Grid.Column="2" Grid.Row="2" x:Name="export_to_excel_btn" Content="ייצוא לאקסל" Click="export_to_excel_btn_click" />
         </Grid>
 
     </Grid>
