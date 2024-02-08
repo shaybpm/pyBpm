@@ -22,6 +22,7 @@ from pyrevit import forms
 
 from ServerUtils import get_openings_changes  # type: ignore
 from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_comp_link  # type: ignore
+from ExcelUtils import create_new_workbook_file, add_data_to_worksheet  # type: ignore
 
 import Utils
 
@@ -891,7 +892,22 @@ class TrackingOpeningsDialog(Windows.Window):
         pass
 
     def export_to_excel_btn_click(self, sender, e):
-        pass
+        if not self.openings:
+            self.alert("אין נתונים לייצוא")
+            return
+        folder_path = forms.pick_folder()
+        if not folder_path:
+            return
+        try:
+            excel_path = create_new_workbook_file(folder_path + "\\pyBpm-Openings.xlsx")
+            add_data_to_worksheet(excel_path, self.openings, ignore_fields=["_id"])
+            is_to_open = forms.alert(
+                "הקובץ נוצר בהצלחה.\nהאם לפתוח אותו?", title="מעקב פתחים"
+            )
+            if is_to_open:
+                os.startfile(excel_path)
+        except Exception as ex:
+            print(ex)
 
 
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):

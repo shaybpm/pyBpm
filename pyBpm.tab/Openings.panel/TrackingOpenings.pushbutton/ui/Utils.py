@@ -239,6 +239,7 @@ def create_revision_clouds(doc, view, bboxes):
         curve1, curve2, curve3, curve4 = curves_tuple
         i_list_curve = List[Curve]([curve1, curve2, curve3, curve4])
         RevisionCloud.Create(doc, view, revision.Id, i_list_curve)
+        # TODO: Add opening names to comments
 
     t.Commit()
 
