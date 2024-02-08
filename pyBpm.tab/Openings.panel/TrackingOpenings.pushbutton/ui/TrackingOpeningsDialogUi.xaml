@@ -222,7 +222,16 @@
             <Button Grid.Column="1" Grid.Row="1" x:Name="show_previous_location_3D_btn" Content="הצג מיקום קודם 3D" Click="show_previous_location_3D_btn_click" />
             <Button Grid.Column="1" Grid.Row="2" x:Name="isolate_btn" Content="מבט פתחים זמני (החזק לחיצה)" PreviewMouseDown="isolate_btn_mouse_down" PreviewMouseUp="isolate_btn_mouse_up" />
 
-            <Button Grid.Column="2" Grid.Row="0" x:Name="placeholder_btn" Content="" IsEnabled="False" />
+            <Grid Grid.Column="2" Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" x:Name="zoom_in_btn" Content="+" Click="zoom_in_btn_click" />
+                <Button Grid.Column="1" x:Name="zoom_out_btn" Content="-" Click="zoom_out_btn_click" />
+                <Button Grid.Column="2" x:Name="change_view_btn" Content="מבט" Click="change_view_btn_click" />
+            </Grid>
             <Button Grid.Column="2" Grid.Row="1" x:Name="change_approved_status_btn" Content="שנה סטטוס אישורים" Click="change_approved_status_btn_click" />
             <Button Grid.Column="2" Grid.Row="2" x:Name="export_to_excel_btn" Content="ייצוא לאקסל" Click="export_to_excel_btn_click" />
         </Grid>

@@ -888,7 +888,32 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
+    def zoom_ui_view(self, value):
+        ui_view = self.get_ui_view()
+        if not ui_view:
+            self.alert("מבט לא נמצא")
+            return
+        ui_view.Zoom(value)
+
+    def zoom_in_btn_click(self, sender, e):
+        self.zoom_ui_view(1.1)
+
+    def zoom_out_btn_click(self, sender, e):
+        self.zoom_ui_view(0.9)
+
+    def change_view_btn_click(self, sender, e):
+        selected_view = forms.select_views(
+            title="החלסף מבט", multiple=False, button_name="בחר מבט"
+        )
+        if not selected_view:
+            return
+        try:
+            self.uidoc.ActiveView = selected_view
+        except Exception as ex:
+            print(ex)
+
     def change_approved_status_btn_click(self, sender, e):
+        # TODO: implement
         pass
 
     def export_to_excel_btn_click(self, sender, e):
