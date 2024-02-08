@@ -137,14 +137,15 @@ class TrackingOpeningsDialog(Windows.Window):
         self.update_end_date()
 
         self._current_sort_key = None
-        self.data_table_col_sizes = [64, 60, 80, 120]
-        self.data_table_col_sizes.append(384 - sum(self.data_table_col_sizes))
+        self.data_table_col_sizes = [64, 48, 80, 120, 40]
+        self.data_table_col_sizes.append(482 - sum(self.data_table_col_sizes))
         (
             self.sort_discipline_btn,
             self.sort_mark_btn,
             self.sort_changeType_btn,
             self.sort_scheduleLevel_btn,
             self.sort_floor_btn,
+            self.sort_approved_btn,
         ) = self.init_title_data_grid()
 
         self.data_listbox.SelectionChanged += self.data_listbox_selection_changed
@@ -470,12 +471,20 @@ class TrackingOpeningsDialog(Windows.Window):
         grid.Children.Add(sort_floor_btn)
         Windows.Controls.Grid.SetColumn(sort_floor_btn, 4)
 
+        sort_approved_btn = Windows.Controls.Button()
+        sort_approved_btn.Content = "Approved"
+        sort_approved_btn.Click += self.sort_approved_btn_click
+        sort_approved_btn.Background = Windows.Media.Brushes.White
+        grid.Children.Add(sort_approved_btn)
+        Windows.Controls.Grid.SetColumn(sort_approved_btn, 5)
+
         return (
             sort_discipline_btn,
             sort_mark_btn,
             sort_changeType_btn,
             sort_scheduleLevel_btn,
             sort_floor_btn,
+            sort_approved_btn,
         )
 
     def sort_data_by(self, key):
@@ -505,6 +514,9 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def sort_floor_btn_click(self, sender, e):
         self.sort_data_by("isFloorOpening")
+
+    def sort_approved_btn_click(self, sender, e):
+        self.sort_data_by("approved")
 
     def add_nums_to_Combobox(self, combobox, start, end):
         for i in range(start, end):
@@ -880,6 +892,7 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             "changeType",
             "currentScheduledLevel",
             "isFloorOpening",
+            "approved",
         ]
         for i, data_key in enumerate(data_key_list):
             text_block = Windows.Controls.TextBlock()
@@ -903,3 +916,54 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             Windows.Controls.Grid.SetColumn(text_block, i)
 
         self.Content = self.grid
+
+
+# opening_example = {
+#     "lastScheduledLevel": "None",
+#     "currentShape": "rectangular",
+#     "discipline": "E",
+#     "currentMct": False,
+#     "_id": "65c0d3191db8877f0a8a55b2",
+#     "changeType": "updated",
+#     "internalDocId": 402523,
+#     "currentBBox": {
+#         "max": {
+#             "z": 37.073490813648306,
+#             "y": 101.942940833332,
+#             "x": 217.51569101600421,
+#         },
+#         "min": {
+#             "z": 36.089238845144344,
+#             "y": 101.12273085953422,
+#             "x": 216.85952303694617,
+#         },
+#     },
+#     "modelGuid": "32498802-f108-4ce9-bfff-ce4adc5c3ce9",
+#     "mark": "5",
+#     "lastShape": "rectangular",
+#     "uniqueId": "26632853-10a0-4e9f-90b7-fa1e0996b84d-0006245b",
+#     "isFloorOpening": True,
+#     "currentScheduledLevel": "None",
+#     "lastBBox": {
+#         "max": {
+#             "z": 37.073490813648306,
+#             "y": 101.94294083321232,
+#             "x": 219.28734455931138,
+#         },
+#         "min": {
+#             "z": 36.089238845144344,
+#             "y": 101.12273085941453,
+#             "x": 218.63117658025334,
+#         },
+#     },
+#     "lastMct": False,
+#     "approved": "not treated",
+#     "isThereMoreUpdatedStates": False,
+#     "isDeleted": False,
+# }
+
+# type approved =
+#     | "approved"
+#     | "approved but later modified"
+#     | "not approved"
+#     | "not treated";
