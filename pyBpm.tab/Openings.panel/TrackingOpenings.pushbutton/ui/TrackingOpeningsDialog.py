@@ -912,6 +912,18 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
 
             text_block.HorizontalAlignment = Windows.HorizontalAlignment.Center
             text_block.VerticalAlignment = Windows.VerticalAlignment.Center
+
+            if data_key == "approved":
+                text_block.Padding = Windows.Thickness(4, 0, 4, 0)
+                if text == "approved":
+                    text_block.Background = Windows.Media.Brushes.LightGreen
+                elif text == "approved but later modified":
+                    text_block.Background = Windows.Media.Brushes.LightYellow
+                elif text == "not approved":
+                    text_block.Background = Windows.Media.Brushes.LightPink
+                elif text == "not treated":
+                    text_block.Background = Windows.Media.Brushes.LightGray
+
             self.grid.Children.Add(text_block)
             Windows.Controls.Grid.SetColumn(text_block, i)
 
