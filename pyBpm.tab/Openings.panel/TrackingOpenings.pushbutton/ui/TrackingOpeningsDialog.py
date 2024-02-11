@@ -13,15 +13,17 @@ from Autodesk.Revit.DB import (
     ViewType,
 )
 
-from System import DateTime, TimeZoneInfo
+from System import DateTime, TimeZoneInfo, Windows
 import wpf
-from System import Windows
 import os
+import json
 
-from pyrevit import forms
+from pyrevit import forms, script
 
-from ServerUtils import get_openings_changes  # type: ignore
+from ServerUtils import get_openings_changes, change_openings_approved_status  # type: ignore
 from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_comp_link  # type: ignore
+from ExcelUtils import create_new_workbook_file, add_data_to_worksheet  # type: ignore
+from UiUtils import SelectFromList  # type: ignore
 
 import Utils
 
@@ -86,11 +88,16 @@ class TrackingOpeningsDialog(Windows.Window):
         self.doc = self.uidoc.Document
 
         self._allow_transactions = False
-        self.handle_transaction_buttons_state(self._allow_transactions)
 
         self._openings = []
         self._display_openings = []
         self._current_selected_opening = []
+
+        self.setting_data_file_path = script.get_universal_data_file(
+            file_id="settings",
+            file_ext="json",
+            add_cmd_name=True,
+        )
 
         self.start_time_str = None
         self.end_time_str = None
@@ -137,14 +144,15 @@ class TrackingOpeningsDialog(Windows.Window):
         self.update_end_date()
 
         self._current_sort_key = None
-        self.data_table_col_sizes = [64, 60, 80, 120]
-        self.data_table_col_sizes.append(384 - sum(self.data_table_col_sizes))
+        self.data_table_col_sizes = [64, 48, 80, 120, 40]
+        self.data_table_col_sizes.append(482 - sum(self.data_table_col_sizes))
         (
             self.sort_discipline_btn,
             self.sort_mark_btn,
             self.sort_changeType_btn,
             self.sort_scheduleLevel_btn,
             self.sort_floor_btn,
+            self.sort_approved_btn,
         ) = self.init_title_data_grid()
 
         self.data_listbox.SelectionChanged += self.data_listbox_selection_changed
@@ -154,20 +162,10 @@ class TrackingOpeningsDialog(Windows.Window):
         self.ALL_DISCIPLINES = "All Disciplines"
         self.FLOORS_AND_WALLS = "Floors and Walls"
         self.set_all_filters()
-        self.level_filter_ComboBox.SelectionChanged += (
-            self.level_filter_ComboBox_SelectionChanged
-        )
-        self.shape_filter_ComboBox.SelectionChanged += (
-            self.shape_filter_ComboBox_SelectionChanged
-        )
-        self.discipline_filter_ComboBox.SelectionChanged += (
-            self.discipline_filter_ComboBox_SelectionChanged
-        )
-        self.floor_filter_ComboBox.SelectionChanged += (
-            self.floor_filter_ComboBox_SelectionChanged
-        )
 
         self.ISSUED_BY_STR = "PYBPM_OPENINGS"
+
+        self.handle_buttons_state()
 
     @property
     def allow_transactions(self):
@@ -176,7 +174,7 @@ class TrackingOpeningsDialog(Windows.Window):
     @allow_transactions.setter
     def allow_transactions(self, value):
         self._allow_transactions = value
-        self.handle_transaction_buttons_state(value)
+        self.handle_buttons_state()
 
     @property
     def display_openings(self):
@@ -201,6 +199,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.display_openings = value
         self.number_of_data_TextBlock.Text = str(len(self._openings))
         self.set_all_filters()
+        self.handle_buttons_state()
 
     @property
     def current_selected_opening(self):
@@ -210,6 +209,7 @@ class TrackingOpeningsDialog(Windows.Window):
     def current_selected_opening(self, value):
         self._current_selected_opening = value
         self.update_more_data_info()
+        self.handle_buttons_state()
 
     @property
     def current_sort_key(self):
@@ -251,11 +251,57 @@ class TrackingOpeningsDialog(Windows.Window):
     def not_allow_transactions_alert(self):
         self.alert("להפעלת אפשרות זו, יש ללחוץ על כפתור הסקריפט בעת החזקת השיפט במקלדת")
 
-    def handle_transaction_buttons_state(self, value):
-        self.show_opening_3D_btn.IsEnabled = value
-        self.create_cloud_btn.IsEnabled = value
-        self.show_previous_location_3D_btn.IsEnabled = value
-        self.isolate_btn.IsEnabled = value
+    def handle_buttons_state(self):
+        self.handle_transaction_buttons_state()
+        self.handle_need_opening_buttons_state()
+        self.handle_need_selected_opening_buttons_state()
+
+    def handle_transaction_buttons_state(self):
+        self.show_opening_3D_btn.IsEnabled = self.allow_transactions
+        self.create_cloud_btn.IsEnabled = self.allow_transactions
+        self.show_previous_location_3D_btn.IsEnabled = self.allow_transactions
+        self.isolate_btn.IsEnabled = self.allow_transactions
+
+    def handle_need_opening_buttons_state(self):
+        if len(self.openings) == 0:
+            self.export_to_excel_btn.IsEnabled = False
+            self.show_opening_btn.IsEnabled = False
+            self.show_previous_location_btn.IsEnabled = False
+            self.show_opening_3D_btn.IsEnabled = False
+            self.show_previous_location_3D_btn.IsEnabled = False
+            self.create_cloud_btn.IsEnabled = False
+            self.change_approved_status_btn.IsEnabled = False
+        else:
+            self.export_to_excel_btn.IsEnabled = True
+            self.show_opening_btn.IsEnabled = True
+            self.show_previous_location_btn.IsEnabled = True
+            self.show_opening_3D_btn.IsEnabled = True
+            self.show_previous_location_3D_btn.IsEnabled = True
+            self.create_cloud_btn.IsEnabled = True
+            self.change_approved_status_btn.IsEnabled = True
+
+    def handle_need_selected_opening_buttons_state(self):
+        if len(self.current_selected_opening) == 0:
+            self.show_opening_btn.IsEnabled = False
+            self.show_previous_location_btn.IsEnabled = False
+            self.show_opening_3D_btn.IsEnabled = False
+            self.show_previous_location_3D_btn.IsEnabled = False
+            self.create_cloud_btn.IsEnabled = False
+            self.change_approved_status_btn.IsEnabled = False
+        elif len(self.current_selected_opening) == 1:
+            self.show_opening_btn.IsEnabled = True
+            self.show_previous_location_btn.IsEnabled = True
+            self.show_opening_3D_btn.IsEnabled = True
+            self.show_previous_location_3D_btn.IsEnabled = True
+            self.create_cloud_btn.IsEnabled = True
+            self.change_approved_status_btn.IsEnabled = True
+        else:
+            self.show_opening_btn.IsEnabled = False
+            self.show_previous_location_btn.IsEnabled = False
+            self.show_opening_3D_btn.IsEnabled = False
+            self.show_previous_location_3D_btn.IsEnabled = False
+            self.create_cloud_btn.IsEnabled = True
+            self.change_approved_status_btn.IsEnabled = True
 
     def set_all_filters(self):
         self.level_filter_ComboBox.Items.Clear()
@@ -301,6 +347,25 @@ class TrackingOpeningsDialog(Windows.Window):
         self.floor_filter_ComboBox.Items.Add("Floors")
         self.floor_filter_ComboBox.Items.Add("Walls")
 
+        self.changeType_filter_ComboBox.Items.Clear()
+        self.changeType_filter_ComboBox.Items.Add("All Changes")
+        self.changeType_filter_ComboBox.SelectedIndex = 0
+        self.changeType_filter_ComboBox.Items.Add("added")
+        self.changeType_filter_ComboBox.Items.Add("updated")
+        self.changeType_filter_ComboBox.Items.Add("deleted")
+
+        self.approved_status_options = [
+            "approved",
+            "approved but later modified",
+            "not approved",
+            "not treated",
+        ]
+        self.approved_filter_ComboBox.Items.Clear()
+        self.approved_filter_ComboBox.Items.Add("All Approved")
+        self.approved_filter_ComboBox.SelectedIndex = 0
+        for opt in self.approved_status_options:
+            self.approved_filter_ComboBox.Items.Add(opt)
+
     def level_filter_ComboBox_SelectionChanged(self, sender, e):
         self.filter_openings()
 
@@ -311,6 +376,12 @@ class TrackingOpeningsDialog(Windows.Window):
         self.filter_openings()
 
     def floor_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def changeType_filter_ComboBox_SelectionChanged(self, sender, e):
+        self.filter_openings()
+
+    def approved_filter_ComboBox_SelectionChanged(self, sender, e):
         self.filter_openings()
 
     def filter_openings(self):
@@ -348,6 +419,18 @@ class TrackingOpeningsDialog(Windows.Window):
                 self.display_openings = [
                     x for x in self.display_openings if not x["isFloorOpening"]
                 ]
+        if self.changeType_filter_ComboBox.SelectedIndex != 0:
+            selected_changeType = self.changeType_filter_ComboBox.SelectedValue
+            self.display_openings = [
+                x
+                for x in self.display_openings
+                if x["changeType"] == selected_changeType
+            ]
+        if self.approved_filter_ComboBox.SelectedIndex != 0:
+            selected_approved = self.approved_filter_ComboBox.SelectedValue
+            self.display_openings = [
+                x for x in self.display_openings if x["approved"] == selected_approved
+            ]
 
     def data_listbox_selection_changed(self, sender, e):
         list_box = sender
@@ -470,12 +553,20 @@ class TrackingOpeningsDialog(Windows.Window):
         grid.Children.Add(sort_floor_btn)
         Windows.Controls.Grid.SetColumn(sort_floor_btn, 4)
 
+        sort_approved_btn = Windows.Controls.Button()
+        sort_approved_btn.Content = "Approved"
+        sort_approved_btn.Click += self.sort_approved_btn_click
+        sort_approved_btn.Background = Windows.Media.Brushes.White
+        grid.Children.Add(sort_approved_btn)
+        Windows.Controls.Grid.SetColumn(sort_approved_btn, 5)
+
         return (
             sort_discipline_btn,
             sort_mark_btn,
             sort_changeType_btn,
             sort_scheduleLevel_btn,
             sort_floor_btn,
+            sort_approved_btn,
         )
 
     def sort_data_by(self, key):
@@ -505,6 +596,9 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def sort_floor_btn_click(self, sender, e):
         self.sort_data_by("isFloorOpening")
+
+    def sort_approved_btn_click(self, sender, e):
+        self.sort_data_by("approved")
 
     def add_nums_to_Combobox(self, combobox, start, end):
         for i in range(start, end):
@@ -854,6 +948,151 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
+    def zoom_ui_view(self, value):
+        ui_view = self.get_ui_view()
+        if not ui_view:
+            self.alert("מבט לא נמצא")
+            return
+        ui_view.Zoom(value)
+
+    def zoom_in_btn_click(self, sender, e):
+        self.zoom_ui_view(1.1)
+
+    def zoom_out_btn_click(self, sender, e):
+        self.zoom_ui_view(0.9)
+
+    def change_view_btn_click(self, sender, e):
+        selected_view = forms.select_views(
+            title="החלסף מבט", multiple=False, button_name="בחר מבט"
+        )
+        if not selected_view:
+            return
+        try:
+            self.uidoc.ActiveView = selected_view
+        except Exception as ex:
+            print(ex)
+
+    def set_change_approved_status_password(self):
+        password = forms.ask_for_string(
+            default="", prompt="הכנס סיסמה לשינוי סטטוס אישור", title="מעקב פתחים"
+        )
+        if password is None:
+            return None
+        if os.path.exists(self.setting_data_file_path):
+            with open(self.setting_data_file_path, "r") as file:
+                data = json.load(file)
+                data["change_approved_status_password"] = password
+                with open(self.setting_data_file_path, "w") as file:
+                    json.dump(data, file)
+        else:
+            with open(self.setting_data_file_path, "w") as file:
+                json.dump({"change_approved_status_password": password}, file)
+        return password
+
+    def get_change_approved_status_password(self):
+        if os.path.exists(self.setting_data_file_path):
+            with open(self.setting_data_file_path, "r") as file:
+                data = json.load(file)
+                if "change_approved_status_password" in data:
+                    return data["change_approved_status_password"]
+                else:
+                    return self.set_change_approved_status_password()
+        else:
+            return self.set_change_approved_status_password()
+
+    def change_approved_status_btn_click(self, sender, e):
+        if len(self.current_selected_opening) == 0:
+            self.alert("יש לבחור פתחים")
+            return
+
+        password = self.get_change_approved_status_password()
+        if password is None:
+            return
+
+        new_approved_status_options = [
+            "approved",
+            "not approved",
+        ]
+
+        select_from_list = SelectFromList(new_approved_status_options)
+        new_approved_status = select_from_list.show()
+        if new_approved_status is None:
+            return
+
+        new_status_list = Utils.get_new_opening_approved_status(
+            self.current_selected_opening, new_approved_status
+        )
+        server_response = None
+        try:
+            server_response = change_openings_approved_status(
+                self.doc, password, new_status_list
+            )
+        except Exception as ex:
+            new_password = self.set_change_approved_status_password()
+            if new_password is None:
+                return
+            try:
+                server_response = change_openings_approved_status(
+                    self.doc, new_password, new_status_list
+                )
+            except Exception as ex:
+                if "403" in str(ex):
+                    self.alert("סיסמה שגויה")
+                else:
+                    print(ex)
+                return
+
+        if server_response:
+            response_unique_ids = [x["uniqueId"] for x in server_response]
+            new_openings = list(self.openings)
+            for opening in new_openings:
+                if opening["uniqueId"] in response_unique_ids:
+                    opening["approved"] = new_approved_status
+
+            level_filter = self.level_filter_ComboBox.SelectedValue
+            shape_filter = self.shape_filter_ComboBox.SelectedValue
+            discipline_filter = self.discipline_filter_ComboBox.SelectedValue
+            floor_filter = self.floor_filter_ComboBox.SelectedValue
+            changeType_filter = self.changeType_filter_ComboBox.SelectedValue
+            approved_filter = self.approved_filter_ComboBox.SelectedValue
+            self.openings = new_openings
+            self.level_filter_ComboBox.SelectedValue = level_filter
+            self.shape_filter_ComboBox.SelectedValue = shape_filter
+            self.discipline_filter_ComboBox.SelectedValue = discipline_filter
+            self.floor_filter_ComboBox.SelectedValue = floor_filter
+            self.changeType_filter_ComboBox.SelectedValue = changeType_filter
+            self.approved_filter_ComboBox.SelectedValue = approved_filter
+            self.filter_openings()
+
+    def export_to_excel_btn_click(self, sender, e):
+        if not self.openings:
+            self.alert("אין נתונים לייצוא")
+            return
+        folder_path = forms.pick_folder()
+        if not folder_path:
+            return
+        file_name = "pyBpm-Openings.xlsx"
+        num = 1
+        max_loops = 100
+        while os.path.exists(folder_path + "\\" + file_name):
+            file_name = "pyBpm-Openings_{}.xlsx".format(num)
+            num += 1
+            if num > max_loops:
+                self.alert(
+                    "מספר הנסיונות ליצירת שם קובץ חדש הגיע לסיומו, הקובץ לא נוצר"
+                )
+                return
+        try:
+            excel_path = create_new_workbook_file(folder_path + "\\" + file_name)
+            add_data_to_worksheet(excel_path, self.openings, ignore_fields=["_id"])
+            is_to_open = forms.alert(
+                "הקובץ נוצר בהצלחה.\nהאם לפתוח אותו?", title="מעקב פתחים"
+            )
+            if is_to_open:
+                os.startfile(excel_path)
+        except Exception as ex:
+            print(ex)
+
 
 class ListBoxItemOpening(Windows.Controls.ListBoxItem):
     def __init__(self, opening, sizes):
@@ -880,6 +1119,7 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             "changeType",
             "currentScheduledLevel",
             "isFloorOpening",
+            "approved",
         ]
         for i, data_key in enumerate(data_key_list):
             text_block = Windows.Controls.TextBlock()
@@ -899,7 +1139,70 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
 
             text_block.HorizontalAlignment = Windows.HorizontalAlignment.Center
             text_block.VerticalAlignment = Windows.VerticalAlignment.Center
+
+            if data_key == "approved":
+                text_block.Padding = Windows.Thickness(4, 0, 4, 0)
+                if text == "approved":
+                    text_block.Background = Windows.Media.Brushes.LightGreen
+                elif text == "approved but later modified":
+                    text_block.Background = Windows.Media.Brushes.LightYellow
+                elif text == "not approved":
+                    text_block.Background = Windows.Media.Brushes.LightPink
+                elif text == "not treated":
+                    text_block.Background = Windows.Media.Brushes.LightGray
+
             self.grid.Children.Add(text_block)
             Windows.Controls.Grid.SetColumn(text_block, i)
 
         self.Content = self.grid
+
+
+# opening_example = {
+#     "lastScheduledLevel": "None",
+#     "currentShape": "rectangular",
+#     "discipline": "E",
+#     "currentMct": False,
+#     "_id": "65c0d3191db8877f0a8a55b2",
+#     "changeType": "updated",
+#     "internalDocId": 402523,
+#     "currentBBox": {
+#         "max": {
+#             "z": 37.073490813648306,
+#             "y": 101.942940833332,
+#             "x": 217.51569101600421,
+#         },
+#         "min": {
+#             "z": 36.089238845144344,
+#             "y": 101.12273085953422,
+#             "x": 216.85952303694617,
+#         },
+#     },
+#     "modelGuid": "32498802-f108-4ce9-bfff-ce4adc5c3ce9",
+#     "mark": "5",
+#     "lastShape": "rectangular",
+#     "uniqueId": "26632853-10a0-4e9f-90b7-fa1e0996b84d-0006245b",
+#     "isFloorOpening": True,
+#     "currentScheduledLevel": "None",
+#     "lastBBox": {
+#         "max": {
+#             "z": 37.073490813648306,
+#             "y": 101.94294083321232,
+#             "x": 219.28734455931138,
+#         },
+#         "min": {
+#             "z": 36.089238845144344,
+#             "y": 101.12273085941453,
+#             "x": 218.63117658025334,
+#         },
+#     },
+#     "lastMct": False,
+#     "approved": "not treated",
+#     "isThereMoreUpdatedStates": False,
+#     "isDeleted": False,
+# }
+
+# type approved =
+#     | "approved"
+#     | "approved but later modified"
+#     | "not approved"
+#     | "not treated";

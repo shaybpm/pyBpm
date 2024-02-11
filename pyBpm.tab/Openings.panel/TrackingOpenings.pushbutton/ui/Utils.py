@@ -26,7 +26,7 @@ from System.Collections.Generic import List
 
 from pyrevit import forms
 
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color, get_comp_link  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color, get_comp_link, get_model_info  # type: ignore
 
 from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter  # type: ignore
 
@@ -239,6 +239,7 @@ def create_revision_clouds(doc, view, bboxes):
         curve1, curve2, curve3, curve4 = curves_tuple
         i_list_curve = List[Curve]([curve1, curve2, curve3, curve4])
         RevisionCloud.Create(doc, view, revision.Id, i_list_curve)
+        # TODO: Add opening names to comments
 
     t.Commit()
 
@@ -370,3 +371,15 @@ def get_start_end_dates(dates):
         return None, None
 
     return date_dict[selected_date_str]["start"], date_dict[selected_date_str]["end"]
+
+
+def get_new_opening_approved_status(openings, new_approved_status):
+    new_status_list = []
+    for opening in openings:
+        new_status_list.append(
+            {
+                "uniqueId": opening["uniqueId"],
+                "approved": new_approved_status,
+            }
+        )
+    return new_status_list

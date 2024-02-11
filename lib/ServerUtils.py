@@ -70,3 +70,12 @@ def get_openings_changes(doc, start_time_str, end_time_str):
             model_info["projectGuid"], start_time_str, end_time_str
         )
     )
+
+
+def change_openings_approved_status(doc, password, newStatusArr):
+    data = {
+        "projectGuid": get_model_info(doc)["projectGuid"],
+        "password": password,
+        "newStatusArr": newStatusArr,
+    }
+    return patch(server_url + "api/openings/tracking/opening-approved", data)

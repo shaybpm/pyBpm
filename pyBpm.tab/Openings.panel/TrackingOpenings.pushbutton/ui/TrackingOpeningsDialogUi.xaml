@@ -1,5 +1,5 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="מעקב פתחים" Height="800" Width="440" WindowStartupLocation="CenterScreen" MinWidth="440" MaxWidth="440" MinHeight="400">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="מעקב פתחים" Height="800" Width="540" WindowStartupLocation="CenterScreen" MinWidth="540" MaxWidth="540" MinHeight="400">
 
 
     <Grid FlowDirection="RightToLeft" Margin="8">
@@ -13,14 +13,11 @@
 
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100"/>
                 <ColumnDefinition/>
                 <ColumnDefinition Width="100"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Margin="8" Click="get_dates_by_latest_sheet_versions_btn_click">
-                <TextBlock Text="בין מהדורות אחרונות של גיליונות פתחים של BPM" TextWrapping="Wrap" TextAlignment="Center"/>
-            </Button>
-            <StackPanel Grid.Column="1" Margin="4 0 4 0">
+
+            <StackPanel Grid.Column="0" Margin="4 0 4 0">
 
                 <TextBlock Text="פתחים שהשתנו מתאריך:" />
                 <Grid>
@@ -28,7 +25,7 @@
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" x:Name="start_date_DatePicker" />
+                    <DatePicker Grid.Row="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="start_date_DatePicker" SelectedDateFormat="Long" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
                         <ComboBox x:Name="start_hour_ComboBox"/>
                         <ComboBox x:Name="start_minute_ComboBox"/>
@@ -41,7 +38,7 @@
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" x:Name="end_date_DatePicker" />
+                    <DatePicker Grid.Row="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="end_date_DatePicker" SelectedDateFormat="Long" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
                         <ComboBox x:Name="end_hour_ComboBox"/>
                         <ComboBox x:Name="end_minute_ComboBox"/>
@@ -49,7 +46,7 @@
                 </Grid>
 
             </StackPanel>
-            <Button Grid.Column="2" Margin="8" Click="show_openings_btn_click" FontSize="18" Background="Blue" Foreground="White" Cursor="Hand" x:Name="show_openings_btn">
+            <Button Grid.Column="1" Margin="8" Click="show_openings_btn_click" FontSize="18" Background="Blue" Foreground="White" Cursor="Hand" x:Name="show_openings_btn">
                 <Button.Resources>
                     <Style TargetType="Border">
                         <Setter Property="CornerRadius" Value="16"/>
@@ -83,14 +80,19 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
+                        <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <ComboBox Margin="4 4 2 4" x:Name="level_filter_ComboBox" />
-                        <ComboBox Margin="4 0 2 4" x:Name="shape_filter_ComboBox" />
+                        <ComboBox Margin="4 4 2 4" x:Name="level_filter_ComboBox" SelectionChanged="level_filter_ComboBox_SelectionChanged" />
+                        <ComboBox Margin="4 0 2 4" x:Name="shape_filter_ComboBox" SelectionChanged="shape_filter_ComboBox_SelectionChanged" />
                     </StackPanel>
                     <StackPanel Grid.Column="1">
-                        <ComboBox Margin="2 4 4 4" x:Name="discipline_filter_ComboBox" />
-                        <ComboBox Margin="2 0 4 4" x:Name="floor_filter_ComboBox" />
+                        <ComboBox Margin="2 4 2 4" x:Name="discipline_filter_ComboBox" SelectionChanged="discipline_filter_ComboBox_SelectionChanged" />
+                        <ComboBox Margin="2 0 2 4" x:Name="floor_filter_ComboBox" SelectionChanged="floor_filter_ComboBox_SelectionChanged" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <ComboBox Margin="2 4 4 4" x:Name="changeType_filter_ComboBox" SelectionChanged="changeType_filter_ComboBox_SelectionChanged" />
+                        <ComboBox Margin="2 0 4 4" x:Name="approved_filter_ComboBox" SelectionChanged="approved_filter_ComboBox_SelectionChanged" />
                     </StackPanel>
                 </Grid>
 
@@ -105,7 +107,7 @@
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" x:Name="title_data_grid" Margin="8 0 4 0" />
                 <ListBox Grid.Row="1" x:Name="data_listbox" SelectionMode="Extended" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
-                <Grid Grid.Row="2" x:Name="ditail_data_grid" FlowDirection="RightToLeft" >
+                <Grid Grid.Row="2" x:Name="ditail_data_grid" FlowDirection="RightToLeft">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
@@ -130,7 +132,7 @@
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                
+
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="More Info" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
@@ -146,7 +148,7 @@
                         <TextBlock x:Name="more_info_isFloorOpening_TextBlock" />
                     </StackPanel>
                 </StackPanel>
-                
+
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="Current Ditails" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
@@ -162,7 +164,7 @@
                         <TextBlock x:Name="more_info_currentMct_TextBlock" />
                     </StackPanel>
                 </StackPanel>
-                
+
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Last Ditails" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
@@ -207,13 +209,28 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
+                <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Grid.Row="0" x:Name="show_opening_btn" Content="הצג פתח" Click="show_opening_btn_click" />
             <Button Grid.Column="0" Grid.Row="1" x:Name="show_opening_3D_btn" Content="הצג פתח 3D" Click="show_opening_3D_btn_click" />
             <Button Grid.Column="0" Grid.Row="2" x:Name="create_cloud_btn" Content="צור עננים" Click="create_cloud_btn_click" />
+
             <Button Grid.Column="1" Grid.Row="0" x:Name="show_previous_location_btn" Content="הצג מיקום קודם" Click="show_previous_location_btn_click" />
             <Button Grid.Column="1" Grid.Row="1" x:Name="show_previous_location_3D_btn" Content="הצג מיקום קודם 3D" Click="show_previous_location_3D_btn_click" />
             <Button Grid.Column="1" Grid.Row="2" x:Name="isolate_btn" Content="מבט פתחים זמני (החזק לחיצה)" PreviewMouseDown="isolate_btn_mouse_down" PreviewMouseUp="isolate_btn_mouse_up" />
+
+            <Grid Grid.Column="2" Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" x:Name="zoom_in_btn" Content="+" Click="zoom_in_btn_click" />
+                <Button Grid.Column="1" x:Name="zoom_out_btn" Content="-" Click="zoom_out_btn_click" />
+                <Button Grid.Column="2" x:Name="change_view_btn" Content="מבט" Click="change_view_btn_click" />
+            </Grid>
+            <Button Grid.Column="2" Grid.Row="1" x:Name="change_approved_status_btn" Content="שנה סטטוס אישורים" Click="change_approved_status_btn_click" />
+            <Button Grid.Column="2" Grid.Row="2" x:Name="export_to_excel_btn" Content="ייצוא לאקסל" Click="export_to_excel_btn_click" />
         </Grid>
 
     </Grid>
