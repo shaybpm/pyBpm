@@ -981,7 +981,7 @@ class TrackingOpeningsDialog(Windows.Window):
             num += 1
             if num > max_loops:
                 self.alert(
-                    "מספר הנסיונות ליצירת שם קובץ חדש הגיע לסיומו, הקובץ ךא נוצר"
+                    "מספר הנסיונות ליצירת שם קובץ חדש הגיע לסיומו, הקובץ לא נוצר"
                 )
                 return
         try:
