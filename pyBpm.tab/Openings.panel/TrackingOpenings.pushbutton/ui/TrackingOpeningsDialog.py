@@ -1145,6 +1145,3 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             Windows.Controls.Grid.SetColumn(text_block, i)
 
         self.Content = self.grid
-
-
-#
