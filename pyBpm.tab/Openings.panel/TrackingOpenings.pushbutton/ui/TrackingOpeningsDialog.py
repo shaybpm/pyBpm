@@ -1086,12 +1086,6 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
         self.opening = opening
 
         self.grid = Windows.Controls.Grid()
-        # if self.opening["changeType"] == "added":
-        #     self.grid.Background = Windows.Media.Brushes.LightGreen
-        # elif self.opening["changeType"] == "deleted":
-        #     self.grid.Background = Windows.Media.Brushes.LightPink
-        # elif self.opening["changeType"] == "updated":
-        #     self.grid.Background = Windows.Media.Brushes.LightYellow
 
         self.grid.Margin = Windows.Thickness(0, 0, 0, 2)
 
