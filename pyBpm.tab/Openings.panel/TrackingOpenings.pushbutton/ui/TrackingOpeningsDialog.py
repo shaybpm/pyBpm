@@ -21,7 +21,7 @@ import json
 from pyrevit import forms, script
 
 from ServerUtils import get_openings_changes, change_openings_approved_status  # type: ignore
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_comp_link  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view  # type: ignore
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet  # type: ignore
 from UiUtils import SelectFromList  # type: ignore
 
@@ -162,8 +162,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.ALL_DISCIPLINES = "All Disciplines"
         self.FLOORS_AND_WALLS = "Floors and Walls"
         self.set_all_filters()
-
-        self.ISSUED_BY_STR = "PYBPM_OPENINGS"
 
         self.handle_buttons_state()
 
@@ -667,60 +665,6 @@ class TrackingOpeningsDialog(Windows.Window):
     def update_end_date_event(self, sender, e):
         self.update_end_date()
 
-    def get_dates_by_latest_sheet_versions_btn_click(self, sender, e):
-        comp_link = get_comp_link(self.doc)
-        if not comp_link:
-            self.alert("מודל הקומפילציה לא נמצא")
-            return
-
-        comp_doc = comp_link.GetLinkDocument()
-        if not comp_doc:
-            self.alert("מודל הקומפילציה לא טעון")
-            return
-
-        revisions = Utils.get_revisions(comp_doc)
-        if not revisions:
-            return
-
-        dates = []
-        for rev in revisions:
-            issued_by = rev.IssuedBy
-            if issued_by != self.ISSUED_BY_STR:
-                continue
-            issued_to = rev.IssuedTo
-            try:
-                dates.append(self.get_date_by_time_string(issued_to))
-            except:
-                pass
-
-        if len(dates) == 0:
-            self.alert("לא נמצאו תאריכים")
-            return
-
-        dates = sorted(dates, reverse=True)
-
-        start, end = Utils.get_start_end_dates(dates)
-        if not start or not end:
-            return
-
-        self.start_date_DatePicker.SelectedDate = start
-        self.end_date_DatePicker.SelectedDate = end
-
-        self.start_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
-            start.ToString(self.time_string_format)
-        )
-        self.start_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
-            start.ToString(self.time_string_format)
-        )
-        self.end_minute_ComboBox.SelectedValue = self.get_minute_by_time_string(
-            end.ToString(self.time_string_format)
-        )
-        self.end_hour_ComboBox.SelectedValue = self.get_hour_by_time_string(
-            end.ToString(self.time_string_format)
-        )
-        self.update_start_date()
-        self.update_end_date()
-
     def show_openings_btn_click(self, sender, e):
         try:
             self.openings = get_openings_changes(
@@ -1145,6 +1089,3 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             Windows.Controls.Grid.SetColumn(text_block, i)
 
         self.Content = self.grid
-
-
-#

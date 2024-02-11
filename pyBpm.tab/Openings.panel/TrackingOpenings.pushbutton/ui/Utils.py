@@ -332,16 +332,6 @@ def filter_sheets(view_sheet):
     return True
 
 
-def get_revisions(comp_doc):
-    view_sheet = forms.select_sheets(
-        "בחר גיליון", doc=comp_doc, filterfunc=filter_sheets, multiple=False
-    )
-    if not view_sheet:
-        return
-    revision_ids = view_sheet.GetAllRevisionIds()
-    return [comp_doc.GetElement(x) for x in revision_ids]
-
-
 def get_start_end_dates(dates):
     date_dict = {}
     last_last_date = dates[0]
