@@ -25,6 +25,8 @@ try:
     doc = EXEC_PARAMS.event_args.Document
 
     def run():
+        if not doc.IsModelInCloud:
+            return
         server_permissions = ServerPermissions(doc)
         if not server_permissions.get_opening_set_by_synch_permission():
             return
