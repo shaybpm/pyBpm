@@ -18,15 +18,13 @@ from Autodesk.Revit.DB import (
     Color,
     BoundingBoxXYZ,
     ElementId,
-    FilteredElementCollector,
-    ViewSheet,
 )
 
 from System.Collections.Generic import List
 
 from pyrevit import forms
 
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, turn_of_categories, get_ogs_by_color, get_comp_link, get_model_info  # type: ignore
+from RevitUtils import turn_of_categories, get_ogs_by_color  # type: ignore
 
 from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter  # type: ignore
 
