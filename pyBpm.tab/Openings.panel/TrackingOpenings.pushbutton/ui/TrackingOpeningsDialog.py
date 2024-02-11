@@ -145,7 +145,7 @@ class TrackingOpeningsDialog(Windows.Window):
 
         self._current_sort_key = None
         self.data_table_col_sizes = [64, 48, 80, 120, 40]
-        self.data_table_col_sizes.append(482 - sum(self.data_table_col_sizes))
+        self.data_table_col_sizes.append(522 - sum(self.data_table_col_sizes))
         (
             self.sort_discipline_btn,
             self.sort_mark_btn,
