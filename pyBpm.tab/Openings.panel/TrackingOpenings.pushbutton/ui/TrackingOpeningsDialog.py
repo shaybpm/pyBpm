@@ -87,7 +87,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.doc = self.uidoc.Document
 
         self._allow_transactions = False
-        self.handle_transaction_buttons_state(self._allow_transactions)
 
         self._openings = []
         self._display_openings = []
@@ -159,6 +158,8 @@ class TrackingOpeningsDialog(Windows.Window):
 
         self.ISSUED_BY_STR = "PYBPM_OPENINGS"
 
+        self.handle_buttons_state()
+
     @property
     def allow_transactions(self):
         return self._allow_transactions
@@ -166,7 +167,7 @@ class TrackingOpeningsDialog(Windows.Window):
     @allow_transactions.setter
     def allow_transactions(self, value):
         self._allow_transactions = value
-        self.handle_transaction_buttons_state(value)
+        self.handle_buttons_state()
 
     @property
     def display_openings(self):
@@ -191,6 +192,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.display_openings = value
         self.number_of_data_TextBlock.Text = str(len(self._openings))
         self.set_all_filters()
+        self.handle_buttons_state()
 
     @property
     def current_selected_opening(self):
@@ -200,6 +202,7 @@ class TrackingOpeningsDialog(Windows.Window):
     def current_selected_opening(self, value):
         self._current_selected_opening = value
         self.update_more_data_info()
+        self.handle_buttons_state()
 
     @property
     def current_sort_key(self):
@@ -241,11 +244,57 @@ class TrackingOpeningsDialog(Windows.Window):
     def not_allow_transactions_alert(self):
         self.alert("להפעלת אפשרות זו, יש ללחוץ על כפתור הסקריפט בעת החזקת השיפט במקלדת")
 
-    def handle_transaction_buttons_state(self, value):
-        self.show_opening_3D_btn.IsEnabled = value
-        self.create_cloud_btn.IsEnabled = value
-        self.show_previous_location_3D_btn.IsEnabled = value
-        self.isolate_btn.IsEnabled = value
+    def handle_buttons_state(self):
+        self.handle_transaction_buttons_state()
+        self.handle_need_opening_buttons_state()
+        self.handle_need_selected_opening_buttons_state()
+
+    def handle_transaction_buttons_state(self):
+        self.show_opening_3D_btn.IsEnabled = self.allow_transactions
+        self.create_cloud_btn.IsEnabled = self.allow_transactions
+        self.show_previous_location_3D_btn.IsEnabled = self.allow_transactions
+        self.isolate_btn.IsEnabled = self.allow_transactions
+
+    def handle_need_opening_buttons_state(self):
+        if len(self.openings) == 0:
+            self.export_to_excel_btn.IsEnabled = False
+            self.show_opening_btn.IsEnabled = False
+            self.show_previous_location_btn.IsEnabled = False
+            self.show_opening_3D_btn.IsEnabled = False
+            self.show_previous_location_3D_btn.IsEnabled = False
+            self.create_cloud_btn.IsEnabled = False
+            self.change_approved_status_btn.IsEnabled = False
+        else:
+            self.export_to_excel_btn.IsEnabled = True
+            self.show_opening_btn.IsEnabled = True
+            self.show_previous_location_btn.IsEnabled = True
+            self.show_opening_3D_btn.IsEnabled = True
+            self.show_previous_location_3D_btn.IsEnabled = True
+            self.create_cloud_btn.IsEnabled = True
+            self.change_approved_status_btn.IsEnabled = True
+
+    def handle_need_selected_opening_buttons_state(self):
+        if len(self.current_selected_opening) == 0:
+            self.show_opening_btn.IsEnabled = False
+            self.show_previous_location_btn.IsEnabled = False
+            self.show_opening_3D_btn.IsEnabled = False
+            self.show_previous_location_3D_btn.IsEnabled = False
+            self.create_cloud_btn.IsEnabled = False
+            self.change_approved_status_btn.IsEnabled = False
+        elif len(self.current_selected_opening) == 1:
+            self.show_opening_btn.IsEnabled = True
+            self.show_previous_location_btn.IsEnabled = True
+            self.show_opening_3D_btn.IsEnabled = True
+            self.show_previous_location_3D_btn.IsEnabled = True
+            self.create_cloud_btn.IsEnabled = True
+            self.change_approved_status_btn.IsEnabled = True
+        else:
+            self.show_opening_btn.IsEnabled = False
+            self.show_previous_location_btn.IsEnabled = False
+            self.show_opening_3D_btn.IsEnabled = False
+            self.show_previous_location_3D_btn.IsEnabled = False
+            self.create_cloud_btn.IsEnabled = True
+            self.change_approved_status_btn.IsEnabled = True
 
     def set_all_filters(self):
         self.level_filter_ComboBox.Items.Clear()
@@ -913,8 +962,9 @@ class TrackingOpeningsDialog(Windows.Window):
             print(ex)
 
     def change_approved_status_btn_click(self, sender, e):
-        # TODO: implement
-        pass
+        openings = self.get_current_selected_opening()
+        if not openings:
+            return
 
     def export_to_excel_btn_click(self, sender, e):
         if not self.openings:
@@ -923,8 +973,19 @@ class TrackingOpeningsDialog(Windows.Window):
         folder_path = forms.pick_folder()
         if not folder_path:
             return
+        file_name = "pyBpm-Openings.xlsx"
+        num = 1
+        max_loops = 100
+        while os.path.exists(folder_path + "\\" + file_name):
+            file_name = "pyBpm-Openings_{}.xlsx".format(num)
+            num += 1
+            if num > max_loops:
+                self.alert(
+                    "מספר הנסיונות ליצירת שם קובץ חדש הגיע לסיומו, הקובץ ךא נוצר"
+                )
+                return
         try:
-            excel_path = create_new_workbook_file(folder_path + "\\pyBpm-Openings.xlsx")
+            excel_path = create_new_workbook_file(folder_path + "\\" + file_name)
             add_data_to_worksheet(excel_path, self.openings, ignore_fields=["_id"])
             is_to_open = forms.alert(
                 "הקובץ נוצר בהצלחה.\nהאם לפתוח אותו?", title="מעקב פתחים"
