@@ -949,12 +949,12 @@ class TrackingOpeningsDialog(Windows.Window):
         self.zoom_ui_view(0.9)
 
     def change_view_btn_click(self, sender, e):
-        selected_view = forms.select_views(
-            title="החלסף מבט", multiple=False, button_name="בחר מבט"
-        )
-        if not selected_view:
-            return
         try:
+            selected_view = forms.select_views(
+                title="החלף מבט", multiple=False, button_name="בחר מבט"
+            )
+            if not selected_view:
+                return
             self.uidoc.ActiveView = selected_view
         except Exception as ex:
             print(ex)
