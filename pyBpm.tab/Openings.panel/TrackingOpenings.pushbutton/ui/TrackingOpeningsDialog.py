@@ -252,17 +252,21 @@ class TrackingOpeningsDialog(Windows.Window):
         self.alert("להפעלת אפשרות זו, יש ללחוץ על כפתור הסקריפט בעת החזקת השיפט במקלדת")
 
     def handle_buttons_state(self):
-        self.handle_transaction_buttons_state()
-        self.handle_need_opening_buttons_state()
-        self.handle_need_selected_opening_buttons_state()
+        self.show_opening_btn.IsEnabled = True
+        self.show_opening_3D_btn.IsEnabled = True
+        self.create_cloud_btn.IsEnabled = True
+        self.show_previous_location_btn.IsEnabled = True
+        self.show_previous_location_3D_btn.IsEnabled = True
+        self.isolate_btn.IsEnabled = True
+        self.change_approved_status_btn.IsEnabled = True
+        self.export_to_excel_btn.IsEnabled = True
 
-    def handle_transaction_buttons_state(self):
-        self.show_opening_3D_btn.IsEnabled = self.allow_transactions
-        self.create_cloud_btn.IsEnabled = self.allow_transactions
-        self.show_previous_location_3D_btn.IsEnabled = self.allow_transactions
-        self.isolate_btn.IsEnabled = self.allow_transactions
+        if not self.allow_transactions:
+            self.show_opening_3D_btn.IsEnabled = False
+            self.create_cloud_btn.IsEnabled = False
+            self.show_previous_location_3D_btn.IsEnabled = False
+            self.isolate_btn.IsEnabled = False
 
-    def handle_need_opening_buttons_state(self):
         if len(self.openings) == 0:
             self.export_to_excel_btn.IsEnabled = False
             self.show_opening_btn.IsEnabled = False
@@ -271,16 +275,7 @@ class TrackingOpeningsDialog(Windows.Window):
             self.show_previous_location_3D_btn.IsEnabled = False
             self.create_cloud_btn.IsEnabled = False
             self.change_approved_status_btn.IsEnabled = False
-        else:
-            self.export_to_excel_btn.IsEnabled = True
-            self.show_opening_btn.IsEnabled = True
-            self.show_previous_location_btn.IsEnabled = True
-            self.show_opening_3D_btn.IsEnabled = True
-            self.show_previous_location_3D_btn.IsEnabled = True
-            self.create_cloud_btn.IsEnabled = True
-            self.change_approved_status_btn.IsEnabled = True
 
-    def handle_need_selected_opening_buttons_state(self):
         if len(self.current_selected_opening) == 0:
             self.show_opening_btn.IsEnabled = False
             self.show_previous_location_btn.IsEnabled = False
@@ -288,20 +283,12 @@ class TrackingOpeningsDialog(Windows.Window):
             self.show_previous_location_3D_btn.IsEnabled = False
             self.create_cloud_btn.IsEnabled = False
             self.change_approved_status_btn.IsEnabled = False
-        elif len(self.current_selected_opening) == 1:
-            self.show_opening_btn.IsEnabled = True
-            self.show_previous_location_btn.IsEnabled = True
-            self.show_opening_3D_btn.IsEnabled = True
-            self.show_previous_location_3D_btn.IsEnabled = True
-            self.create_cloud_btn.IsEnabled = True
-            self.change_approved_status_btn.IsEnabled = True
-        else:
+
+        if len(self.current_selected_opening) > 1:
             self.show_opening_btn.IsEnabled = False
             self.show_previous_location_btn.IsEnabled = False
             self.show_opening_3D_btn.IsEnabled = False
             self.show_previous_location_3D_btn.IsEnabled = False
-            self.create_cloud_btn.IsEnabled = True
-            self.change_approved_status_btn.IsEnabled = True
 
     def set_all_filters(self):
         self.level_filter_ComboBox.Items.Clear()
