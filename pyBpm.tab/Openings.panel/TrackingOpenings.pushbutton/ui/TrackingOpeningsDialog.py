@@ -13,16 +13,17 @@ from Autodesk.Revit.DB import (
     ViewType,
 )
 
-from System import DateTime, TimeZoneInfo
+from System import DateTime, TimeZoneInfo, Windows
 import wpf
-from System import Windows
 import os
+import json
 
-from pyrevit import forms
+from pyrevit import forms, script
 
-from ServerUtils import get_openings_changes  # type: ignore
+from ServerUtils import get_openings_changes, change_openings_approved_status  # type: ignore
 from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_comp_link  # type: ignore
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet  # type: ignore
+from UiUtils import SelectFromList  # type: ignore
 
 import Utils
 
@@ -91,6 +92,12 @@ class TrackingOpeningsDialog(Windows.Window):
         self._openings = []
         self._display_openings = []
         self._current_selected_opening = []
+
+        self.setting_data_file_path = script.get_universal_data_file(
+            file_id="settings",
+            file_ext="json",
+            add_cmd_name=True,
+        )
 
         self.start_time_str = None
         self.end_time_str = None
@@ -347,13 +354,17 @@ class TrackingOpeningsDialog(Windows.Window):
         self.changeType_filter_ComboBox.Items.Add("updated")
         self.changeType_filter_ComboBox.Items.Add("deleted")
 
+        self.approved_status_options = [
+            "approved",
+            "approved but later modified",
+            "not approved",
+            "not treated",
+        ]
         self.approved_filter_ComboBox.Items.Clear()
         self.approved_filter_ComboBox.Items.Add("All Approved")
         self.approved_filter_ComboBox.SelectedIndex = 0
-        self.approved_filter_ComboBox.Items.Add("approved")
-        self.approved_filter_ComboBox.Items.Add("approved but later modified")
-        self.approved_filter_ComboBox.Items.Add("not approved")
-        self.approved_filter_ComboBox.Items.Add("not treated")
+        for opt in self.approved_status_options:
+            self.approved_filter_ComboBox.Items.Add(opt)
 
     def level_filter_ComboBox_SelectionChanged(self, sender, e):
         self.filter_openings()
@@ -961,10 +972,97 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
+    def set_change_approved_status_password(self):
+        password = forms.ask_for_string(
+            default="", prompt="הכנס סיסמה לשינוי סטטוס אישור", title="מעקב פתחים"
+        )
+        if password is None:
+            return None
+        if os.path.exists(self.setting_data_file_path):
+            with open(self.setting_data_file_path, "r") as file:
+                data = json.load(file)
+                data["change_approved_status_password"] = password
+                with open(self.setting_data_file_path, "w") as file:
+                    json.dump(data, file)
+        else:
+            with open(self.setting_data_file_path, "w") as file:
+                json.dump({"change_approved_status_password": password}, file)
+        return password
+
+    def get_change_approved_status_password(self):
+        if os.path.exists(self.setting_data_file_path):
+            with open(self.setting_data_file_path, "r") as file:
+                data = json.load(file)
+                if "change_approved_status_password" in data:
+                    return data["change_approved_status_password"]
+                else:
+                    return self.set_change_approved_status_password()
+        else:
+            return self.set_change_approved_status_password()
+
     def change_approved_status_btn_click(self, sender, e):
-        openings = self.get_current_selected_opening()
-        if not openings:
+        if len(self.current_selected_opening) == 0:
+            self.alert("יש לבחור פתחים")
             return
+
+        password = self.get_change_approved_status_password()
+        if password is None:
+            return
+
+        new_approved_status_options = [
+            "approved",
+            "not approved",
+        ]
+
+        select_from_list = SelectFromList(new_approved_status_options)
+        new_approved_status = select_from_list.show()
+        if new_approved_status is None:
+            return
+
+        new_status_list = Utils.get_new_opening_approved_status(
+            self.current_selected_opening, new_approved_status
+        )
+        server_response = None
+        try:
+            server_response = change_openings_approved_status(
+                self.doc, password, new_status_list
+            )
+        except Exception as ex:
+            new_password = self.set_change_approved_status_password()
+            if new_password is None:
+                return
+            try:
+                server_response = change_openings_approved_status(
+                    self.doc, new_password, new_status_list
+                )
+            except Exception as ex:
+                if "403" in str(ex):
+                    self.alert("סיסמה שגויה")
+                else:
+                    print(ex)
+                return
+
+        if server_response:
+            response_unique_ids = [x["uniqueId"] for x in server_response]
+            new_openings = list(self.openings)
+            for opening in new_openings:
+                if opening["uniqueId"] in response_unique_ids:
+                    opening["approved"] = new_approved_status
+
+            level_filter = self.level_filter_ComboBox.SelectedValue
+            shape_filter = self.shape_filter_ComboBox.SelectedValue
+            discipline_filter = self.discipline_filter_ComboBox.SelectedValue
+            floor_filter = self.floor_filter_ComboBox.SelectedValue
+            changeType_filter = self.changeType_filter_ComboBox.SelectedValue
+            approved_filter = self.approved_filter_ComboBox.SelectedValue
+            self.openings = new_openings
+            self.level_filter_ComboBox.SelectedValue = level_filter
+            self.shape_filter_ComboBox.SelectedValue = shape_filter
+            self.discipline_filter_ComboBox.SelectedValue = discipline_filter
+            self.floor_filter_ComboBox.SelectedValue = floor_filter
+            self.changeType_filter_ComboBox.SelectedValue = changeType_filter
+            self.approved_filter_ComboBox.SelectedValue = approved_filter
+            self.filter_openings()
 
     def export_to_excel_btn_click(self, sender, e):
         if not self.openings:

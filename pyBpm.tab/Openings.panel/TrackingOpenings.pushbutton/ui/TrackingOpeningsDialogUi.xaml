@@ -13,14 +13,11 @@
 
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100"/>
                 <ColumnDefinition/>
                 <ColumnDefinition Width="100"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Margin="8" Click="get_dates_by_latest_sheet_versions_btn_click">
-                <TextBlock Text="בין מהדורות אחרונות של גיליונות פתחים של BPM" TextWrapping="Wrap" TextAlignment="Center"/>
-            </Button>
-            <StackPanel Grid.Column="1" Margin="4 0 4 0">
+
+            <StackPanel Grid.Column="0" Margin="4 0 4 0">
 
                 <TextBlock Text="פתחים שהשתנו מתאריך:" />
                 <Grid>
@@ -28,7 +25,7 @@
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" x:Name="start_date_DatePicker" />
+                    <DatePicker Grid.Row="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="start_date_DatePicker" SelectedDateFormat="Long" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
                         <ComboBox x:Name="start_hour_ComboBox"/>
                         <ComboBox x:Name="start_minute_ComboBox"/>
@@ -41,7 +38,7 @@
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" IsTodayHighlighted="True" Margin="2" x:Name="end_date_DatePicker" />
+                    <DatePicker Grid.Row="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="end_date_DatePicker" SelectedDateFormat="Long" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
                         <ComboBox x:Name="end_hour_ComboBox"/>
                         <ComboBox x:Name="end_minute_ComboBox"/>
@@ -49,7 +46,7 @@
                 </Grid>
 
             </StackPanel>
-            <Button Grid.Column="2" Margin="8" Click="show_openings_btn_click" FontSize="18" Background="Blue" Foreground="White" Cursor="Hand" x:Name="show_openings_btn">
+            <Button Grid.Column="1" Margin="8" Click="show_openings_btn_click" FontSize="18" Background="Blue" Foreground="White" Cursor="Hand" x:Name="show_openings_btn">
                 <Button.Resources>
                     <Style TargetType="Border">
                         <Setter Property="CornerRadius" Value="16"/>
