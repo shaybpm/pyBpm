@@ -70,8 +70,6 @@ def create_revision_clouds(doc, view, bboxes):
     level = view.GenLevel
     project_elevation = level.Elevation
 
-    # TODO: check: Application.ShortCurveTolerance
-
     curves_tuples = []
     for bbox in bboxes:
         point1 = XYZ(bbox.Min.X, bbox.Min.Y, project_elevation)
@@ -238,7 +236,15 @@ def create_revision_clouds(doc, view, bboxes):
     for curves_tuple in curves_tuples:
         curve1, curve2, curve3, curve4 = curves_tuple
         i_list_curve = List[Curve]([curve1, curve2, curve3, curve4])
-        RevisionCloud.Create(doc, view, revision.Id, i_list_curve)
+
+        # TODO: check: Application.ShortCurveTolerance
+        try:
+            RevisionCloud.Create(doc, view, revision.Id, i_list_curve)
+        except Exception as ex:
+            print("ERROR:")
+            print("Cloud Revision not created.")
+            print(ex)
+
         # TODO: Add opening names to comments
 
     t.Commit()
