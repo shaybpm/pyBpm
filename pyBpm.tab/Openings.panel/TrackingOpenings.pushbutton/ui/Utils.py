@@ -70,6 +70,8 @@ def create_revision_clouds(doc, view, bboxes):
     level = view.GenLevel
     project_elevation = level.Elevation
 
+    # TODO: check: Application.ShortCurveTolerance
+
     curves_tuples = []
     for bbox in bboxes:
         point1 = XYZ(bbox.Min.X, bbox.Min.Y, project_elevation)
@@ -380,8 +382,6 @@ def get_new_opening_approved_status(openings, new_approved_status):
 
 
 def get_head_tag_bbox(tag, view):
-    # * For plan only
-
     tag_has_leader = tag.HasLeader
 
     def change_tag_has_leader(has):
@@ -408,22 +408,3 @@ def get_head_tag_bbox(tag, view):
 
     t_group.Assimilate()
     return tag_bbox
-
-    tag_head = tag.TagHeadPosition
-
-    closer_point = (
-        tag_bbox.Min
-        if tag_head.DistanceTo(tag_bbox.Min) < tag_head.DistanceTo(tag_bbox.Max)
-        else tag_bbox.Max
-    )
-    delta_x = abs(tag_head.X - closer_point.X)
-    delta_y = abs(tag_head.Y - closer_point.Y)
-    print(delta_x)
-    print(delta_y)
-    print("----" * 10)
-
-    new_bbox = BoundingBoxXYZ()
-    new_bbox.Min = XYZ(tag_head.X - delta_x, tag_head.Y - delta_y, tag_bbox.Min.Z)
-    new_bbox.Max = XYZ(tag_head.X + delta_x, tag_head.Y + delta_y, tag_bbox.Max.Z)
-
-    return new_bbox
