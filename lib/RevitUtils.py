@@ -274,3 +274,20 @@ def get_element_by_unique_id(doc, unique_id):
         elem = link_doc.GetElement(unique_id)
         if elem:
             return elem
+
+
+def get_model_guids(doc):
+    model_guids = []
+    doc_model_info = get_model_info(doc)
+    model_guids.append(doc_model_info["modelGuid"])
+
+    all_links = get_all_link_instances(doc)
+    for link in all_links:
+        link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
+        link_doc_model_info = get_model_info(link_doc)
+        if link_doc_model_info["modelGuid"] not in model_guids:
+            model_guids.append(link_doc_model_info["modelGuid"])
+
+    return model_guids

@@ -21,7 +21,7 @@ import json
 from pyrevit import forms, script
 
 from ServerUtils import get_openings_changes, change_openings_approved_status  # type: ignore
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_tags_of_element_in_view  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_tags_of_element_in_view, get_model_guids  # type: ignore
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet  # type: ignore
 from UiUtils import SelectFromList  # type: ignore
 
@@ -672,9 +672,10 @@ class TrackingOpeningsDialog(Windows.Window):
         self.update_end_date()
 
     def show_openings_btn_click(self, sender, e):
+        model_guids = get_model_guids(self.doc)
         try:
             self.openings = get_openings_changes(
-                self.doc, self.start_time_str, self.end_time_str
+                self.doc, self.start_time_str, self.end_time_str, model_guids
             )
             format_display = "dd.MM.yyyy, HH:mm"
             start_time_display_str = DateTime.Parse(self.start_time_str).ToString(

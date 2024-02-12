@@ -58,18 +58,19 @@ def patch_deleted_elements(doc, deleted_element_ids):
     patch(server_url + "api/openings/tracking/opening-deleted", data)
 
 
-def get_openings_changes(doc, start_time_str, end_time_str):
+def get_openings_changes(doc, start_time_str, end_time_str, model_guids):
     import urllib
 
     start_time_str = urllib.quote_plus(start_time_str)
     end_time_str = urllib.quote_plus(end_time_str)
     model_info = get_model_info(doc)
-    return get(
-        server_url
-        + "api/openings/tracking/time/{}?start={}&end={}".format(
-            model_info["projectGuid"], start_time_str, end_time_str
-        )
+    endpoint = "api/openings/tracking/time/{}?start={}&end={}&models={}".format(
+        model_info["projectGuid"],
+        start_time_str,
+        end_time_str,
+        ",".join(model_guids),
     )
+    return get(server_url + endpoint)
 
 
 def change_openings_approved_status(doc, password, newStatusArr):
