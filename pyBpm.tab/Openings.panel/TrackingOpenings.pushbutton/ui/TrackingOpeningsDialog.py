@@ -215,32 +215,38 @@ class TrackingOpeningsDialog(Windows.Window):
 
     @current_sort_key.setter
     def current_sort_key(self, value):
-        try:
-            self._current_sort_key = value
-            self.sort_discipline_btn.Background = Windows.Media.Brushes.White
-            self.sort_mark_btn.Background = Windows.Media.Brushes.White
-            self.sort_changeType_btn.Background = Windows.Media.Brushes.White
-            self.sort_scheduleLevel_btn.Background = Windows.Media.Brushes.White
-            self.sort_floor_btn.Background = Windows.Media.Brushes.White
-            if value is None:
-                return
-            if value == "discipline":
-                self.sort_discipline_btn.Background = Windows.Media.Brushes.LightBlue
-                return
-            if value == "mark":
-                self.sort_mark_btn.Background = Windows.Media.Brushes.LightBlue
-                return
-            if value == "changeType":
-                self.sort_changeType_btn.Background = Windows.Media.Brushes.LightBlue
-                return
-            if value == "currentScheduledLevel":
-                self.sort_scheduleLevel_btn.Background = Windows.Media.Brushes.LightBlue
-                return
-            if value == "isFloorOpening":
-                self.sort_floor_btn.Background = Windows.Media.Brushes.LightBlue
-                return
-        except Exception as ex:
-            print(ex)
+
+        self._current_sort_key = value
+        self.sort_discipline_btn.Background = Windows.Media.Brushes.White
+        self.sort_mark_btn.Background = Windows.Media.Brushes.White
+        self.sort_changeType_btn.Background = Windows.Media.Brushes.White
+        self.sort_scheduleLevel_btn.Background = Windows.Media.Brushes.White
+        self.sort_floor_btn.Background = Windows.Media.Brushes.White
+        if value is None:
+            return
+        sort_color = (
+            Windows.Media.Brushes.LightBlue
+            if not value.endswith("_REVERSE")
+            else Windows.Media.Brushes.LightPink
+        )
+        _value = value.replace("_REVERSE", "")
+        if _value == "discipline":
+            self.sort_discipline_btn.Background = sort_color
+            return
+        if _value == "mark":
+            self.sort_mark_btn.Background = sort_color
+            return
+        if _value == "changeType":
+            self.sort_changeType_btn.Background = sort_color
+            return
+        if _value == "currentScheduledLevel":
+            self.sort_scheduleLevel_btn.Background = sort_color
+            return
+        if _value == "isFloorOpening":
+            self.sort_floor_btn.Background = sort_color
+            return
+        if _value == "approved":
+            self.sort_approved_btn.Background = sort_color
 
     def alert(self, message):
         forms.alert(message, title="מעקב פתחים")
@@ -563,7 +569,7 @@ class TrackingOpeningsDialog(Windows.Window):
             reverse=self.current_sort_key == key,
         )
         if self.current_sort_key == key:
-            self.current_sort_key = None
+            self.current_sort_key += "_REVERSE"
         else:
             self.current_sort_key = key
 
@@ -679,6 +685,8 @@ class TrackingOpeningsDialog(Windows.Window):
             )
             self.current_start_date_TextBlock.Text = start_time_display_str
             self.current_end_date_TextBlock.Text = end_time_display_str
+
+            self.current_sort_key = None
         except Exception as ex:
             print(ex)
 
