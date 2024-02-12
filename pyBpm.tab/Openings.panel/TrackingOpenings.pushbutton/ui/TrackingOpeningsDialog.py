@@ -21,7 +21,7 @@ import json
 from pyrevit import forms, script
 
 from ServerUtils import get_openings_changes, change_openings_approved_status  # type: ignore
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view  # type: ignore
+from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_tags_of_element_in_view  # type: ignore
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet  # type: ignore
 from UiUtils import SelectFromList  # type: ignore
 
@@ -825,16 +825,27 @@ class TrackingOpeningsDialog(Windows.Window):
             self.alert("יש לבחור פתחים")
             return
 
+        t_group = TransactionGroup(self.doc, "pyBpm | Create Revision Clouds")
+        t_group.Start()
         bboxes = []
         for opening in current_selected_opening:
-            bbox = self.get_bbox(opening, current=not opening["isDeleted"])
-            if bbox:
-                bboxes.append(bbox)
+            opening_tags = get_tags_of_element_in_view(active_view, opening["uniqueId"])
+            if len(opening_tags) == 0:
+                bbox = self.get_bbox(opening, current=not opening["isDeleted"])
+                if bbox:
+                    bboxes.append(bbox)
+            else:
+                for tag in opening_tags:
+                    bbox = Utils.get_head_tag_bbox(tag, active_view)
+                    if bbox:
+                        bboxes.append(bbox)
 
         if len(bboxes) == 0:
+            t_group.RollBack()
             return
 
         Utils.create_revision_clouds(self.doc, active_view, bboxes)
+        t_group.Assimilate()
 
     def create_cloud_btn_click(self, sender, e):
         if not self.allow_transactions:

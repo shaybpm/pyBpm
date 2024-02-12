@@ -218,3 +218,59 @@ def get_ogs_by_color(doc, color):
         ogs.SetCutLinePatternId(line_pattern.Id)
 
     return ogs
+
+
+def get_tags_of_element_in_view(view, element_unique_id):
+    from Autodesk.Revit.DB import FilteredElementCollector, IndependentTag
+
+    doc = view.Document
+    revit_version = getRevitVersion(doc)
+
+    tags_in_view = (
+        FilteredElementCollector(view.Document, view.Id)
+        .OfClass(IndependentTag)
+        .ToElements()
+    )
+
+    all_links = get_all_link_instances(doc)
+
+    def is_ref_is_the_target(ref):
+        element = doc.GetElement(ref)
+        if element and element.UniqueId == element_unique_id:
+            return True
+        linked_element_id = ref.LinkedElementId
+        for link in all_links:
+            doc_link = link.GetLinkDocument()
+            if not doc_link:
+                continue
+            element = doc_link.GetElement(linked_element_id)
+            if element and element.UniqueId == element_unique_id:
+                return True
+        return False
+
+    elem_tags = []
+    for tag in tags_in_view:
+        if revit_version < 2022:
+            ref = tag.GetTaggedReference()
+            if ref and is_ref_is_the_target(ref):
+                elem_tags.append(tag)
+        else:
+            refs = tag.GetTaggedReferences()
+            for ref in refs:
+                if is_ref_is_the_target(ref):
+                    elem_tags.append(tag)
+    return elem_tags
+
+
+def get_element_by_unique_id(doc, unique_id):
+    elem = doc.GetElement(unique_id)
+    if elem:
+        return elem
+    all_links = get_all_link_instances(doc)
+    for link in all_links:
+        link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
+        elem = link_doc.GetElement(unique_id)
+        if elem:
+            return elem

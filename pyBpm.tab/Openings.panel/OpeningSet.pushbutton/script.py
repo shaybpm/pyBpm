@@ -45,6 +45,7 @@ def print_results(results):
             len(results)
         )
     )
+    # TODO: Add summary.
 
     is_any_warning = "WARNING" in [result["status"] for result in results]
     if is_any_warning:
@@ -69,6 +70,7 @@ def print_full_results(results):
             len(results)
         )
     )
+    # TODO: Add summary.
 
     is_any_warning = "WARNING" in [result["status"] for result in results]
     if is_any_warning:
