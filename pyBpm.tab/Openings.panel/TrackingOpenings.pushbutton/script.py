@@ -10,6 +10,7 @@ __highlight__ = "new"
 # ------------IMPORTS------------
 # -------------------------------
 
+from RevitUtils import get_link_types_status  # type: ignore
 from ServerUtils import ServerPermissions  # type: ignore
 from pyrevit import forms
 
@@ -47,6 +48,21 @@ def run():
         )
         return
     dialog = TrackingOpeningsDialog(uidoc)
+
+    link_types_status = get_link_types_status(doc)
+    unloaded_links = link_types_status.get(
+        "LocallyUnloaded", []
+    ) + link_types_status.get("Unloaded", [])
+    if len(unloaded_links) > 0:
+        message = (
+            "שים לב, יש לינק שאינו טעון, לא ניתן יהיה לקבל את הפתחים של לינק זה.\nשם הלינק:\n"
+            if len(unloaded_links) == 1
+            else "שים לב, ישנם {} לינקים לא טעונים, לא ניתן יהיה לקבל את הפתחים של לינקים אלה.\nשמות הלינקים:\n".format(
+                len(unloaded_links)
+            )
+        )
+        message += ", ".join(unloaded_links)
+        forms.alert(message)
 
     if __shiftclick__:  # type: ignore
         dialog.allow_transactions = True

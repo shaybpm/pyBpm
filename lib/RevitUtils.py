@@ -111,6 +111,24 @@ def get_all_link_instances(doc):
     )
 
 
+def get_all_link_types(doc):
+    from Autodesk.Revit.DB import FilteredElementCollector, RevitLinkType
+
+    return FilteredElementCollector(doc).OfClass(RevitLinkType).ToElements()
+
+
+def get_link_types_status(doc):
+    all_link_types = get_all_link_types(doc)
+
+    status = {}
+    for link_type in all_link_types:
+        link_status = link_type.GetLinkedFileStatus().ToString()
+        if link_status not in status:
+            status[link_status] = []
+        status[link_status].append(getElementName(link_type))
+    return status
+
+
 def get_link_by_model_guid(doc, model_guid):
     all_links = get_all_link_instances(doc)
     for link in all_links:
