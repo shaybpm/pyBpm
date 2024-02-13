@@ -49,9 +49,13 @@ def print_results(results):
     statuses = [result["status"] for result in results]
     is_any_warning = "WARNING" in statuses
     if is_any_warning:
-        num_of_warnings = len([status for status in statuses if status == "WARNING"])
+        num_of_openings_with_warnings = len(
+            [status for status in statuses if status == "WARNING"]
+        )
         output.print_html(
-            '<h2 style="color:red">End with {} warnings.</h2>'.format(num_of_warnings)
+            '<h2 style="color:red">{} openings ended with warnings.</h2>'.format(
+                num_of_openings_with_warnings
+            )
         )
         message_warning_dict = {}
         for result in results:
