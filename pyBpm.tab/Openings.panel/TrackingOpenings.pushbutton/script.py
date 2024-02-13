@@ -40,7 +40,20 @@ def run():
         )
         return
     server_permissions = ServerPermissions(doc)
-    openings_tracking_permission = server_permissions.get_openings_tracking_permission()
+    openings_tracking_permission = False
+    try:
+        openings_tracking_permission = (
+            server_permissions.get_openings_tracking_permission()
+        )
+    except Exception as e:
+        msg = "שגיאה:\n{}".format(e)
+        if str(e) == "Unable to connect to the remote server":
+            msg = "יש לוודא חיבור תקין לאינטרנט."
+        forms.alert(
+            msg,
+            title="שגיאה בבדיקת הרשאות",
+        )
+        return
     if not openings_tracking_permission:
         forms.alert(
             "אין לפרויקט זה גישה לאפשרות זו",
