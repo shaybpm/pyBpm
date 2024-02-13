@@ -444,7 +444,14 @@ def post_openings_data(doc, openings, to_print=False):
     from ServerUtils import ServerPermissions  # type: ignore
 
     server_permissions = ServerPermissions(doc)
-    if not server_permissions.get_openings_tracking_permission():
+    has_permission = False
+    try:
+        has_permission = server_permissions.get_openings_tracking_permission()
+    except Exception as e:
+        if to_print:
+            print("Failed to get openings tracking permission.")
+            print(e)
+    if not has_permission:
         return
 
     from HttpRequest import post  # type: ignore

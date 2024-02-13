@@ -45,11 +45,34 @@ def print_results(results):
             len(results)
         )
     )
-    # TODO: Add summary.
 
-    is_any_warning = "WARNING" in [result["status"] for result in results]
+    statuses = [result["status"] for result in results]
+    is_any_warning = "WARNING" in statuses
     if is_any_warning:
-        output.print_html('<h2 style="color:red">End with warnings.</h2>')
+        num_of_warnings = len([status for status in statuses if status == "WARNING"])
+        output.print_html(
+            '<h2 style="color:red">End with {} warnings.</h2>'.format(num_of_warnings)
+        )
+        message_warning_dict = {}
+        for result in results:
+            if result["status"] == "WARNING":
+                for res in result["all_results"]:
+                    if res["status"] == "WARNING":
+                        message = res["message"]
+                        if message in message_warning_dict:
+                            message_warning_dict[message] += 1
+                        else:
+                            message_warning_dict[message] = 1
+        message_warning_ul = "<ul>"
+        for message, count in message_warning_dict.items():
+            message_warning_ul += (
+                '<li><span style="font-weight: bold;">{} {}:</span> {}</li>'.format(
+                    count, "warnings" if count > 1 else "warning", message
+                )
+            )
+        message_warning_ul += "</ul>"
+        output.print_html(message_warning_ul)
+
         for result in results:
             if result["status"] == "WARNING":
                 output.insert_divider()
@@ -70,7 +93,6 @@ def print_full_results(results):
             len(results)
         )
     )
-    # TODO: Add summary.
 
     is_any_warning = "WARNING" in [result["status"] for result in results]
     if is_any_warning:
