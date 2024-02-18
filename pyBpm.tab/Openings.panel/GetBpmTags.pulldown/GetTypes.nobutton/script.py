@@ -16,7 +16,7 @@ from Autodesk.Revit.DB import Transaction, ElementTransformUtils, ElementId
 
 from pyrevit import forms
 
-import RevitUtils  # type: ignore
+import RevitUtils
 
 import sys, os
 

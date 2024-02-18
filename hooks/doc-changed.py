@@ -9,10 +9,10 @@ try:
 
     from pyrevit import EXEC_PARAMS
 
-    from PyRevitUtils import TempElementStorage  # type: ignore
-    from Config import get_opening_set_temp_file_id  # type: ignore
-    from RevitUtils import getElementName  # type: ignore
-    from ServerUtils import ServerPermissions  # type: ignore
+    from PyRevitUtils import TempElementStorage
+    from Config import get_opening_set_temp_file_id
+    from RevitUtils import getElementName
+    from ServerUtils import ServerPermissions
 
     import sys, os
 
@@ -26,7 +26,7 @@ try:
             "lib",
         )
     )
-    from RevitUtilsOpenings import opening_names  # type: ignore
+    from RevitUtilsOpenings import opening_names
 
     def filter_ids_by_elem_name(doc, elem_ids):
         if not elem_ids:
@@ -78,14 +78,14 @@ try:
             temp_storage.add_elements(added_and_modified_element_ids)
 
         if len(deleted_element_ids) > 0:
-            from ServerUtils import patch_deleted_elements  # type: ignore
+            from ServerUtils import patch_deleted_elements
 
             patch_deleted_elements(doc, deleted_element_ids)
             temp_storage.remove_elements(deleted_element_ids)
 
     run()
 except Exception as ex:
-    from Config import get_env_mode  # type: ignore
+    from Config import get_env_mode
 
     if get_env_mode() == "dev":
         print(ex)

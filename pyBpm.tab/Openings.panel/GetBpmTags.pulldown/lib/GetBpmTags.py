@@ -12,7 +12,7 @@ from Autodesk.Revit.DB import (
     Family,
 )
 
-import RevitUtils  # type: ignore
+import RevitUtils
 
 # -------------------------------
 # -------------MAIN--------------

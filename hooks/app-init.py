@@ -1,4 +1,4 @@
-from Config import get_env_mode  # type: ignore
+from Config import get_env_mode
 
 try:
     if get_env_mode() == "prod":
@@ -23,8 +23,8 @@ try:
                 "lib",
             )
         )
-        from Config import server_url, get_current_version  # type: ignore
-        import HttpRequest  # type: ignore
+        from Config import server_url, get_current_version
+        import HttpRequest
 
         version_update_required_dict = HttpRequest.get(
             server_url + "api/info/v-update-required"

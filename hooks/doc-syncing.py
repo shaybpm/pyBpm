@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 try:
     from Autodesk.Revit.DB import Transaction
-    from Config import get_env_mode  # type: ignore
+    from Config import get_env_mode
     from pyrevit import EXEC_PARAMS
 
-    from PyRevitUtils import TempElementStorage  # type: ignore
-    from Config import get_opening_set_temp_file_id, get_env_mode  # type: ignore
-    from ServerUtils import ServerPermissions  # type: ignore
+    from PyRevitUtils import TempElementStorage
+    from Config import get_opening_set_temp_file_id, get_env_mode
+    from ServerUtils import ServerPermissions
 
     import sys, os
 

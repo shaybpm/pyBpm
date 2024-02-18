@@ -27,7 +27,7 @@ from Autodesk.Revit.UI import TaskDialog
 
 from pyrevit import forms
 
-import RevitUtils, pyUtils  # type: ignore
+import RevitUtils, pyUtils
 
 # -------------------------------
 # -------------MAIN--------------

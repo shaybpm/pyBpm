@@ -24,9 +24,9 @@ from System.Collections.Generic import List
 
 from pyrevit import forms
 
-from RevitUtils import turn_of_categories, get_ogs_by_color  # type: ignore
+from RevitUtils import turn_of_categories, get_ogs_by_color
 
-from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter  # type: ignore
+from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter
 
 
 def get_opening_revision(doc):

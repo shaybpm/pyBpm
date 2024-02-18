@@ -11,9 +11,9 @@ import os
 
 import Update  # type: ignore
 
-import HttpRequest  # type: ignore
-import pyUtils  # type: ignore
-import Config  # type: ignore
+import HttpRequest
+import pyUtils
+import Config
 
 # --------------------------------
 # -------------SCRIPT-------------

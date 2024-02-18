@@ -19,7 +19,7 @@ clr.AddReference("System.Net")
 clr.AddReference("System.IO.Compression.FileSystem")
 
 from System.IO.Compression import ZipFile
-import HttpRequest  # type: ignore
+import HttpRequest
 
 # --------------------------------
 # -------------SCRIPT-------------

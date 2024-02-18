@@ -3,7 +3,7 @@ def run():
     import os, sys
 
     sys.path.append(os.path.join("..", "lib"))
-    from ServerUtils import ServerPermissions  # type: ignore
+    from ServerUtils import ServerPermissions
 
     doc = EXEC_PARAMS.event_args.Document
     if not doc.IsModelInCloud:
@@ -16,7 +16,7 @@ def run():
 try:
     run()
 except Exception as ex:
-    from Config import get_env_mode  # type: ignore
+    from Config import get_env_mode
 
     if get_env_mode() == "dev":
         print(ex)

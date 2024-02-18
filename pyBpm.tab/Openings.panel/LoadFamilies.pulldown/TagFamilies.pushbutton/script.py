@@ -17,7 +17,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import LoadOpeningFamily  # type: ignore
 
-from RevitUtils import getRevitVersion  # type: ignore
+from RevitUtils import getRevitVersion
 
 # -------------------------------
 # -------------MAIN--------------

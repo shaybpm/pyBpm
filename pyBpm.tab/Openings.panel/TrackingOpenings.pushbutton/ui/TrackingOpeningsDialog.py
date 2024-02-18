@@ -20,10 +20,17 @@ import json
 
 from pyrevit import forms, script
 
-from ServerUtils import get_openings_changes, change_openings_approved_status  # type: ignore
-from RevitUtils import convertRevitNumToCm, get_ui_view as ru_get_ui_doc, get_transform_by_model_guid, get_bpm_3d_view, get_tags_of_element_in_view, get_model_guids  # type: ignore
-from ExcelUtils import create_new_workbook_file, add_data_to_worksheet  # type: ignore
-from UiUtils import SelectFromList  # type: ignore
+from ServerUtils import get_openings_changes, change_openings_approved_status
+from RevitUtils import (
+    convertRevitNumToCm,
+    get_ui_view as ru_get_ui_doc,
+    get_transform_by_model_guid,
+    get_bpm_3d_view,
+    get_tags_of_element_in_view,
+    get_model_guids,
+)
+from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
+from UiUtils import SelectFromList
 
 import Utils
 

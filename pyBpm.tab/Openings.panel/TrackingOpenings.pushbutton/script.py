@@ -10,8 +10,8 @@ __highlight__ = "new"
 # ------------IMPORTS------------
 # -------------------------------
 
-from RevitUtils import get_link_types_status  # type: ignore
-from ServerUtils import ServerPermissions  # type: ignore
+from RevitUtils import get_link_types_status
+from ServerUtils import ServerPermissions
 from pyrevit import forms
 
 import sys, os

@@ -13,7 +13,7 @@ from Autodesk.Revit.DB import (
 
 from pyrevit import forms
 
-import RevitUtils  # type: ignore
+import RevitUtils
 
 import sys, os
 

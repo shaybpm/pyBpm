@@ -13,11 +13,11 @@ from Autodesk.Revit.DB import (
     BuiltInFailures,
 )
 
-import pyUtils  # type: ignore
-import RevitUtils  # type: ignore
-import RevitUtilsOpenings  # type: ignore
-from PyRevitUtils import TempElementStorage  # type: ignore
-from Config import get_opening_set_temp_file_id  # type: ignore
+import pyUtils
+import RevitUtils
+import RevitUtilsOpenings
+from PyRevitUtils import TempElementStorage
+from Config import get_opening_set_temp_file_id
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -441,7 +441,7 @@ def execute_all_functions(doc, opening):
 
 def post_openings_data(doc, openings, to_print=False):
     """Posts the openings data to the server if this project has the openings tracking permission."""
-    from ServerUtils import ServerPermissions  # type: ignore
+    from ServerUtils import ServerPermissions
 
     server_permissions = ServerPermissions(doc)
     has_permission = False
@@ -454,8 +454,8 @@ def post_openings_data(doc, openings, to_print=False):
     if not has_permission:
         return
 
-    from HttpRequest import post  # type: ignore
-    from Config import server_url  # type: ignore
+    from HttpRequest import post
+    from Config import server_url
 
     openings_data = []
     for opening in openings:
