@@ -676,7 +676,7 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
-    def get_current_selected_opening(self):
+    def get_current_selected_opening_if_one(self):
         if len(self.current_selected_opening) != 1:
             self.alert("יש לבחור פתח אחד בלבד")
             return
@@ -690,7 +690,7 @@ class TrackingOpeningsDialog(Windows.Window):
         return ui_view
 
     def show_opening(self, current):
-        opening = self.get_current_selected_opening()
+        opening = self.get_current_selected_opening_if_one()
         if not opening:
             return
 
@@ -725,7 +725,7 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def show_opening_3d(self, current):
         ex_event_file = ExternalEventDataFile(self.doc)
-        opening = self.get_current_selected_opening()
+        opening = self.get_current_selected_opening_if_one()
         if not opening:
             return
         ex_event_file.set_key_value("current_selected_opening", opening)
