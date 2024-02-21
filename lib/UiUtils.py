@@ -12,6 +12,7 @@ class SelectFromList(Windows.Window):
 
     def InitializeComponent(self):
         self.Title = "Select item"
+        self.Topmost = True
         self.Width = 300
         self.Height = 400
         self.WindowStartupLocation = Windows.WindowStartupLocation.CenterScreen
