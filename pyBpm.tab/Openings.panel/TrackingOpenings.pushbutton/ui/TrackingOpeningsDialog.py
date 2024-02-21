@@ -94,8 +94,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.uidoc = uidoc
         self.doc = self.uidoc.Document
 
-        self._allow_transactions = False
-
         self._openings = []
         self._display_openings = []
         self._current_selected_opening = []
@@ -170,15 +168,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.FLOORS_AND_WALLS = "Floors and Walls"
         self.set_all_filters()
 
-        self.handle_buttons_state()
-
-    @property
-    def allow_transactions(self):
-        return self._allow_transactions
-
-    @allow_transactions.setter
-    def allow_transactions(self, value):
-        self._allow_transactions = value
         self.handle_buttons_state()
 
     @property
@@ -259,9 +248,6 @@ class TrackingOpeningsDialog(Windows.Window):
         forms.alert(message, title="מעקב פתחים")
         self.Topmost = True
 
-    def not_allow_transactions_alert(self):
-        self.alert("להפעלת אפשרות זו, יש ללחוץ על כפתור הסקריפט בעת החזקת השיפט במקלדת")
-
     def handle_buttons_state(self):
         self.show_opening_btn.IsEnabled = True
         self.show_opening_3D_btn.IsEnabled = True
@@ -271,12 +257,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.isolate_btn.IsEnabled = True
         self.change_approved_status_btn.IsEnabled = True
         self.export_to_excel_btn.IsEnabled = True
-
-        if not self.allow_transactions:
-            self.show_opening_3D_btn.IsEnabled = False
-            self.create_cloud_btn.IsEnabled = False
-            self.show_previous_location_3D_btn.IsEnabled = False
-            self.isolate_btn.IsEnabled = False
 
         if len(self.openings) == 0:
             self.export_to_excel_btn.IsEnabled = False
@@ -807,20 +787,12 @@ class TrackingOpeningsDialog(Windows.Window):
         t_group.Assimilate()
 
     def show_opening_3D_btn_click(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
-
         try:
             self.show_opening_3d(current=True)
         except Exception as ex:
             print(ex)
 
     def show_previous_location_3D_btn_click(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
-
         try:
             self.show_opening_3d(current=False)
         except Exception as ex:
@@ -864,19 +836,12 @@ class TrackingOpeningsDialog(Windows.Window):
         t_group.Assimilate()
 
     def create_cloud_btn_click(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
-
         try:
             self.create_revision_clouds()
         except Exception as ex:
             print(ex)
 
     def isolate_btn_mouse_down(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
         active_view = self.uidoc.ActiveView
         if not active_view:
             self.alert("לא נמצא מבט פעיל")
@@ -892,9 +857,6 @@ class TrackingOpeningsDialog(Windows.Window):
             print(ex)
 
     def isolate_btn_mouse_up(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
         active_view = self.uidoc.ActiveView
         if not active_view:
             self.alert("לא נמצא מבט פעיל")

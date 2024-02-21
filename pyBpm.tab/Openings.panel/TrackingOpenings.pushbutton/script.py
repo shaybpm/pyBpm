@@ -77,11 +77,7 @@ def run():
         message += ", ".join(unloaded_links)
         forms.alert(message)
 
-    if __shiftclick__:  # type: ignore
-        dialog.allow_transactions = True
-        dialog.ShowDialog()
-    else:
-        dialog.Show()
+    dialog.Show()
 
 
 run()
