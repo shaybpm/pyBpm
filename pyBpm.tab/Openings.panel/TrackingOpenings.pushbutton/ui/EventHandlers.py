@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import os, json
-from Autodesk.Revit.DB import TransactionGroup
+from Autodesk.Revit.DB import TransactionGroup, ViewType
 import Utils
 from pyrevit.forms import alert
 from pyrevit.script import get_instance_data_file
-from RevitUtils import get_ui_view, get_bpm_3d_view, get_model_info
+from RevitUtils import (
+    get_ui_view,
+    get_bpm_3d_view,
+    get_model_info,
+    get_tags_of_element_in_view,
+)
 from ExEventHandlers import get_simple_external_event
 
 
@@ -41,12 +46,12 @@ def show_opening_3d_cb(uiapp):
     uidoc = uiapp.ActiveUIDocument
     doc = uidoc.Document
 
-    t_group = TransactionGroup(doc, "pyBpm | Show Opening 3D")
-    t_group.Start()
-
     ex_event_file = ExternalEventDataFile(doc)
     opening = ex_event_file.get_key_value("current_selected_opening")
     current = ex_event_file.get_key_value("current_bool_arg")
+
+    t_group = TransactionGroup(doc, "pyBpm | Show Opening 3D")
+    t_group.Start()
 
     if not opening:
         return
@@ -71,3 +76,49 @@ def show_opening_3d_cb(uiapp):
 
 
 show_opening_3d_event = get_simple_external_event(show_opening_3d_cb)
+
+
+def create_revision_clouds_cb(uiapp):
+    uidoc = uiapp.ActiveUIDocument
+    doc = uidoc.Document
+
+    ex_event_file = ExternalEventDataFile(doc)
+
+    active_view = uidoc.ActiveView
+    if active_view.ViewType not in [
+        ViewType.FloorPlan,
+        ViewType.CeilingPlan,
+        ViewType.EngineeringPlan,
+    ]:
+        alert("לא זמין במבט זה")
+        return
+
+    current_selected_opening = ex_event_file.get_key_value("current_selected_opening")
+    if not current_selected_opening:
+        alert("יש לבחור פתחים")
+        return
+
+    t_group = TransactionGroup(doc, "pyBpm | Create Revision Clouds")
+    t_group.Start()
+    bboxes = []
+    for opening in current_selected_opening:
+        opening_tags = get_tags_of_element_in_view(active_view, opening["uniqueId"])
+        if len(opening_tags) == 0:
+            bbox = Utils.get_bbox(doc, opening, current=not opening["isDeleted"])
+            if bbox:
+                bboxes.append(bbox)
+        else:
+            for tag in opening_tags:
+                bbox = Utils.get_head_tag_bbox(tag, active_view)
+                if bbox:
+                    bboxes.append(bbox)
+
+    if len(bboxes) == 0:
+        t_group.RollBack()
+        return
+
+    Utils.create_revision_clouds(doc, active_view, bboxes)
+    t_group.Assimilate()
+
+
+create_revision_clouds_event = get_simple_external_event(create_revision_clouds_cb)

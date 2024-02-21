@@ -6,11 +6,7 @@ clr.AddReferenceByPartialName("System")
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
-from Autodesk.Revit.DB import (
-    XYZ,
-    TransactionGroup,
-    ViewType,
-)
+from Autodesk.Revit.DB import XYZ
 
 from System import DateTime, TimeZoneInfo, Windows
 import wpf
@@ -23,14 +19,17 @@ from ServerUtils import get_openings_changes, change_openings_approved_status
 from RevitUtils import (
     convertRevitNumToCm,
     get_ui_view as ru_get_ui_doc,
-    get_tags_of_element_in_view,
     get_model_guids,
 )
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
 from UiUtils import SelectFromList
 
 import Utils
-from EventHandlers import ExternalEventDataFile, show_opening_3d_event
+from EventHandlers import (
+    ExternalEventDataFile,
+    show_opening_3d_event,
+    create_revision_clouds_event,
+)
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
@@ -745,43 +744,11 @@ class TrackingOpeningsDialog(Windows.Window):
             print(ex)
 
     def create_revision_clouds(self):
-        active_view = self.uidoc.ActiveView
-        if active_view.ViewType not in [
-            ViewType.FloorPlan,
-            ViewType.CeilingPlan,
-            ViewType.EngineeringPlan,
-        ]:
-            self.alert("לא זמין במבט זה")
-            return
-
-        current_selected_opening = self.current_selected_opening
-        if len(current_selected_opening) == 0:
-            self.alert("יש לבחור פתחים")
-            return
-
-        t_group = TransactionGroup(self.doc, "pyBpm | Create Revision Clouds")
-        t_group.Start()
-        bboxes = []
-        for opening in current_selected_opening:
-            opening_tags = get_tags_of_element_in_view(active_view, opening["uniqueId"])
-            if len(opening_tags) == 0:
-                bbox = Utils.get_bbox(
-                    self.doc, opening, current=not opening["isDeleted"]
-                )
-                if bbox:
-                    bboxes.append(bbox)
-            else:
-                for tag in opening_tags:
-                    bbox = Utils.get_head_tag_bbox(tag, active_view)
-                    if bbox:
-                        bboxes.append(bbox)
-
-        if len(bboxes) == 0:
-            t_group.RollBack()
-            return
-
-        Utils.create_revision_clouds(self.doc, active_view, bboxes)
-        t_group.Assimilate()
+        ex_event_file = ExternalEventDataFile(self.doc)
+        ex_event_file.set_key_value(
+            "current_selected_opening", self.current_selected_opening
+        )
+        create_revision_clouds_event.Raise()
 
     def create_cloud_btn_click(self, sender, e):
         try:
