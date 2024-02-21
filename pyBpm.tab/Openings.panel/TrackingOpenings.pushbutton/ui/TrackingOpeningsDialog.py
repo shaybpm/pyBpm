@@ -6,12 +6,7 @@ clr.AddReferenceByPartialName("System")
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
-from Autodesk.Revit.DB import (
-    XYZ,
-    BoundingBoxXYZ,
-    TransactionGroup,
-    ViewType,
-)
+from Autodesk.Revit.DB import XYZ
 
 from System import DateTime, TimeZoneInfo, Windows
 import wpf
@@ -24,15 +19,19 @@ from ServerUtils import get_openings_changes, change_openings_approved_status
 from RevitUtils import (
     convertRevitNumToCm,
     get_ui_view as ru_get_ui_doc,
-    get_transform_by_model_guid,
-    get_bpm_3d_view,
-    get_tags_of_element_in_view,
     get_model_guids,
 )
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
 from UiUtils import SelectFromList
 
 import Utils
+from EventHandlers import (
+    ExternalEventDataFile,
+    show_opening_3d_event,
+    create_revision_clouds_event,
+    turn_on_isolate_mode_event,
+    turn_off_isolate_mode_event,
+)
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 
@@ -93,8 +92,6 @@ class TrackingOpeningsDialog(Windows.Window):
 
         self.uidoc = uidoc
         self.doc = self.uidoc.Document
-
-        self._allow_transactions = False
 
         self._openings = []
         self._display_openings = []
@@ -170,15 +167,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.FLOORS_AND_WALLS = "Floors and Walls"
         self.set_all_filters()
 
-        self.handle_buttons_state()
-
-    @property
-    def allow_transactions(self):
-        return self._allow_transactions
-
-    @allow_transactions.setter
-    def allow_transactions(self, value):
-        self._allow_transactions = value
         self.handle_buttons_state()
 
     @property
@@ -259,9 +247,6 @@ class TrackingOpeningsDialog(Windows.Window):
         forms.alert(message, title="מעקב פתחים")
         self.Topmost = True
 
-    def not_allow_transactions_alert(self):
-        self.alert("להפעלת אפשרות זו, יש ללחוץ על כפתור הסקריפט בעת החזקת השיפט במקלדת")
-
     def handle_buttons_state(self):
         self.show_opening_btn.IsEnabled = True
         self.show_opening_3D_btn.IsEnabled = True
@@ -271,12 +256,6 @@ class TrackingOpeningsDialog(Windows.Window):
         self.isolate_btn.IsEnabled = True
         self.change_approved_status_btn.IsEnabled = True
         self.export_to_excel_btn.IsEnabled = True
-
-        if not self.allow_transactions:
-            self.show_opening_3D_btn.IsEnabled = False
-            self.create_cloud_btn.IsEnabled = False
-            self.show_previous_location_3D_btn.IsEnabled = False
-            self.isolate_btn.IsEnabled = False
 
         if len(self.openings) == 0:
             self.export_to_excel_btn.IsEnabled = False
@@ -698,49 +677,11 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
-    def get_current_selected_opening(self):
+    def get_current_selected_opening_if_one(self):
         if len(self.current_selected_opening) != 1:
             self.alert("יש לבחור פתח אחד בלבד")
             return
         return self.current_selected_opening[0]
-
-    def get_bbox(self, opening, current=True, prompt_alert=True):
-        transform = get_transform_by_model_guid(self.doc, opening["modelGuid"])
-        if not transform:
-            self.alert("לא נמצא הלינק של הפתח הנבחר")
-            return
-
-        bbox_key_name = "currentBBox" if current else "lastBBox"
-        if bbox_key_name not in opening or opening[bbox_key_name] is None:
-            if prompt_alert:
-                msg = "לא נמצא מיקום הפתח הנבחר.\n{}".format(
-                    'מפני שזהו אלמנט חדש, עליך ללחוץ על "הצג פתח".'
-                    if not current
-                    else 'מפני שזהו אלמנט שנמחק, עליך ללחוץ על "הצג מיקום קודם".'
-                )
-                self.alert(msg)
-            return
-        db_bbox = opening[bbox_key_name]
-
-        bbox = BoundingBoxXYZ()
-        point_1 = transform.OfPoint(
-            XYZ(db_bbox["min"]["x"], db_bbox["min"]["y"], db_bbox["min"]["z"])
-        )
-        point_2 = transform.OfPoint(
-            XYZ(db_bbox["max"]["x"], db_bbox["max"]["y"], db_bbox["max"]["z"])
-        )
-
-        min_x = min(point_1.X, point_2.X)
-        min_y = min(point_1.Y, point_2.Y)
-        min_z = min(point_1.Z, point_2.Z)
-        max_x = max(point_1.X, point_2.X)
-        max_y = max(point_1.Y, point_2.Y)
-        max_z = max(point_1.Z, point_2.Z)
-
-        bbox.Min = XYZ(min_x, min_y, min_z)
-        bbox.Max = XYZ(max_x, max_y, max_z)
-
-        return bbox
 
     def get_ui_view(self):
         ui_view = ru_get_ui_doc(self.uidoc)
@@ -750,11 +691,11 @@ class TrackingOpeningsDialog(Windows.Window):
         return ui_view
 
     def show_opening(self, current):
-        opening = self.get_current_selected_opening()
+        opening = self.get_current_selected_opening_if_one()
         if not opening:
             return
 
-        bbox = self.get_bbox(opening, current)
+        bbox = Utils.get_bbox(self.doc, opening, current)
         if not bbox:
             return
 
@@ -784,99 +725,40 @@ class TrackingOpeningsDialog(Windows.Window):
             print(ex)
 
     def show_opening_3d(self, current):
-        t_group = TransactionGroup(self.doc, "pyBpm | Show Opening 3D")
-        t_group.Start()
-
-        opening = self.get_current_selected_opening()
+        ex_event_file = ExternalEventDataFile(self.doc)
+        opening = self.get_current_selected_opening_if_one()
         if not opening:
             return
-
-        bbox = self.get_bbox(opening, current)
-        if not bbox:
-            return
-
-        ui_view = self.get_ui_view()
-        if not ui_view:
-            return
-
-        view_3d = get_bpm_3d_view(self.doc)
-        if not view_3d:
-            self.alert("תקלה בקבלת תצוגת 3D")
-            return
-        Utils.show_opening_3d(self.uidoc, ui_view, view_3d, bbox)
-        t_group.Assimilate()
+        ex_event_file.set_key_value("current_selected_opening", opening)
+        ex_event_file.set_key_value("current_bool_arg", current)
+        show_opening_3d_event.Raise()
 
     def show_opening_3D_btn_click(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
-
         try:
             self.show_opening_3d(current=True)
         except Exception as ex:
             print(ex)
 
     def show_previous_location_3D_btn_click(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
-
         try:
             self.show_opening_3d(current=False)
         except Exception as ex:
             print(ex)
 
     def create_revision_clouds(self):
-        active_view = self.uidoc.ActiveView
-        if active_view.ViewType not in [
-            ViewType.FloorPlan,
-            ViewType.CeilingPlan,
-            ViewType.EngineeringPlan,
-        ]:
-            self.alert("לא זמין במבט זה")
-            return
-
-        current_selected_opening = self.current_selected_opening
-        if len(current_selected_opening) == 0:
-            self.alert("יש לבחור פתחים")
-            return
-
-        t_group = TransactionGroup(self.doc, "pyBpm | Create Revision Clouds")
-        t_group.Start()
-        bboxes = []
-        for opening in current_selected_opening:
-            opening_tags = get_tags_of_element_in_view(active_view, opening["uniqueId"])
-            if len(opening_tags) == 0:
-                bbox = self.get_bbox(opening, current=not opening["isDeleted"])
-                if bbox:
-                    bboxes.append(bbox)
-            else:
-                for tag in opening_tags:
-                    bbox = Utils.get_head_tag_bbox(tag, active_view)
-                    if bbox:
-                        bboxes.append(bbox)
-
-        if len(bboxes) == 0:
-            t_group.RollBack()
-            return
-
-        Utils.create_revision_clouds(self.doc, active_view, bboxes)
-        t_group.Assimilate()
+        ex_event_file = ExternalEventDataFile(self.doc)
+        ex_event_file.set_key_value(
+            "current_selected_opening", self.current_selected_opening
+        )
+        create_revision_clouds_event.Raise()
 
     def create_cloud_btn_click(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
-
         try:
             self.create_revision_clouds()
         except Exception as ex:
             print(ex)
 
     def isolate_btn_mouse_down(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
         active_view = self.uidoc.ActiveView
         if not active_view:
             self.alert("לא נמצא מבט פעיל")
@@ -887,14 +769,11 @@ class TrackingOpeningsDialog(Windows.Window):
             self.alert("לא זמין במבט הנוכחי.")
             return
         try:
-            Utils.turn_on_isolate_mode(self.doc, active_view)
+            turn_on_isolate_mode_event.Raise()
         except Exception as ex:
             print(ex)
 
     def isolate_btn_mouse_up(self, sender, e):
-        if not self.allow_transactions:
-            self.not_allow_transactions_alert()
-            return
         active_view = self.uidoc.ActiveView
         if not active_view:
             self.alert("לא נמצא מבט פעיל")
@@ -902,7 +781,7 @@ class TrackingOpeningsDialog(Windows.Window):
         if not active_view.IsTemporaryViewPropertiesModeEnabled():
             return
         try:
-            Utils.turn_off_isolate_mode(self.doc, active_view)
+            turn_off_isolate_mode_event.Raise()
         except Exception as ex:
             print(ex)
 
