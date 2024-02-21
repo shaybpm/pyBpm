@@ -8,7 +8,7 @@
     "author": "BPM",
     "author_profile": "https://github.com/shaybpm",
     "url": "https://github.com/shaybpm/pyBpm.git",
-    "website": "https://bpm-eng.co.il/",
+    "website": "https://pybpm.azurewebsites.net/",
     "image": "https://pybpm.azurewebsites.net/assets/logo.png",
     "version": "0.3.3",
     "dependencies": []
