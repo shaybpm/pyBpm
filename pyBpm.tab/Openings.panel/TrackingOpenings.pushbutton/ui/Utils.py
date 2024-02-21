@@ -24,9 +24,48 @@ from System.Collections.Generic import List
 
 from pyrevit import forms
 
-from RevitUtils import turn_of_categories, get_ogs_by_color
+from RevitUtils import turn_of_categories, get_ogs_by_color, get_transform_by_model_guid
 
 from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter
+
+
+def get_bbox(doc, opening, current=True, prompt_alert=True):
+    transform = get_transform_by_model_guid(doc, opening["modelGuid"])
+    if not transform:
+        forms.alert("לא נמצא הלינק של הפתח הנבחר")
+        return
+
+    bbox_key_name = "currentBBox" if current else "lastBBox"
+    if bbox_key_name not in opening or opening[bbox_key_name] is None:
+        if prompt_alert:
+            msg = "לא נמצא מיקום הפתח הנבחר.\n{}".format(
+                'מפני שזהו אלמנט חדש, עליך ללחוץ על "הצג פתח".'
+                if not current
+                else 'מפני שזהו אלמנט שנמחק, עליך ללחוץ על "הצג מיקום קודם".'
+            )
+            forms.alert(msg)
+        return
+    db_bbox = opening[bbox_key_name]
+
+    bbox = BoundingBoxXYZ()
+    point_1 = transform.OfPoint(
+        XYZ(db_bbox["min"]["x"], db_bbox["min"]["y"], db_bbox["min"]["z"])
+    )
+    point_2 = transform.OfPoint(
+        XYZ(db_bbox["max"]["x"], db_bbox["max"]["y"], db_bbox["max"]["z"])
+    )
+
+    min_x = min(point_1.X, point_2.X)
+    min_y = min(point_1.Y, point_2.Y)
+    min_z = min(point_1.Z, point_2.Z)
+    max_x = max(point_1.X, point_2.X)
+    max_y = max(point_1.Y, point_2.Y)
+    max_z = max(point_1.Z, point_2.Z)
+
+    bbox.Min = XYZ(min_x, min_y, min_z)
+    bbox.Max = XYZ(max_x, max_y, max_z)
+
+    return bbox
 
 
 def get_opening_revision(doc):
