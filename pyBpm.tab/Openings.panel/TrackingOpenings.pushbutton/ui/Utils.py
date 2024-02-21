@@ -17,7 +17,6 @@ from Autodesk.Revit.DB import (
     CategoryType,
     Color,
     BoundingBoxXYZ,
-    ElementId,
 )
 
 from System.Collections.Generic import List
@@ -26,7 +25,7 @@ from pyrevit import forms
 
 from RevitUtils import turn_of_categories, get_ogs_by_color, get_transform_by_model_guid
 
-from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter
+from RevitUtilsOpenings import get_opening_filter
 
 
 def get_bbox(doc, opening, current=True, prompt_alert=True):
@@ -329,48 +328,6 @@ def show_opening_3d(uidoc, ui_view, view_3d, bbox):
     )
     zoom_viewCorner2 = bbox.Max.Add(XYZ(zoom_increment, zoom_increment, zoom_increment))
     ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
-
-
-def turn_on_isolate_mode(doc, view):
-    t_group = TransactionGroup(doc, "pyBpm | Turn On Isolate Mode")
-    t_group.Start()
-
-    t1 = Transaction(doc, "pyBpm | Turn On Isolate Mode")
-    t1.Start()
-    view.EnableTemporaryViewPropertiesMode(view.Id)
-    t1.Commit()
-
-    turn_of_categories(doc, view, CategoryType.Annotation)
-    turn_of_categories(doc, view, CategoryType.Model, ["RVT Links", "Generic Models"])
-
-    t2 = Transaction(doc, "pyBpm | Turn on Generic Models")
-    t2.Start()
-    cat_generic_models = doc.Settings.Categories.get_Item("Generic Models")
-    view.SetCategoryHidden(cat_generic_models.Id, False)
-    t2.Commit()
-
-    opening_filter = get_opening_filter(doc)
-    yellow = Color(255, 255, 0)
-    ogs = get_ogs_by_color(doc, yellow)
-    t3 = Transaction(doc, "pyBpm | Set Opening Filter")
-    t3.Start()
-    view.SetFilterOverrides(opening_filter.Id, ogs)
-    t3.Commit()
-
-    not_opening = get_not_opening_filter(doc)
-    t4 = Transaction(doc, "pyBpm | Set Not Opening Filter")
-    t4.Start()
-    view.SetFilterVisibility(not_opening.Id, False)
-    t4.Commit()
-
-    t_group.Assimilate()
-
-
-def turn_off_isolate_mode(doc, view):
-    t = Transaction(doc, "pyBpm | Turn Off Isolate Mode")
-    t.Start()
-    view.EnableTemporaryViewPropertiesMode(ElementId.InvalidElementId)
-    t.Commit()
 
 
 def filter_sheets(view_sheet):

@@ -29,6 +29,8 @@ from EventHandlers import (
     ExternalEventDataFile,
     show_opening_3d_event,
     create_revision_clouds_event,
+    turn_on_isolate_mode_event,
+    turn_off_isolate_mode_event,
 )
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
@@ -767,7 +769,7 @@ class TrackingOpeningsDialog(Windows.Window):
             self.alert("לא זמין במבט הנוכחי.")
             return
         try:
-            Utils.turn_on_isolate_mode(self.doc, active_view)
+            turn_on_isolate_mode_event.Raise()
         except Exception as ex:
             print(ex)
 
@@ -779,7 +781,7 @@ class TrackingOpeningsDialog(Windows.Window):
         if not active_view.IsTemporaryViewPropertiesModeEnabled():
             return
         try:
-            Utils.turn_off_isolate_mode(self.doc, active_view)
+            turn_off_isolate_mode_event.Raise()
         except Exception as ex:
             print(ex)
 
