@@ -1,9 +1,7 @@
 def run():
     from pyrevit import EXEC_PARAMS
-    import os, sys
 
-    sys.path.append(os.path.join("..", "lib"))
-    from ServerUtils import ServerPermissions
+    from ..lib.ServerUtils import ServerPermissions
 
     doc = EXEC_PARAMS.event_args.Document
     if not doc.IsModelInCloud:

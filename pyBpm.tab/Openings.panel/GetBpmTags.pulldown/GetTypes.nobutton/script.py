@@ -18,10 +18,7 @@ from pyrevit import forms
 
 import RevitUtils
 
-import sys, os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
-import GetBpmTags  # type: ignore
+from ..lib import GetBpmTags
 
 
 # -------------------------------

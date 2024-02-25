@@ -16,19 +16,10 @@ try:
         )
         import Update  # type: ignore
 
-        sys.path.append(
-            os.path.join(
-                os.path.dirname(__file__),
-                "..",
-                "lib",
-            )
-        )
-        from Config import server_url, get_current_version
-        import HttpRequest
+        from ..lib.Config import server_url, get_current_version
+        from ..lib.HttpRequest import get
 
-        version_update_required_dict = HttpRequest.get(
-            server_url + "api/info/v-update-required"
-        )
+        version_update_required_dict = get(server_url + "api/info/v-update-required")
         if version_update_required_dict:
             version_update_required = version_update_required_dict["version"]
             version_update_required_list = version_update_required.split(".")
