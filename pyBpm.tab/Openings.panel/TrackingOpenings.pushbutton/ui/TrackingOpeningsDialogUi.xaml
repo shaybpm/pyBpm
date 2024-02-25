@@ -158,7 +158,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="1">
-                    <TextBlock Text="Current Ditails" FontWeight="Bold" TextDecorations="Underline" />
+                    <TextBlock Text="Current Details" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Level: " FontWeight="Bold" />
                         <TextBlock x:Name="more_info_currentScheduledLevel_TextBlock" />
@@ -174,7 +174,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Last Ditails" FontWeight="Bold" TextDecorations="Underline" />
+                    <TextBlock Text="Last Details" FontWeight="Bold" TextDecorations="Underline" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Level: " FontWeight="Bold" />
                         <TextBlock x:Name="more_info_lastScheduledLevel_TextBlock" />
@@ -219,7 +219,7 @@
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Grid.Row="0" x:Name="show_opening_btn" Content="הצג פתח" Click="show_opening_btn_click" />
+            <Button Grid.Column="0" Grid.Row="0" x:Name="show_opening_btn" Content="הצג מיקום פתח" Click="show_opening_btn_click" />
             <Button Grid.Column="0" Grid.Row="1" x:Name="show_opening_3D_btn" Content="הצג פתח 3D" Click="show_opening_3D_btn_click" />
             <Button Grid.Column="0" Grid.Row="2" x:Name="create_cloud_btn" Content="צור עננים" Click="create_cloud_btn_click" />
 

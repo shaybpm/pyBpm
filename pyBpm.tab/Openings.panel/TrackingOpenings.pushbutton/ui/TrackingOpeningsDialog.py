@@ -244,8 +244,9 @@ class TrackingOpeningsDialog(Windows.Window):
             self.sort_approved_btn.Background = sort_color
 
     def alert(self, message):
+        self.Hide()
         forms.alert(message, title="מעקב פתחים")
-        self.Topmost = True
+        self.Show()
 
     def handle_buttons_state(self):
         self.show_opening_btn.IsEnabled = True
@@ -800,9 +801,11 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def change_view_btn_click(self, sender, e):
         try:
+            self.Hide()
             selected_view = forms.select_views(
                 title="החלף מבט", multiple=False, button_name="בחר מבט"
             )
+            self.Show()
             if not selected_view:
                 return
             self.uidoc.ActiveView = selected_view
@@ -810,9 +813,11 @@ class TrackingOpeningsDialog(Windows.Window):
             print(ex)
 
     def set_change_approved_status_password(self):
+        self.Hide()
         password = forms.ask_for_string(
             default="", prompt="הכנס סיסמה לשינוי סטטוס אישור", title="מעקב פתחים"
         )
+        self.Show()
         if password is None:
             return None
         if os.path.exists(self.setting_data_file_path):
@@ -905,7 +910,9 @@ class TrackingOpeningsDialog(Windows.Window):
         if not self.openings:
             self.alert("אין נתונים לייצוא")
             return
+        self.Hide()
         folder_path = forms.pick_folder()
+        self.Show()
         if not folder_path:
             return
         file_name = "pyBpm-Openings.xlsx"
@@ -915,16 +922,16 @@ class TrackingOpeningsDialog(Windows.Window):
             file_name = "pyBpm-Openings_{}.xlsx".format(num)
             num += 1
             if num > max_loops:
-                self.alert(
-                    "מספר הנסיונות ליצירת שם קובץ חדש הגיע לסיומו, הקובץ לא נוצר"
-                )
+                self.alert("מספר נסיונות מקסימלי ליצירת שם קובץ חדש, הקובץ לא נוצר")
                 return
         try:
             excel_path = create_new_workbook_file(folder_path + "\\" + file_name)
             add_data_to_worksheet(excel_path, self.openings, ignore_fields=["_id"])
+            self.Hide()
             is_to_open = forms.alert(
                 "הקובץ נוצר בהצלחה.\nהאם לפתוח אותו?", title="מעקב פתחים"
             )
+            self.Show()
             if is_to_open:
                 os.startfile(excel_path)
         except Exception as ex:

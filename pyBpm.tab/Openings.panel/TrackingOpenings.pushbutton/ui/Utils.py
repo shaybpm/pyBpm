@@ -27,6 +27,8 @@ from RevitUtils import turn_of_categories, get_ogs_by_color, get_transform_by_mo
 
 from RevitUtilsOpenings import get_opening_filter
 
+from CreateCloudsDialog import CreateCloudsDialog
+
 
 def get_bbox(doc, opening, current=True, prompt_alert=True):
     transform = get_transform_by_model_guid(doc, opening["modelGuid"])
@@ -68,22 +70,12 @@ def get_bbox(doc, opening, current=True, prompt_alert=True):
 
 
 def get_opening_revision(doc):
-    all_revisions_ids = Revision.GetAllRevisionIds(doc)
-    all_revisions = [doc.GetElement(x) for x in all_revisions_ids]
-    rev_strings = [
-        "{} - {}".format(rev.RevisionDate, rev.Description) for rev in all_revisions
-    ]
-
-    CREATE_NEW_REVISION = "צור מהדורה חדשה"
-    rev_strings.append(CREATE_NEW_REVISION)
-
-    selected_rev_str = forms.SelectFromList.show(
-        rev_strings, title="בחר מהדורה", multiselect=False
-    )
-    if not selected_rev_str:
+    create_clouds_dialog = CreateCloudsDialog(doc)
+    user_values = create_clouds_dialog.show_dialog()
+    if not user_values:
         return
 
-    if selected_rev_str == CREATE_NEW_REVISION:
+    if user_values["create_revision"]:
         t = Transaction(doc, "pyBpm | Create New Revision")
         t.Start()
         rev = Revision.Create(doc)
@@ -92,8 +84,7 @@ def get_opening_revision(doc):
         t.Commit()
         return rev
 
-    selected_rev_index = rev_strings.index(selected_rev_str)
-    return all_revisions[selected_rev_index]
+    return user_values["revision"]
 
 
 def create_revision_clouds(doc, view, bboxes):
