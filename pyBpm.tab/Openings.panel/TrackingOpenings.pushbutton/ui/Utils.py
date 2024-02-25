@@ -21,7 +21,7 @@ from Autodesk.Revit.DB import (
 
 from System.Collections.Generic import List
 
-from pyrevit import forms
+from UiUtils import Alert
 
 from RevitUtils import turn_of_categories, get_ogs_by_color, get_transform_by_model_guid
 
@@ -30,10 +30,16 @@ from RevitUtilsOpenings import get_opening_filter
 from CreateCloudsDialog import CreateCloudsDialog
 
 
+def alert(msg):
+    title = "pyBpm | מעקב פתחים"
+    alert = Alert(msg, title, "rtl")
+    alert.show()
+
+
 def get_bbox(doc, opening, current=True, prompt_alert=True):
     transform = get_transform_by_model_guid(doc, opening["modelGuid"])
     if not transform:
-        forms.alert("לא נמצא הלינק של הפתח הנבחר")
+        alert("לא נמצא הלינק של הפתח הנבחר")
         return
 
     bbox_key_name = "currentBBox" if current else "lastBBox"
@@ -44,7 +50,7 @@ def get_bbox(doc, opening, current=True, prompt_alert=True):
                 if not current
                 else 'מפני שזהו אלמנט שנמחק, עליך ללחוץ על "הצג מיקום קודם".'
             )
-            forms.alert(msg)
+            alert(msg)
         return
     db_bbox = opening[bbox_key_name]
 
@@ -355,35 +361,6 @@ def filter_sheets(view_sheet):
     if not folder.startswith("04_"):
         return False
     return True
-
-
-def get_start_end_dates(dates):
-    date_dict = {}
-    last_last_date = dates[0]
-    str_1 = "מהתאריך: {} עד עכשיו.".format(last_last_date.ToString("dd.MM.yyyy"))
-    date_dict[str_1] = {
-        "start": last_last_date,
-        "end": DateTime.Now,
-    }
-    for i in range(1, len(dates)):
-        last_date = dates[i - 1]
-        current_date = dates[i]
-        str_i = "מהתאריך: {} עד התאריך: {}.".format(
-            last_date.ToString("dd.MM.yyyy"), current_date.ToString("dd.MM.yyyy")
-        )
-        date_dict[str_i] = {
-            "start": current_date,
-            "end": last_date,
-        }
-
-    string_list = list(date_dict.keys())
-    selected_date_str = forms.SelectFromList.show(
-        string_list, title="בחר תאריכים", multiselect=False
-    )
-    if not selected_date_str:
-        return None, None
-
-    return date_dict[selected_date_str]["start"], date_dict[selected_date_str]["end"]
 
 
 def get_new_opening_approved_status(openings, new_approved_status):

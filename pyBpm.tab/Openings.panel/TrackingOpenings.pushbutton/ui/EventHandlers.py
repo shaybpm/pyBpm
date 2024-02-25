@@ -10,7 +10,6 @@ from Autodesk.Revit.DB import (
     CategoryType,
 )
 import Utils
-from pyrevit.forms import alert
 from pyrevit.script import get_instance_data_file
 from RevitUtils import (
     get_ui_view,
@@ -79,7 +78,7 @@ def show_opening_3d_cb(uiapp):
 
     view_3d = get_bpm_3d_view(doc)
     if not view_3d:
-        alert("תקלה בקבלת תצוגת 3D")
+        Utils.alert("תקלה בקבלת תצוגת 3D")
         return
     Utils.show_opening_3d(uidoc, ui_view, view_3d, bbox)
     t_group.Assimilate()
@@ -100,12 +99,12 @@ def create_revision_clouds_cb(uiapp):
         ViewType.CeilingPlan,
         ViewType.EngineeringPlan,
     ]:
-        alert("לא זמין במבט זה")
+        Utils.alert("לא זמין במבט זה")
         return
 
     current_selected_opening = ex_event_file.get_key_value("current_selected_opening")
     if not current_selected_opening:
-        alert("יש לבחור פתחים")
+        Utils.alert("יש לבחור פתחים")
         return
 
     t_group = TransactionGroup(doc, "pyBpm | Create Revision Clouds")
