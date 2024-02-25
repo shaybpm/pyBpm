@@ -69,7 +69,12 @@ def get_bbox(doc, opening, current=True, prompt_alert=True):
     return bbox
 
 
-def get_opening_revision(doc):
+def get_opening_revision_and_size(doc):
+    """
+    Get the revision and the cloud size from the user.
+
+    Cloud sizes: ["small", "medium", "large"]
+    """
     create_clouds_dialog = CreateCloudsDialog(doc)
     user_values = create_clouds_dialog.show_dialog()
     if not user_values:
@@ -82,29 +87,48 @@ def get_opening_revision(doc):
         rev.RevisionDate = DateTime.Now.ToString("dd/MM/yyyy")
         rev.Description = "עדכון פתחים"
         t.Commit()
-        return rev
+        return rev, user_values["cloud_size"]
 
-    return user_values["revision"]
+    return user_values["revision"], user_values["cloud_size"]
 
 
 def create_revision_clouds(doc, view, bboxes):
     t_group = TransactionGroup(doc, "pyBpm | Create Cloud")
     t_group.Start()
 
-    revision = get_opening_revision(doc)
+    revision, cloud_size = get_opening_revision_and_size(doc)
     if not revision:
+        t_group.RollBack()
+        return
+    if not cloud_size or cloud_size not in ["small", "medium", "large"]:
+        print("ERROR: Cloud size not valid.")
         t_group.RollBack()
         return
 
     level = view.GenLevel
     project_elevation = level.Elevation
 
+    increase_value_dict = {
+        "small": 0.0,
+        "medium": 0.3,
+        "large": 0.6,
+    }
+    increase_value = increase_value_dict[cloud_size]
+
     curves_tuples = []
     for bbox in bboxes:
-        point1 = XYZ(bbox.Min.X, bbox.Min.Y, project_elevation)
-        point2 = XYZ(bbox.Min.X, bbox.Max.Y, project_elevation)
-        point3 = XYZ(bbox.Max.X, bbox.Max.Y, project_elevation)
-        point4 = XYZ(bbox.Max.X, bbox.Min.Y, project_elevation)
+        point1 = XYZ(
+            bbox.Min.X - increase_value, bbox.Min.Y - increase_value, project_elevation
+        )
+        point2 = XYZ(
+            bbox.Min.X - increase_value, bbox.Max.Y + increase_value, project_elevation
+        )
+        point3 = XYZ(
+            bbox.Max.X + increase_value, bbox.Max.Y + increase_value, project_elevation
+        )
+        point4 = XYZ(
+            bbox.Max.X + increase_value, bbox.Min.Y - increase_value, project_elevation
+        )
 
         line1 = Line.CreateBound(point1, point2)
         line2 = Line.CreateBound(point2, point3)
