@@ -687,7 +687,7 @@ class TrackingOpeningsDialog(Windows.Window):
     def get_ui_view(self):
         ui_view = ru_get_ui_doc(self.uidoc)
         if not ui_view:
-            self.alert("לא נמצא תצוגה פעילה")
+            self.alert("לא נמצא מבט פעיל")
             return
         return ui_view
 
