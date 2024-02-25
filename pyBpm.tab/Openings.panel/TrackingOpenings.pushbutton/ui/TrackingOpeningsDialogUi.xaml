@@ -115,7 +115,7 @@
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" x:Name="title_data_grid" Margin="8 0 4 0" />
                 <ListBox Grid.Row="1" x:Name="data_listbox" SelectionMode="Extended" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
-                <Grid Grid.Row="2" x:Name="ditail_data_grid" FlowDirection="RightToLeft">
+                <Grid Grid.Row="2" x:Name="detail_data_grid" FlowDirection="RightToLeft">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>

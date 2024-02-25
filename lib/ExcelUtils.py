@@ -30,7 +30,12 @@ def add_data_to_worksheet(path, data_dict_list, ignore_fields=[]):
     workbook = excel.Workbooks.Open(path)
     worksheet = workbook.Worksheets[1]
 
-    titles = list(data_dict_list[0].keys())
+    titles = []
+    for data_dict in data_dict_list:
+        for title in data_dict:
+            if title not in titles:
+                titles.append(title)
+
     for i, title in enumerate(titles):
         if title in ignore_fields:
             continue
@@ -39,6 +44,10 @@ def add_data_to_worksheet(path, data_dict_list, ignore_fields=[]):
     for i, data_dict in enumerate(data_dict_list):
         for j, title in enumerate(titles):
             if title in ignore_fields:
+                continue
+            if title not in data_dict:
+                continue
+            if data_dict[title] is None:
                 continue
             worksheet.Cells[i + 2, j + 1] = str(data_dict[title])
 
