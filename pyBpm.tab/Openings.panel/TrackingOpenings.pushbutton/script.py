@@ -13,7 +13,11 @@ __highlight__ = "new"
 from RevitUtils import get_link_types_status
 from ServerUtils import ServerPermissions
 from pyrevit import forms
-from ui.TrackingOpeningsDialog import TrackingOpeningsDialog  # type: ignore
+
+import sys, os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
+from TrackingOpeningsDialog import TrackingOpeningsDialog  # type: ignore
 
 # -------------------------------
 # -------------MAIN--------------

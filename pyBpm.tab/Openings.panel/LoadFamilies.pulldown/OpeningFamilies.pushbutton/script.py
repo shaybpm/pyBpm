@@ -12,7 +12,10 @@ __author__ = "Eyal Sinay"
 
 from Autodesk.Revit.DB import Transaction
 
-from ..lib import LoadOpeningFamily
+import os, sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
+import LoadOpeningFamily  # type: ignore
 
 from pyrevit import forms
 

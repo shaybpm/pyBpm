@@ -13,9 +13,10 @@ from Autodesk.Revit.DB import Transaction
 from Autodesk.Revit.UI import TaskDialog
 
 from pyrevit import script
+import os, sys
 
-from .lib import OpeningSet
-
+sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
+import OpeningSet  # type: ignore
 
 # -------------------------------
 # -------------MAIN--------------
