@@ -45,6 +45,16 @@ def get_comp_link(doc):
     )
 
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
+
+    project_guid = get_model_info(doc)["projectGuid"]
+    if project_guid == "bc7a92f5-0388-4436-ab65-80716234307b":  # הקו הירוק
+        for link in all_links:
+            link_doc = link.GetLinkDocument()
+            if not link_doc:
+                continue
+            if "BPM-UT" in link_doc.Title:
+                return link
+
     for link in all_links:
         link_doc = link.GetLinkDocument()
         if not link_doc:
