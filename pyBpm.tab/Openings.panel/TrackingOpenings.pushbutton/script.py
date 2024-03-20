@@ -4,7 +4,6 @@
 To get all options available for the user, run the script with the shift key pressed. """
 __title__ = "Tracking\nOpenings"
 __author__ = "BPM"
-__highlight__ = "new"
 
 # -------------------------------
 # ------------IMPORTS------------

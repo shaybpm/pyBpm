@@ -81,3 +81,9 @@ def print_table(output, columns, table_data):
         output_str += "</tr>"
     output_str += "</table>"
     output.print_html(output_str)
+
+
+def start_process(path):
+    from System.Diagnostics.Process import Start  # type: ignore
+
+    Start(path)
