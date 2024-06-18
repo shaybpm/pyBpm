@@ -3,6 +3,8 @@
 import clr
 
 clr.AddReferenceByPartialName("System")
+clr.AddReference("PresentationCore")
+clr.AddReference("PresentationFramework")
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
