@@ -15,16 +15,13 @@ from Autodesk.Revit.DB import (
 
 import pyUtils
 import RevitUtils
-import RevitUtilsOpenings
+from RevitUtilsOpenings import shapes, get_all_openings
 from PyRevitUtils import TempElementStorage
 from Config import get_opening_set_temp_file_id
 
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
-
-shapes = RevitUtilsOpenings.shapes
-opening_names = RevitUtilsOpenings.opening_names
 
 param_mct_probable_names = ["Detail - Yes / No"]
 
@@ -37,30 +34,6 @@ class Preprocessor(IFailuresPreprocessor):
             if BuiltInFailures.GeneralFailures.DuplicateValue == id:
                 failuresAccessor.DeleteWarning(f)
         return FailureProcessingResult.Continue
-
-
-def get_all_openings(doc):
-    """Returns a list of all the openings in the model."""
-    openings = []
-    generic_models = (
-        FilteredElementCollector(doc)
-        .OfCategory(BuiltInCategory.OST_GenericModel)
-        .WhereElementIsNotElementType()
-        .ToElements()
-    )
-    for gm in generic_models:
-        if gm.Name in opening_names:
-            openings.append(gm)
-            continue
-        # ~~~ Special supports ~~~
-        #   ICHILOV NORTH TOWER (R22)
-        #   Electronic Team
-        #   Ori Sagi
-        if doc.Title == "ILV-NT-SMO-BASE-E" and gm.Name.startswith("MCT"):
-            openings.append(gm)
-            continue
-        # ~~~ Special supports ~~~
-    return openings
 
 
 def is_floor(opening):

@@ -17,6 +17,7 @@ import os, sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 import OpeningSet  # type: ignore
+from RevitUtilsOpenings import get_all_openings
 
 # -------------------------------
 # -------------MAIN--------------
@@ -128,7 +129,7 @@ def print_full_results(results):
 
 
 def run():
-    all_openings = OpeningSet.get_all_openings(doc)
+    all_openings = get_all_openings(doc)
     if len(all_openings) == 0:
         alert("No openings found.")
         return

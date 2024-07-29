@@ -116,3 +116,61 @@ def get_not_opening_filter(doc):
         if filter.Name == PYBPM_FILTER_NAME_NOT_OPENING:
             return filter
     return create_not_opening_filter(doc)
+
+
+def get_opening_element_filter(doc):
+    import clr
+
+    clr.AddReferenceByPartialName("System")
+    """Returns a element filter for all the openings in the model."""
+    from System.Collections.Generic import List
+
+    from RevitUtils import getElementName
+
+    from Autodesk.Revit.DB import (
+        FilteredElementCollector,
+        BuiltInCategory,
+        FamilyInstanceFilter,
+        LogicalOrFilter,
+        ElementFilter,
+    )
+
+    element_filters = List[ElementFilter]()
+    generic_model_types = (
+        FilteredElementCollector(doc)
+        .OfCategory(BuiltInCategory.OST_GenericModel)
+        .WhereElementIsElementType()
+        .ToElements()
+    )
+    for gmt in generic_model_types:
+        if getElementName(gmt) in opening_names:
+            element_filters.Add(FamilyInstanceFilter(doc, gmt.Id))
+            continue
+        # ~~~ Special supports ~~~
+        #   ICHILOV NORTH TOWER (R22)
+        #   Electronic Team
+        #   Ori Sagi
+        if doc.Title == "ILV-NT-SMO-BASE-E" and getElementName(gmt).startswith("MCT"):
+            element_filters.Add(FamilyInstanceFilter(doc, gmt.Id))
+            continue
+        # ~~~ Special supports ~~~
+
+    logical_or_filter = LogicalOrFilter(element_filters)
+    return logical_or_filter
+
+
+def get_all_openings(doc):
+    """Returns a list of all the openings in the model."""
+    from Autodesk.Revit.DB import (
+        FilteredElementCollector,
+        BuiltInCategory,
+    )
+
+    opening_element_filter = get_opening_element_filter(doc)
+
+    return (
+        FilteredElementCollector(doc)
+        .OfCategory(BuiltInCategory.OST_GenericModel)
+        .WherePasses(opening_element_filter)
+        .ToElements()
+    )
