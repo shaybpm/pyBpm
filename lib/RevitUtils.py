@@ -319,3 +319,47 @@ def get_model_guids(doc):
             model_guids.append(link_doc_model_info["modelGuid"])
 
     return model_guids
+
+
+def get_min_max_from_two_points(min_point, max_point):
+    from Autodesk.Revit.DB import XYZ
+
+    min_x = min(min_point.X, max_point.X)
+    min_y = min(min_point.Y, max_point.Y)
+    min_z = min(min_point.Z, max_point.Z)
+    max_x = max(min_point.X, max_point.X)
+    max_y = max(min_point.Y, max_point.Y)
+    max_z = max(min_point.Z, max_point.Z)
+    return XYZ(min_x, min_y, min_z), XYZ(max_x, max_y, max_z)
+
+
+def get_min_max_points_from_bbox(bbox, transform=None):
+    min_rel_to_bbox = bbox.Min
+    max_rel_to_bbox = bbox.Max
+    bbox_transform = bbox.Transform
+    min_rel_to_document = bbox_transform.OfPoint(min_rel_to_bbox)
+    max_rel_to_document = bbox_transform.OfPoint(max_rel_to_bbox)
+    if not transform:
+        return get_min_max_from_two_points(min_rel_to_document, max_rel_to_document)
+
+    min_rel_to_transform = transform.OfPoint(min_rel_to_document)
+    max_rel_to_transform = transform.OfPoint(max_rel_to_document)
+
+    return get_min_max_from_two_points(min_rel_to_transform, max_rel_to_transform)
+
+
+def getOutlineByBoundingBox(bbox, transform=None):
+    from Autodesk.Revit.DB import Outline, XYZ, Transform
+
+    if transform is None:
+        transform = Transform.Identity
+
+    min, max = get_min_max_points_from_bbox(bbox, transform)
+    outline = Outline(min, max)
+    outline.AddPoint(XYZ(min.X, min.Y, max.Z))
+    outline.AddPoint(XYZ(max.X, max.Y, min.Z))
+    outline.AddPoint(XYZ(min.X, max.Y, max.Z))
+    outline.AddPoint(XYZ(max.X, min.Y, min.Z))
+    outline.AddPoint(XYZ(max.X, min.Y, max.Z))
+    outline.AddPoint(XYZ(min.X, max.Y, min.Z))
+    return outline
