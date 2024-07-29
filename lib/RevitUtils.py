@@ -363,3 +363,36 @@ def getOutlineByBoundingBox(bbox, transform=None):
     outline.AddPoint(XYZ(max.X, min.Y, max.Z))
     outline.AddPoint(XYZ(min.X, max.Y, min.Z))
     return outline
+
+
+def is_wall_concrete(wall):
+    """
+    This function try many checks to determine if the wall is concrete.
+    Note that this is not a perfect solution, and there are many some where it will fail.
+    """
+    from Autodesk.Revit.DB import BuiltInParameter
+
+    if "בטון" in wall.Name:
+        return True
+    if "con" in wall.Name.lower():
+        return True
+    if "str" in wall.Name.lower():
+        return
+
+    material_ids = wall.GetMaterialIds(False)
+    for material_id in material_ids:
+        material = wall.Document.GetElement(material_id)
+        if "בטון" in material.Name:
+            return True
+        if "con" in material.Name.lower():
+            return True
+        if "str" in material.Name.lower():
+            return True
+
+    wall_structural_param = wall.get_Parameter(
+        BuiltInParameter.WALL_STRUCTURAL_SIGNIFICANT
+    )
+    if wall_structural_param and wall_structural_param.AsInteger() == 1:
+        return True
+
+    return False
