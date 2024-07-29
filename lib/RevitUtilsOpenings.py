@@ -119,10 +119,10 @@ def get_not_opening_filter(doc):
 
 
 def get_opening_element_filter(doc):
+    """Returns a element filter for all the openings in the model."""
     import clr
 
     clr.AddReferenceByPartialName("System")
-    """Returns a element filter for all the openings in the model."""
     from System.Collections.Generic import List
 
     from RevitUtils import getElementName
