@@ -11,6 +11,7 @@ from Autodesk.Revit.DB import (
     FilteredElementCollector,
     BuiltInCategory,
     BoundingBoxIntersectsFilter,
+    Transform,
 )
 
 from pyrevit import script
@@ -20,6 +21,7 @@ from RevitUtils import (
     get_all_link_instances,
     is_wall_concrete,
     get_levels_sorted,
+    get_intersect_bounding_box,
 )
 from PyRevitUtils import print_table
 from RevitUtilsOpenings import get_opening_element_filter
@@ -38,17 +40,20 @@ output.close_others()
 # --------------------------------
 
 
+class IntersectWithConcreteResult:
+    def __init__(self, intersect_element, intersect_bounding_box):
+        self.intersect_element = intersect_element
+        self.intersect_bounding_box = intersect_bounding_box
+
+
 class ElementResult:
     def __init__(self, mep_element):
         self.mep_element = mep_element
-        self.is_bounding_box_found = None
-        self.is_opening_there = None
-        self.is_intersect_with_concrete = None
-        self.concrete_category_name = None
+        self.intersect_with_concrete_result = []
 
     @property
-    def finely_result(self):
-        return not self.is_opening_there and self.is_intersect_with_concrete
+    def is_intersect_with_concrete(self):
+        return len(self.intersect_with_concrete_result) > 0
 
 
 def get_all_MEP_elements():
@@ -82,42 +87,47 @@ def is_opening_there(bbox_intersects_filter):
     return openings_count > 0
 
 
-def get_is_concrete_there(document, bbox_intersects_filter, result):
-    walls_elements = (
-        FilteredElementCollector(document)
-        .OfCategory(BuiltInCategory.OST_Walls)
-        .WherePasses(bbox_intersects_filter)
-        .ToElements()
+def find_concrete_intersect(document, bbox, result, transform=None):
+    outline = (
+        getOutlineByBoundingBox(bbox, transform.Inverse)
+        if transform
+        else getOutlineByBoundingBox(bbox)
     )
-    for wall in walls_elements:
-        if is_wall_concrete(wall):
-            result.is_intersect_with_concrete = True
-            result.concrete_category_name = "Wall"
-            return True
+    bbox_intersects_filter = BoundingBoxIntersectsFilter(outline)
 
-    floors_count = (
-        FilteredElementCollector(document)
-        .OfCategory(BuiltInCategory.OST_Floors)
-        .WherePasses(bbox_intersects_filter)
-        .GetElementCount()
-    )
-    if floors_count > 0:
-        result.is_intersect_with_concrete = True
-        result.concrete_category_name = "Floor"
-        return True
+    categories = [
+        BuiltInCategory.OST_Walls,
+        BuiltInCategory.OST_Floors,
+        BuiltInCategory.OST_StructuralFraming,
+    ]
 
-    beams_count = (
-        FilteredElementCollector(document)
-        .OfCategory(BuiltInCategory.OST_StructuralFraming)
-        .WherePasses(bbox_intersects_filter)
-        .GetElementCount()
-    )
-    if beams_count > 0:
-        result.is_intersect_with_concrete = True
-        result.concrete_category_name = "Structural Framing"
-        return True
-
-    return False
+    for category in categories:
+        elements = (
+            FilteredElementCollector(document)
+            .OfCategory(category)
+            .WherePasses(bbox_intersects_filter)
+            .ToElements()
+        )
+        for element in elements:
+            if category == BuiltInCategory.OST_Walls and not is_wall_concrete(element):
+                continue
+            bbox_element = element.get_BoundingBox(None)
+            if not bbox_element:
+                continue
+            intersect_bounding_box = (
+                get_intersect_bounding_box(bbox, bbox_element, transform)
+                if transform
+                else get_intersect_bounding_box(bbox, bbox_element)
+            )
+            intersect_outline = getOutlineByBoundingBox(bbox_element)
+            element_bbox_intersects_filter = BoundingBoxIntersectsFilter(
+                intersect_outline
+            )
+            if is_opening_there(element_bbox_intersects_filter):
+                continue
+            result.intersect_with_concrete_result.append(
+                IntersectWithConcreteResult(element, intersect_bounding_box)
+            )
 
 
 def get_is_mep_without_opening_intersect_with_concrete(mep_element):
@@ -125,20 +135,9 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
 
     bounding_box = mep_element.get_BoundingBox(None)
     if not bounding_box:
-        result.is_bounding_box_found = False
         return result
-    result.is_bounding_box_found = True
 
-    outline = getOutlineByBoundingBox(bounding_box)
-    bbox_intersects_filter = BoundingBoxIntersectsFilter(outline)
-
-    if is_opening_there(bbox_intersects_filter):
-        result.is_opening_there = True
-        return result
-    result.is_opening_there = False
-
-    if get_is_concrete_there(doc, bbox_intersects_filter, result):
-        return result
+    find_concrete_intersect(doc, bounding_box, result)
 
     all_links = get_all_link_instances(doc)
     for link in all_links:
@@ -146,15 +145,10 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
         if not link_doc:
             continue
 
-        outline = getOutlineByBoundingBox(
-            bounding_box, link.GetTotalTransform().Inverse
+        find_concrete_intersect(
+            link_doc, bounding_box, result, link.GetTotalTransform()
         )
-        bbox_intersects_filter = BoundingBoxIntersectsFilter(outline)
 
-        if get_is_concrete_there(link_doc, bbox_intersects_filter, result):
-            return result
-
-    result.is_intersect_with_concrete = False
     return result
 
 
@@ -163,7 +157,7 @@ def run():
 
     for mep_element in get_all_MEP_elements():
         result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
-        if result.finely_result:
+        if result.is_intersect_with_concrete:
             relevant_results.append(result)
 
     columns = [
@@ -180,18 +174,31 @@ def run():
         row = [level.Name, [], [], []]
         for res in relevant_results:
             if res.mep_element.LevelId == level.Id:
-                if res.concrete_category_name == "Floor":
-                    row[1].append(
-                        output.linkify(res.mep_element.Id, res.mep_element.Name)
-                    )
-                elif res.concrete_category_name == "Wall":
-                    row[2].append(
-                        output.linkify(res.mep_element.Id, res.mep_element.Name)
-                    )
-                elif res.concrete_category_name == "Structural Framing":
-                    row[3].append(
-                        output.linkify(res.mep_element.Id, res.mep_element.Name)
-                    )
+                for intersect_res in res.intersect_with_concrete_result:
+                    if intersect_res.intersect_element.Category.Name == "Walls":
+                        row[2].append(
+                            output.linkify(
+                                res.mep_element.Id,
+                                res.mep_element.Name,
+                            )
+                        )
+                    elif intersect_res.intersect_element.Category.Name == "Floors":
+                        row[1].append(
+                            output.linkify(
+                                res.mep_element.Id,
+                                res.mep_element.Name,
+                            )
+                        )
+                    elif (
+                        intersect_res.intersect_element.Category.Name
+                        == "Structural Framing"
+                    ):
+                        row[3].append(
+                            output.linkify(
+                                res.mep_element.Id,
+                                res.mep_element.Name,
+                            )
+                        )
         row[1] = "<br>".join(row[1]) if row[1] else "✅"
         row[2] = "<br>".join(row[2]) if row[2] else "✅"
         row[3] = "<br>".join(row[3]) if row[3] else "✅"

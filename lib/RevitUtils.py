@@ -409,3 +409,38 @@ def get_levels_sorted(doc):
     )
     levels = sorted(levels, key=lambda level: level.ProjectElevation)
     return levels
+
+
+def get_intersect_bounding_box(bbox1, bbox2, transform=None):
+    from Autodesk.Revit.DB import XYZ, BoundingBoxXYZ
+
+    res_bbox = BoundingBoxXYZ()
+    if transform:
+        bbox1_min_transformed = transform.OfPoint(bbox1.Min)
+        bbox1_max_transformed = transform.OfPoint(bbox1.Max)
+        bbox2_min_transformed = transform.OfPoint(bbox2.Min)
+        bbox2_max_transformed = transform.OfPoint(bbox2.Max)
+
+        res_bbox.Min = XYZ(
+            max(bbox1_min_transformed.X, bbox2_min_transformed.X),
+            max(bbox1_min_transformed.Y, bbox2_min_transformed.Y),
+            max(bbox1_min_transformed.Z, bbox2_min_transformed.Z),
+        )
+        res_bbox.Max = XYZ(
+            min(bbox1_max_transformed.X, bbox2_max_transformed.X),
+            min(bbox1_max_transformed.Y, bbox2_max_transformed.Y),
+            min(bbox1_max_transformed.Z, bbox2_max_transformed.Z),
+        )
+        return res_bbox
+
+    res_bbox.Min = XYZ(
+        max(bbox1.Min.X, bbox2.Min.X),
+        max(bbox1.Min.Y, bbox2.Min.Y),
+        max(bbox1.Min.Z, bbox2.Min.Z),
+    )
+    res_bbox.Max = XYZ(
+        min(bbox1.Max.X, bbox2.Max.X),
+        min(bbox1.Max.Y, bbox2.Max.Y),
+        min(bbox1.Max.Z, bbox2.Max.Z),
+    )
+    return res_bbox
