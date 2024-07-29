@@ -15,8 +15,13 @@ from Autodesk.Revit.DB import (
 
 from pyrevit import script
 
-from RevitUtils import getOutlineByBoundingBox, get_all_link_instances, is_wall_concrete
-
+from RevitUtils import (
+    getOutlineByBoundingBox,
+    get_all_link_instances,
+    is_wall_concrete,
+    get_levels_sorted,
+)
+from PyRevitUtils import print_table
 from RevitUtilsOpenings import get_opening_element_filter
 
 # -------------------------------
@@ -31,8 +36,19 @@ output.close_others()
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
-# TODO: In the output, divide to levels and walls+beams or floors.
-# EXTREME TODO: marge elements that are connect to each other to one linkify.
+
+
+class ElementResult:
+    def __init__(self, mep_element):
+        self.mep_element = mep_element
+        self.is_bounding_box_found = None
+        self.is_opening_there = None
+        self.is_intersect_with_concrete = None
+        self.concrete_category_name = None
+
+    @property
+    def finely_result(self):
+        return not self.is_opening_there and self.is_intersect_with_concrete
 
 
 def get_all_MEP_elements():
@@ -40,6 +56,10 @@ def get_all_MEP_elements():
         BuiltInCategory.OST_DuctCurves,
         BuiltInCategory.OST_PipeCurves,
         BuiltInCategory.OST_CableTray,
+        # fittings:
+        BuiltInCategory.OST_DuctFitting,
+        BuiltInCategory.OST_PipeFitting,
+        BuiltInCategory.OST_CableTrayFitting,
     ]:
         elements = (
             FilteredElementCollector(doc)
@@ -51,10 +71,10 @@ def get_all_MEP_elements():
             yield element
 
 
-def is_opening_there(document, bbox_intersects_filter):
+def is_opening_there(bbox_intersects_filter):
     opening_element_filter = get_opening_element_filter(doc)
     openings_count = (
-        FilteredElementCollector(document)
+        FilteredElementCollector(doc)
         .WherePasses(opening_element_filter)
         .WherePasses(bbox_intersects_filter)
         .GetElementCount()
@@ -62,7 +82,7 @@ def is_opening_there(document, bbox_intersects_filter):
     return openings_count > 0
 
 
-def is_concrete_there(document, bbox_intersects_filter, print_debug=False):
+def get_is_concrete_there(document, bbox_intersects_filter, result):
     walls_elements = (
         FilteredElementCollector(document)
         .OfCategory(BuiltInCategory.OST_Walls)
@@ -71,6 +91,8 @@ def is_concrete_there(document, bbox_intersects_filter, print_debug=False):
     )
     for wall in walls_elements:
         if is_wall_concrete(wall):
+            result.is_intersect_with_concrete = True
+            result.concrete_category_name = "Wall"
             return True
 
     floors_count = (
@@ -80,8 +102,8 @@ def is_concrete_there(document, bbox_intersects_filter, print_debug=False):
         .GetElementCount()
     )
     if floors_count > 0:
-        if print_debug:
-            print("Floor is there")
+        result.is_intersect_with_concrete = True
+        result.concrete_category_name = "Floor"
         return True
 
     beams_count = (
@@ -91,30 +113,32 @@ def is_concrete_there(document, bbox_intersects_filter, print_debug=False):
         .GetElementCount()
     )
     if beams_count > 0:
-        if print_debug:
-            print("Beam is there")
+        result.is_intersect_with_concrete = True
+        result.concrete_category_name = "Structural Framing"
         return True
 
-    if print_debug:
-        print("No concrete is there")
     return False
 
 
-def is_mep_without_opening_intersect_with_concrete(mep_element):
-    print_debug = mep_element.Id.IntegerValue in []
+def get_is_mep_without_opening_intersect_with_concrete(mep_element):
+    result = ElementResult(mep_element)
 
     bounding_box = mep_element.get_BoundingBox(None)
     if not bounding_box:
-        return False
+        result.is_bounding_box_found = False
+        return result
+    result.is_bounding_box_found = True
 
     outline = getOutlineByBoundingBox(bounding_box)
     bbox_intersects_filter = BoundingBoxIntersectsFilter(outline)
 
-    if is_opening_there(doc, bbox_intersects_filter):
-        return False
+    if is_opening_there(bbox_intersects_filter):
+        result.is_opening_there = True
+        return result
+    result.is_opening_there = False
 
-    if is_concrete_there(doc, bbox_intersects_filter, print_debug=print_debug):
-        return True
+    if get_is_concrete_there(doc, bbox_intersects_filter, result):
+        return result
 
     all_links = get_all_link_instances(doc)
     for link in all_links:
@@ -127,24 +151,53 @@ def is_mep_without_opening_intersect_with_concrete(mep_element):
         )
         bbox_intersects_filter = BoundingBoxIntersectsFilter(outline)
 
-        if is_concrete_there(link_doc, bbox_intersects_filter, print_debug=print_debug):
-            return True
+        if get_is_concrete_there(link_doc, bbox_intersects_filter, result):
+            return result
 
-    return False
+    result.is_intersect_with_concrete = False
+    return result
 
 
 def run():
-    output_elements = []
+    relevant_results = []
 
     for mep_element in get_all_MEP_elements():
-        if is_mep_without_opening_intersect_with_concrete(mep_element):
-            output_elements.append(mep_element)
+        result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
+        if result.finely_result:
+            relevant_results.append(result)
 
-    likifies = [output.linkify(element.Id) for element in output_elements]
-    output.print_html(
-        "<h1>MEP elements without openings intersecting with concrete:</h1>"
-    )
-    output.print_html("<br>".join(likifies))
+    columns = [
+        "Level",
+        "Floor",
+        "Wall",
+        "Structural Framing",
+    ]
+
+    levels = get_levels_sorted(doc)
+
+    table_data = []
+    for level in levels:
+        row = [level.Name, [], [], []]
+        for res in relevant_results:
+            if res.mep_element.LevelId == level.Id:
+                if res.concrete_category_name == "Floor":
+                    row[1].append(
+                        output.linkify(res.mep_element.Id, res.mep_element.Name)
+                    )
+                elif res.concrete_category_name == "Wall":
+                    row[2].append(
+                        output.linkify(res.mep_element.Id, res.mep_element.Name)
+                    )
+                elif res.concrete_category_name == "Structural Framing":
+                    row[3].append(
+                        output.linkify(res.mep_element.Id, res.mep_element.Name)
+                    )
+        row[1] = "<br>".join(row[1]) if row[1] else "✅"
+        row[2] = "<br>".join(row[2]) if row[2] else "✅"
+        row[3] = "<br>".join(row[3]) if row[3] else "✅"
+        table_data.append(row)
+
+    print_table(output, columns, table_data)
 
 
 run()

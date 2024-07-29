@@ -396,3 +396,16 @@ def is_wall_concrete(wall):
         return True
 
     return False
+
+
+def get_levels_sorted(doc):
+    from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory
+
+    levels = (
+        FilteredElementCollector(doc)
+        .OfCategory(BuiltInCategory.OST_Levels)
+        .WhereElementIsNotElementType()
+        .ToElements()
+    )
+    levels = sorted(levels, key=lambda level: level.ProjectElevation)
+    return levels
