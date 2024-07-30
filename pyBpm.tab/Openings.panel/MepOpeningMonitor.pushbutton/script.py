@@ -147,7 +147,9 @@ def find_concrete_intersect(document_to_search, result, transform=None):
                 continue
 
             intersect_bounding_box = solid_intersect.GetBoundingBox()
-            intersect_outline = getOutlineByBoundingBox(intersect_bounding_box)
+            intersect_outline = getOutlineByBoundingBox(
+                intersect_bounding_box, transform
+            )
             intersect_bbox_intersects_filter = BoundingBoxIntersectsFilter(
                 intersect_outline
             )
@@ -204,30 +206,27 @@ def run():
         for res in relevant_results:
             if res.mep_element.LevelId == level.Id:
                 for intersect_res in res.intersect_with_concrete_result:
-                    if intersect_res.intersect_element.Category.Name == "Walls":
-                        row[2].append(
-                            output.linkify(
-                                res.mep_element.Id,
-                                res.mep_element.Name,
-                            )
-                        )
-                    elif intersect_res.intersect_element.Category.Name == "Floors":
-                        row[1].append(
-                            output.linkify(
-                                res.mep_element.Id,
-                                res.mep_element.Name,
-                            )
-                        )
+                    if (
+                        intersect_res.intersect_element.Category.Name == "Floors"
+                        and res.mep_element.Id not in row[1]
+                    ):
+                        row[1].append(res.mep_element.Id)
+                    elif (
+                        intersect_res.intersect_element.Category.Name == "Walls"
+                        and res.mep_element.Id not in row[2]
+                    ):
+                        row[2].append(res.mep_element.Id)
                     elif (
                         intersect_res.intersect_element.Category.Name
                         == "Structural Framing"
+                        and res.mep_element.Id not in row[3]
                     ):
-                        row[3].append(
-                            output.linkify(
-                                res.mep_element.Id,
-                                res.mep_element.Name,
-                            )
-                        )
+                        row[3].append(res.mep_element.Id)
+
+        row[1] = [output.linkify(x) for x in row[1]]
+        row[2] = [output.linkify(x) for x in row[2]]
+        row[3] = [output.linkify(x) for x in row[3]]
+
         row[1] = "<br>".join(row[1]) if row[1] else "✅"
         row[2] = "<br>".join(row[2]) if row[2] else "✅"
         row[3] = "<br>".join(row[3]) if row[3] else "✅"
