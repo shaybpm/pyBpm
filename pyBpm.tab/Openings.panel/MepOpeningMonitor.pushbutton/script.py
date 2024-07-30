@@ -28,6 +28,7 @@ from RevitUtils import (
 )
 from PyRevitUtils import print_table
 from RevitUtilsOpenings import get_opening_element_filter
+from Config import get_env_mode
 
 # -------------------------------
 # -------------MAIN--------------
@@ -37,6 +38,7 @@ uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 output = script.get_output()
 output.close_others()
+dev_mode = get_env_mode() == "dev"
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -126,9 +128,20 @@ def find_concrete_intersect(document_to_search, result, transform=None):
         for element in elements:
             if category == BuiltInCategory.OST_Walls and not is_wall_concrete(element):
                 continue
+
+            if hasattr(result.mep_element.Location, "Curve"):
+                z_direction = result.mep_element.Location.Curve.Direction.Z
+                if category == BuiltInCategory.OST_Floors:
+                    if -0.5 <= z_direction <= 0.5:
+                        continue
+                else:
+                    if not (-0.5 <= z_direction <= 0.5):
+                        continue
+
             bbox_element = element.get_BoundingBox(None)
             if not bbox_element:
                 continue
+
             solid_element = get_solid_from_element(element)
             if not solid_element:
                 continue
@@ -140,7 +153,10 @@ def find_concrete_intersect(document_to_search, result, transform=None):
                     BooleanOperationsType.Intersect,
                 )
             except:
-                print("Boolean operation failed")
+                if dev_mode:
+                    print("- Boolean operation failed for:")
+                    print("....- MEP Element: {}".format(result.mep_element.Id))
+                    print("....- Element: {}".format(element.Id))
                 continue
 
             if solid_intersect.Volume == 0:
