@@ -183,14 +183,7 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
     return result
 
 
-def run():
-    relevant_results = []
-
-    for mep_element in get_all_MEP_elements():
-        result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
-        if result.is_intersect_with_concrete:
-            relevant_results.append(result)
-
+def print_results(results):
     columns = [
         "Level",
         "Floor",
@@ -203,7 +196,7 @@ def run():
     table_data = []
     for level in levels:
         row = [level.Name, [], [], []]
-        for res in relevant_results:
+        for res in results:
             if res.mep_element.LevelId == level.Id:
                 for intersect_res in res.intersect_with_concrete_result:
                     if (
@@ -233,6 +226,17 @@ def run():
         table_data.append(row)
 
     print_table(output, columns, table_data)
+
+
+def run():
+    relevant_results = []
+
+    for mep_element in get_all_MEP_elements():
+        result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
+        if result.is_intersect_with_concrete:
+            relevant_results.append(result)
+
+    print_results(relevant_results)
 
 
 run()
