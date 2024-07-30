@@ -71,13 +71,15 @@ class MepOpeningMonitorDialog(Windows.Window):
         button_style.Setters.Add(
             Windows.Setter(
                 Windows.Controls.Button.BackgroundProperty,
-                Windows.Media.SolidColorBrush(Windows.Media.Color.FromRgb(0, 122, 204)),
+                Windows.Media.SolidColorBrush(
+                    Windows.Media.Color.FromRgb(255, 223, 51)
+                ),
             )
         )
         button_style.Setters.Add(
             Windows.Setter(
                 Windows.Controls.Button.ForegroundProperty,
-                Windows.Media.Brushes.White,
+                Windows.Media.SolidColorBrush(Windows.Media.Color.FromRgb(0, 51, 102)),
             )
         )
         button_style.Setters.Add(
@@ -103,14 +105,20 @@ class MepOpeningMonitorDialog(Windows.Window):
         return button_style
 
     def add_result(self, element_result):
-        mep_border = Windows.Controls.Border()
-        mep_border.BorderThickness = Windows.Thickness(1)
-        mep_border.BorderBrush = Windows.Media.Brushes.Gray
-        mep_border.Margin = Windows.Thickness(0, 12, 0, 0)
+        mep_and_intersect_stack_panel = Windows.Controls.StackPanel()
+
+        mep_and_intersect_border = Windows.Controls.Border()
+        mep_and_intersect_border.BorderThickness = Windows.Thickness(1)
+        mep_and_intersect_border.BorderBrush = Windows.Media.Brushes.Gray
+        mep_and_intersect_border.Margin = Windows.Thickness(0, 12, 0, 0)
+        mep_and_intersect_border.CornerRadius = Windows.CornerRadius(4)
 
         mep_grid = Windows.Controls.Grid()
         mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
         mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+        mep_grid.Background = Windows.Media.SolidColorBrush(
+            Windows.Media.Color.FromRgb(0, 51, 102)
+        )
 
         mep_label = Windows.Controls.Label()
         mep_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
@@ -120,6 +128,7 @@ class MepOpeningMonitorDialog(Windows.Window):
             + element_result.mep_element.Name
         )
         mep_label.FontWeight = Windows.FontWeights.Bold
+        mep_label.Foreground = Windows.Media.Brushes.White
         mep_label.VerticalAlignment = Windows.VerticalAlignment.Center
 
         mep_controllers_stack_panel = Windows.Controls.StackPanel()
@@ -142,19 +151,27 @@ class MepOpeningMonitorDialog(Windows.Window):
         mep_grid.Children.Add(mep_label)
         mep_grid.Children.Add(mep_controllers_stack_panel)
 
-        mep_border.Child = mep_grid
-        self.StackPanelMain.Children.Add(mep_border)
+        mep_and_intersect_stack_panel.Children.Add(mep_grid)
+
+        mep_and_intersect_border.Child = mep_and_intersect_stack_panel
+
+        self.StackPanelMain.Children.Add(mep_and_intersect_border)
 
         for index, intersect_res in enumerate(
             element_result.intersect_with_concrete_result
         ):
-            intersect_border = Windows.Controls.Border()
-            intersect_border.BorderThickness = Windows.Thickness(1, 0, 1, 1)
-            intersect_border.BorderBrush = Windows.Media.Brushes.Gray
-
             intersect_grid = Windows.Controls.Grid()
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+            intersect_grid.Background = (
+                Windows.Media.SolidColorBrush(
+                    Windows.Media.Color.FromRgb(102, 153, 255)
+                )
+                if index % 2 == 0
+                else Windows.Media.SolidColorBrush(
+                    Windows.Media.Color.FromRgb(153, 204, 255)
+                )
+            )
 
             intersect_label = Windows.Controls.Label()
             intersect_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
@@ -185,8 +202,8 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_grid.Children.Add(intersect_label)
             intersect_grid.Children.Add(intersect_controllers_stack_panel)
 
-            intersect_border.Child = intersect_grid
-            self.StackPanelMain.Children.Add(intersect_border)
+            # intersect_border.Child = intersect_grid
+            mep_and_intersect_stack_panel.Children.Add(intersect_grid)
 
     def highlight_mep_button_click(self, sender, e):
         button = sender
