@@ -17,7 +17,7 @@ from Autodesk.Revit.DB import (
     BooleanOperationsType,
 )
 
-from pyrevit import script
+from pyrevit import script, forms
 
 from RevitUtils import (
     getOutlineByBoundingBox,
@@ -183,15 +183,13 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
     return result
 
 
-def print_results(results):
+def print_results(results, levels):
     columns = [
         "Level",
         "Floor",
         "Wall",
         "Structural Framing",
     ]
-
-    levels = get_levels_sorted(doc)
 
     table_data = []
     for level in levels:
@@ -231,12 +229,26 @@ def print_results(results):
 def run():
     relevant_results = []
 
+    levels = get_levels_sorted(doc)
+    levels_id_name_dict = {l.Id: l.Name for l in levels}
+    selected_levels = forms.SelectFromList.show(
+        levels_id_name_dict.values(), title="Select Levels", multiselect=True
+    )
+    if not selected_levels:
+        return
+
     for mep_element in get_all_MEP_elements():
+        if levels_id_name_dict[mep_element.LevelId] not in selected_levels:
+            continue
+
         result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
         if result.is_intersect_with_concrete:
             relevant_results.append(result)
 
-    print_results(relevant_results)
+    print_results(
+        relevant_results,
+        [l for l in levels if levels_id_name_dict[l.Id] in selected_levels],
+    )
 
 
 run()
