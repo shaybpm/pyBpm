@@ -30,6 +30,11 @@ from PyRevitUtils import print_table
 from RevitUtilsOpenings import get_opening_element_filter
 from Config import get_env_mode
 
+import sys, os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
+from MepOpeningMonitorDialog import MepOpeningMonitorDialog  # type: ignore
+
 # -------------------------------
 # -------------MAIN--------------
 # -------------------------------
@@ -261,10 +266,17 @@ def run():
         if result.is_intersect_with_concrete:
             relevant_results.append(result)
 
-    print_results(
-        relevant_results,
-        [l for l in levels if levels_id_name_dict[l.Id] in selected_levels],
-    )
+    # print_results(
+    #     relevant_results,
+    #     [l for l in levels if levels_id_name_dict[l.Id] in selected_levels],
+    # )
+
+    if len(relevant_results) == 0:
+        forms.alert("No missing openings were found.")
+        return
+
+    dialog = MepOpeningMonitorDialog(uidoc, relevant_results)
+    dialog.Show()
 
 
 run()
