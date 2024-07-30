@@ -372,6 +372,16 @@ def is_wall_concrete(wall):
     """
     from Autodesk.Revit.DB import BuiltInParameter
 
+    wall_doc = wall.Document
+
+    if convertRevitNumToCm(wall_doc, wall.Width) >= 15:
+        # * Don't sure if this is a good check
+        return True
+
+    doc_title = wall_doc.Title
+    if "str" in doc_title.lower() or "con" in doc_title.lower():
+        return True
+
     if "בטון" in wall.Name:
         return True
     if "con" in wall.Name.lower():
