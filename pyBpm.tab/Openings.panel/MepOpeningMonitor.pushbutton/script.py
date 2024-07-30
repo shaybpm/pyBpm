@@ -10,8 +10,11 @@ __author__ = "BPM"
 from Autodesk.Revit.DB import (
     FilteredElementCollector,
     BuiltInCategory,
+    BoundingBoxIsInsideFilter,
     BoundingBoxIntersectsFilter,
-    Transform,
+    LogicalOrFilter,
+    BooleanOperationsUtils,
+    BooleanOperationsType,
 )
 
 from pyrevit import script
@@ -21,7 +24,7 @@ from RevitUtils import (
     get_all_link_instances,
     is_wall_concrete,
     get_levels_sorted,
-    get_intersect_bounding_box,
+    get_solid_from_element,
 )
 from PyRevitUtils import print_table
 from RevitUtilsOpenings import get_opening_element_filter
@@ -76,18 +79,30 @@ def get_all_MEP_elements():
             yield element
 
 
-def is_opening_there(bbox_intersects_filter):
+def is_opening_there(element_filter):
     opening_element_filter = get_opening_element_filter(doc)
     openings_count = (
         FilteredElementCollector(doc)
         .WherePasses(opening_element_filter)
-        .WherePasses(bbox_intersects_filter)
+        .WherePasses(element_filter)
         .GetElementCount()
     )
     return openings_count > 0
 
 
-def find_concrete_intersect(document, bbox, result, transform=None):
+def find_concrete_intersect(document_to_search, result, transform=None):
+    bbox = result.mep_element.get_BoundingBox(None)
+    if not bbox:
+        return
+
+    solid = (
+        get_solid_from_element(result.mep_element, transform.Inverse)
+        if transform
+        else get_solid_from_element(result.mep_element)
+    )
+    if not solid:
+        return
+
     outline = (
         getOutlineByBoundingBox(bbox, transform.Inverse)
         if transform
@@ -103,7 +118,7 @@ def find_concrete_intersect(document, bbox, result, transform=None):
 
     for category in categories:
         elements = (
-            FilteredElementCollector(document)
+            FilteredElementCollector(document_to_search)
             .OfCategory(category)
             .WherePasses(bbox_intersects_filter)
             .ToElements()
@@ -114,17 +129,37 @@ def find_concrete_intersect(document, bbox, result, transform=None):
             bbox_element = element.get_BoundingBox(None)
             if not bbox_element:
                 continue
-            intersect_bounding_box = (
-                get_intersect_bounding_box(bbox, bbox_element, transform)
-                if transform
-                else get_intersect_bounding_box(bbox, bbox_element)
-            )
-            intersect_outline = getOutlineByBoundingBox(bbox_element)
-            element_bbox_intersects_filter = BoundingBoxIntersectsFilter(
+            solid_element = get_solid_from_element(element)
+            if not solid_element:
+                continue
+
+            try:
+                solid_intersect = BooleanOperationsUtils.ExecuteBooleanOperation(
+                    solid,
+                    solid_element,
+                    BooleanOperationsType.Intersect,
+                )
+            except:
+                print("Boolean operation failed")
+                continue
+
+            if solid_intersect.Volume == 0:
+                continue
+
+            intersect_bounding_box = solid_intersect.GetBoundingBox()
+            intersect_outline = getOutlineByBoundingBox(intersect_bounding_box)
+            intersect_bbox_intersects_filter = BoundingBoxIntersectsFilter(
                 intersect_outline
             )
-            if is_opening_there(element_bbox_intersects_filter):
+            intersect_bbox_is_inside_filter = BoundingBoxIsInsideFilter(
+                intersect_outline
+            )
+            intersect_bbox_filter = LogicalOrFilter(
+                intersect_bbox_intersects_filter, intersect_bbox_is_inside_filter
+            )
+            if is_opening_there(intersect_bbox_filter):
                 continue
+
             result.intersect_with_concrete_result.append(
                 IntersectWithConcreteResult(element, intersect_bounding_box)
             )
@@ -133,11 +168,7 @@ def find_concrete_intersect(document, bbox, result, transform=None):
 def get_is_mep_without_opening_intersect_with_concrete(mep_element):
     result = ElementResult(mep_element)
 
-    bounding_box = mep_element.get_BoundingBox(None)
-    if not bounding_box:
-        return result
-
-    find_concrete_intersect(doc, bounding_box, result)
+    find_concrete_intersect(doc, result)
 
     all_links = get_all_link_instances(doc)
     for link in all_links:
@@ -145,9 +176,7 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
         if not link_doc:
             continue
 
-        find_concrete_intersect(
-            link_doc, bounding_box, result, link.GetTotalTransform()
-        )
+        find_concrete_intersect(link_doc, result, link.GetTotalTransform())
 
     return result
 

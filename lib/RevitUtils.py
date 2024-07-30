@@ -411,36 +411,34 @@ def get_levels_sorted(doc):
     return levels
 
 
-def get_intersect_bounding_box(bbox1, bbox2, transform=None):
-    from Autodesk.Revit.DB import XYZ, BoundingBoxXYZ
+def get_solid_from_geometry_element(geometry_element, transform=None):
+    from Autodesk.Revit.DB import Solid, SolidUtils, Line
 
-    res_bbox = BoundingBoxXYZ()
-    if transform:
-        bbox1_min_transformed = transform.OfPoint(bbox1.Min)
-        bbox1_max_transformed = transform.OfPoint(bbox1.Max)
-        bbox2_min_transformed = transform.OfPoint(bbox2.Min)
-        bbox2_max_transformed = transform.OfPoint(bbox2.Max)
+    for geo_instance in geometry_element:
+        if isinstance(geo_instance, Line):
+            continue
+        if isinstance(geo_instance, Solid):
+            if geo_instance.Volume > 0:
+                if transform:
+                    geo_instance = SolidUtils.CreateTransformed(geo_instance, transform)
+                return geo_instance
+            else:
+                continue
+        instance_geometry = geo_instance.GetInstanceGeometry()
+        for geo_instance_2 in instance_geometry:
+            if isinstance(geo_instance_2, Solid):
+                if geo_instance_2.Volume > 0:
+                    if transform:
+                        geo_instance_2 = SolidUtils.CreateTransformed(
+                            geo_instance_2, transform
+                        )
+                    return geo_instance_2
 
-        res_bbox.Min = XYZ(
-            max(bbox1_min_transformed.X, bbox2_min_transformed.X),
-            max(bbox1_min_transformed.Y, bbox2_min_transformed.Y),
-            max(bbox1_min_transformed.Z, bbox2_min_transformed.Z),
-        )
-        res_bbox.Max = XYZ(
-            min(bbox1_max_transformed.X, bbox2_max_transformed.X),
-            min(bbox1_max_transformed.Y, bbox2_max_transformed.Y),
-            min(bbox1_max_transformed.Z, bbox2_max_transformed.Z),
-        )
-        return res_bbox
 
-    res_bbox.Min = XYZ(
-        max(bbox1.Min.X, bbox2.Min.X),
-        max(bbox1.Min.Y, bbox2.Min.Y),
-        max(bbox1.Min.Z, bbox2.Min.Z),
-    )
-    res_bbox.Max = XYZ(
-        min(bbox1.Max.X, bbox2.Max.X),
-        min(bbox1.Max.Y, bbox2.Max.Y),
-        min(bbox1.Max.Z, bbox2.Max.Z),
-    )
-    return res_bbox
+def get_solid_from_element(element, transform=None, options=None):
+    from Autodesk.Revit.DB import Options
+
+    if not options:
+        options = Options()
+    geometry_element = element.get_Geometry(options)
+    return get_solid_from_geometry_element(geometry_element, transform)
