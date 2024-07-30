@@ -276,7 +276,8 @@ def run():
         return
 
     dialog = MepOpeningMonitorDialog(uidoc, relevant_results)
-    dialog.Show()
+    # dialog.Show()
+    dialog.ShowDialog()
 
 
 run()

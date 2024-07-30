@@ -9,9 +9,11 @@ clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
 from System import Windows
+from System.Collections.Generic import List
 import wpf
 import os
 
+from Autodesk.Revit.DB import ElementId
 
 xaml_file = os.path.join(os.path.dirname(__file__), "MepOpeningMonitorDialogUi.xaml")
 
@@ -65,7 +67,12 @@ class MepOpeningMonitorDialog(Windows.Window):
         border.BorderBrush = Windows.Media.Brushes.Gray
         border.Margin = Windows.Thickness(0, 12, 0, 0)
 
+        grid = Windows.Controls.Grid()
+        grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+        grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+
         label = Windows.Controls.Label()
+        label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
         label.Content = (
             element_result.mep_element.Category.Name
             + " - "
@@ -73,7 +80,27 @@ class MepOpeningMonitorDialog(Windows.Window):
         )
         label.FontWeight = Windows.FontWeights.Bold
 
-        border.Child = label
+        grid.Children.Add(label)
+
+        mep_controllers_stack_panel = Windows.Controls.StackPanel()
+        mep_controllers_stack_panel.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
+        mep_controllers_stack_panel.Orientation = (
+            Windows.Controls.Orientation.Horizontal
+        )
+
+        highlight_mep_button = Windows.Controls.Button()
+        highlight_mep_button.Content = "Highlight MEP"
+        highlight_mep_button.Margin = Windows.Thickness(12, 0, 0, 0)
+        highlight_mep_button.Name = "HighlightMepButton_" + str(
+            element_result.mep_element.Id
+        )
+        highlight_mep_button.Click += self.highlight_mep_button_click
+
+        mep_controllers_stack_panel.Children.Add(highlight_mep_button)
+
+        grid.Children.Add(mep_controllers_stack_panel)
+
+        border.Child = grid
         self.StackPanelMain.Children.Add(border)
 
         for intersect_res in element_result.intersect_with_concrete_result:
@@ -87,6 +114,14 @@ class MepOpeningMonitorDialog(Windows.Window):
 
             border.Child = label
             self.StackPanelMain.Children.Add(border)
+
+    def highlight_mep_button_click(self, sender, e):
+        button = sender
+        mep_id_int = int(button.Name.split("_")[-1])
+        mep_id = ElementId(mep_id_int)
+        ids = List[ElementId]([mep_id])
+        self.uidoc.Selection.SetElementIds(ids)
+        self.uidoc.ShowElements(ids)
 
     def render_results(self):
         self.filter_results()
