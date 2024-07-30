@@ -61,26 +61,66 @@ class MepOpeningMonitorDialog(Windows.Window):
 
         self.StackPanelMain.Children.Add(label)
 
+    def get_button_style(self):
+        button_style = Windows.Style()
+        button_style.Setters.Add(
+            Windows.Setter(
+                Windows.Controls.Button.PaddingProperty, Windows.Thickness(8)
+            )
+        )
+        button_style.Setters.Add(
+            Windows.Setter(
+                Windows.Controls.Button.BackgroundProperty,
+                Windows.Media.SolidColorBrush(Windows.Media.Color.FromRgb(0, 122, 204)),
+            )
+        )
+        button_style.Setters.Add(
+            Windows.Setter(
+                Windows.Controls.Button.ForegroundProperty,
+                Windows.Media.Brushes.White,
+            )
+        )
+        button_style.Setters.Add(
+            Windows.Setter(
+                Windows.Controls.Button.BorderBrushProperty,
+                Windows.Media.Brushes.Transparent,
+            )
+        )
+        button_style.Setters.Add(
+            Windows.Setter(
+                Windows.Controls.Button.CursorProperty,
+                Windows.Input.Cursors.Hand,
+            )
+        )
+        border_style = Windows.Style(Windows.Controls.Border)
+        border_style.Setters.Add(
+            Windows.Setter(
+                Windows.Controls.Border.CornerRadiusProperty,
+                Windows.CornerRadius(4),
+            )
+        )
+
+        return button_style
+
     def add_result(self, element_result):
-        border = Windows.Controls.Border()
-        border.BorderThickness = Windows.Thickness(1)
-        border.BorderBrush = Windows.Media.Brushes.Gray
-        border.Margin = Windows.Thickness(0, 12, 0, 0)
+        mep_border = Windows.Controls.Border()
+        mep_border.BorderThickness = Windows.Thickness(1)
+        mep_border.BorderBrush = Windows.Media.Brushes.Gray
+        mep_border.Margin = Windows.Thickness(0, 12, 0, 0)
 
-        grid = Windows.Controls.Grid()
-        grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
-        grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+        mep_grid = Windows.Controls.Grid()
+        mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+        mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
 
-        label = Windows.Controls.Label()
-        label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
-        label.Content = (
+        mep_label = Windows.Controls.Label()
+        mep_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
+        mep_label.Content = (
             element_result.mep_element.Category.Name
             + " - "
             + element_result.mep_element.Name
         )
-        label.FontWeight = Windows.FontWeights.Bold
-
-        grid.Children.Add(label)
+        mep_label.FontWeight = Windows.FontWeights.Bold
+        mep_label.VerticalAlignment = Windows.VerticalAlignment.Center
 
         mep_controllers_stack_panel = Windows.Controls.StackPanel()
         mep_controllers_stack_panel.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
@@ -90,30 +130,63 @@ class MepOpeningMonitorDialog(Windows.Window):
 
         highlight_mep_button = Windows.Controls.Button()
         highlight_mep_button.Content = "Highlight MEP"
-        highlight_mep_button.Margin = Windows.Thickness(12, 0, 0, 0)
+        highlight_mep_button.Margin = Windows.Thickness(12)
         highlight_mep_button.Name = "HighlightMepButton_" + str(
             element_result.mep_element.Id
         )
+        highlight_mep_button.Style = self.get_button_style()
         highlight_mep_button.Click += self.highlight_mep_button_click
 
         mep_controllers_stack_panel.Children.Add(highlight_mep_button)
 
-        grid.Children.Add(mep_controllers_stack_panel)
+        mep_grid.Children.Add(mep_label)
+        mep_grid.Children.Add(mep_controllers_stack_panel)
 
-        border.Child = grid
-        self.StackPanelMain.Children.Add(border)
+        mep_border.Child = mep_grid
+        self.StackPanelMain.Children.Add(mep_border)
 
-        for intersect_res in element_result.intersect_with_concrete_result:
-            border = Windows.Controls.Border()
-            border.BorderThickness = Windows.Thickness(1, 0, 1, 1)
-            border.BorderBrush = Windows.Media.Brushes.Gray
+        for index, intersect_res in enumerate(
+            element_result.intersect_with_concrete_result
+        ):
+            intersect_border = Windows.Controls.Border()
+            intersect_border.BorderThickness = Windows.Thickness(1, 0, 1, 1)
+            intersect_border.BorderBrush = Windows.Media.Brushes.Gray
 
-            label = Windows.Controls.Label()
-            label.Content = intersect_res.intersect_element.Category.Name
-            label.Margin = Windows.Thickness(24, 0, 0, 0)
+            intersect_grid = Windows.Controls.Grid()
+            intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+            intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
 
-            border.Child = label
-            self.StackPanelMain.Children.Add(border)
+            intersect_label = Windows.Controls.Label()
+            intersect_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
+            intersect_label.Content = intersect_res.intersect_element.Category.Name
+            intersect_label.Margin = Windows.Thickness(24, 0, 0, 0)
+            intersect_label.VerticalAlignment = Windows.VerticalAlignment.Center
+
+            intersect_controllers_stack_panel = Windows.Controls.StackPanel()
+            intersect_controllers_stack_panel.SetValue(
+                Windows.Controls.Grid.ColumnProperty, 1
+            )
+            intersect_controllers_stack_panel.Orientation = (
+                Windows.Controls.Orientation.Horizontal
+            )
+
+            intersect_button = Windows.Controls.Button()
+            intersect_button.Content = "Section Box"
+            intersect_button.Margin = Windows.Thickness(12)
+            intersect_button.Name = "SectionBoxButton_{}_{}".format(
+                element_result.mep_element.Id,
+                index,
+            )
+            intersect_button.Style = self.get_button_style()
+            intersect_button.Click += self.section_box_button_click
+
+            intersect_controllers_stack_panel.Children.Add(intersect_button)
+
+            intersect_grid.Children.Add(intersect_label)
+            intersect_grid.Children.Add(intersect_controllers_stack_panel)
+
+            intersect_border.Child = intersect_grid
+            self.StackPanelMain.Children.Add(intersect_border)
 
     def highlight_mep_button_click(self, sender, e):
         button = sender
@@ -122,6 +195,24 @@ class MepOpeningMonitorDialog(Windows.Window):
         ids = List[ElementId]([mep_id])
         self.uidoc.Selection.SetElementIds(ids)
         self.uidoc.ShowElements(ids)
+
+    def section_box_button_click(self, sender, e):
+        button = sender
+        name_split = button.Name.split("_")
+        mep_id_int = int(name_split[-2])
+        mep_id = ElementId(mep_id_int)
+        index = int(name_split[-1])
+
+        intersect_res = None
+        for res in self.res_current:
+            if res.mep_element.Id == mep_id:
+                intersect_res = res.intersect_with_concrete_result[index]
+                break
+
+        if intersect_res is None:
+            return
+
+        print(intersect_res.intersect_bounding_box)
 
     def render_results(self):
         self.filter_results()

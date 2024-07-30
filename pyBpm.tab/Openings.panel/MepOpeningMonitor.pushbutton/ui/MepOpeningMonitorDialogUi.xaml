@@ -3,7 +3,7 @@
 
 	<Grid Margin="8">
 		<ScrollViewer>
-			<StackPanel x:Name="StackPanelMain">
+			<StackPanel x:Name="StackPanelMain" Margin="16">
 
 			</StackPanel>
 		</ScrollViewer>
