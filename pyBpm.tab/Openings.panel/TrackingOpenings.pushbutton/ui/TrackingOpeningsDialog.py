@@ -30,6 +30,8 @@ import Utils
 from EventHandlers import (
     show_opening_3d_event,
     create_revision_clouds_event,
+)
+from ReusableExternalEvents import (
     turn_on_isolate_mode_event,
     turn_off_isolate_mode_event,
 )

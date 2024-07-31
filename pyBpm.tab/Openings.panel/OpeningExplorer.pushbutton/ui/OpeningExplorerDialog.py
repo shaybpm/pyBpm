@@ -9,13 +9,12 @@ clr.AddReference("System.Windows.Forms")
 clr.AddReference("IronPython.Wpf")
 
 from System import Windows
-from System.Collections.Generic import List
 import wpf
 import os
 
 from pyrevit import forms
 
-from Autodesk.Revit.DB import ElementId, XYZ
+from Autodesk.Revit.DB import XYZ
 
 from RevitUtils import get_min_max_points_from_bbox, get_ui_view, get_all_link_instances
 from RevitUtilsOpenings import (
@@ -23,6 +22,10 @@ from RevitUtilsOpenings import (
     get_opening_discipline_and_number,
 )
 from UiUtils import get_button_style1
+from ReusableExternalEvents import (
+    turn_on_isolate_mode_event,
+    turn_off_isolate_mode_event,
+)
 
 from EventHandlers import show_opening_3d_event
 from ExternalEventDataFile import ExternalEventDataFile
@@ -190,6 +193,33 @@ class OpeningExplorerDialog(Windows.Window):
         ex_event_file.set_key_value("min_max_points_dict", opening["min_max_points"])
 
         show_opening_3d_event.Raise()
+
+    def isolate_btn_mouse_down(self, sender, e):
+        active_view = self.uidoc.ActiveView
+        if not active_view:
+            self.alert("לא נמצא מבט פעיל")
+            return
+        if active_view.IsTemporaryViewPropertiesModeEnabled():
+            return
+        if not active_view.CanEnableTemporaryViewPropertiesMode():
+            self.alert("לא זמין במבט הנוכחי.")
+            return
+        try:
+            turn_on_isolate_mode_event.Raise()
+        except Exception as ex:
+            print(ex)
+
+    def isolate_btn_mouse_up(self, sender, e):
+        active_view = self.uidoc.ActiveView
+        if not active_view:
+            self.alert("לא נמצא מבט פעיל")
+            return
+        if not active_view.IsTemporaryViewPropertiesModeEnabled():
+            return
+        try:
+            turn_off_isolate_mode_event.Raise()
+        except Exception as ex:
+            print(ex)
 
     def filter_selection_changed(self, sender, e):
         self.render_openings()

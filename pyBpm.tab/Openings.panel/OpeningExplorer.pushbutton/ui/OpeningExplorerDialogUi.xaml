@@ -5,6 +5,7 @@
 		<Grid.RowDefinitions>
 			<RowDefinition Height="60" />
 			<RowDefinition />
+			<RowDefinition Height="36" />
 		</Grid.RowDefinitions>
 
 		<Grid Grid.Row="0" Margin="2 4 2 4">
@@ -29,5 +30,10 @@
 				</StackPanel>
 			</ScrollViewer>
 		</Border>
+
+		<Grid Grid.Row="2" Margin="4">
+			<Button x:Name="isolate_btn" Content="Temporary opening view (hold click)" PreviewMouseDown="isolate_btn_mouse_down" PreviewMouseUp="isolate_btn_mouse_up" />
+		</Grid>
+
 	</Grid>
 </Window>
