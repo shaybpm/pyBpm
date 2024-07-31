@@ -155,22 +155,58 @@ def get_opening_element_filter(doc):
             continue
         # ~~~ Special supports ~~~
 
+    if element_filters.Count == 0:
+        return None
+
     logical_or_filter = LogicalOrFilter(element_filters)
     return logical_or_filter
 
 
 def get_all_openings(doc):
     """Returns a list of all the openings in the model."""
-    from Autodesk.Revit.DB import (
-        FilteredElementCollector,
-        BuiltInCategory,
-    )
+    import clr
+
+    clr.AddReferenceByPartialName("System")
+    from System.Collections.Generic import List
+
+    from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, Element
 
     opening_element_filter = get_opening_element_filter(doc)
+    if not opening_element_filter:
+        return List[Element]()
 
     return (
         FilteredElementCollector(doc)
         .OfCategory(BuiltInCategory.OST_GenericModel)
         .WherePasses(opening_element_filter)
         .ToElements()
+    )
+
+
+def get_all_openings_include_links(doc):
+    """Returns a list of all the openings in the model."""
+    from RevitUtils import get_all_link_instances
+
+    all_openings = [{"elements": get_all_openings(doc), "link": None}]
+
+    for link in get_all_link_instances(doc):
+        link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
+        linked_openings = {
+            "elements": get_all_openings(link_doc),
+            "link": link,
+        }
+        all_openings.append(linked_openings)
+
+    return all_openings
+
+
+def get_opening_discipline_and_number(opening):
+    """Returns the discipline and number of the opening."""
+    from Autodesk.Revit.DB import BuiltInParameter
+
+    return (
+        opening.Symbol.get_Parameter(BuiltInParameter.ALL_MODEL_DESCRIPTION).AsString(),
+        opening.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).AsString(),
     )

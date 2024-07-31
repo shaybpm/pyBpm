@@ -1,0 +1,33 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Opening Explorer" Height="800" Width="280" WindowStartupLocation="CenterScreen" MinWidth="280" MinHeight="280" Topmost="True">
+
+	<Grid Margin="8">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="60" />
+			<RowDefinition />
+		</Grid.RowDefinitions>
+
+		<Grid Grid.Row="0" Margin="2 4 2 4">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition />
+				<ColumnDefinition />
+			</Grid.ColumnDefinitions>
+			<Grid.RowDefinitions>
+				<RowDefinition />
+				<RowDefinition />
+			</Grid.RowDefinitions>
+			<Label Content="Discipline" Grid.Column="0" Grid.Row="0" Margin="2 0 2 0" />
+			<Label Content="Number" Grid.Column="1" Grid.Row="0" Margin="2 0 2 0" />
+			<TextBox x:Name="DisciplineFilterTextBox" Grid.Column="0" Grid.Row="1" Margin="2 0 2 0" SelectionChanged="filter_selection_changed" />
+			<TextBox x:Name="NumberFilterTextBox" Grid.Column="1" Grid.Row="1" Margin="2 0 2 0" SelectionChanged="filter_selection_changed" />
+		</Grid>
+
+		<Border Grid.Row="1" Margin="4" BorderThickness="1" BorderBrush="Black">
+			<ScrollViewer>
+				<StackPanel x:Name="StackPanelMain" Margin="16">
+
+				</StackPanel>
+			</ScrollViewer>
+		</Border>
+	</Grid>
+</Window>

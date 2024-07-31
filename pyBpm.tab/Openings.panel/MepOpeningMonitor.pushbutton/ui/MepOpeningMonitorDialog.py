@@ -18,6 +18,7 @@ from pyrevit import forms
 from Autodesk.Revit.DB import ElementId, XYZ
 
 from RevitUtils import get_min_max_points_from_bbox, get_ui_view
+from UiUtils import get_button_style1
 
 from EventHandlers import show_intersect_3d_event
 from ExternalEventDataFile import ExternalEventDataFile
@@ -69,35 +70,6 @@ class MepOpeningMonitorDialog(Windows.Window):
 
         self.StackPanelMain.Children.Add(label)
 
-    def get_button_style(self):
-        button_style = Windows.Style()
-        button_style.Setters.Add(
-            Windows.Setter(
-                Windows.Controls.Button.PaddingProperty, Windows.Thickness(2)
-            )
-        )
-        button_style.Setters.Add(
-            Windows.Setter(
-                Windows.Controls.Button.BorderBrushProperty,
-                Windows.Media.Brushes.Transparent,
-            )
-        )
-        button_style.Setters.Add(
-            Windows.Setter(
-                Windows.Controls.Button.CursorProperty,
-                Windows.Input.Cursors.Hand,
-            )
-        )
-        border_style = Windows.Style(Windows.Controls.Border)
-        border_style.Setters.Add(
-            Windows.Setter(
-                Windows.Controls.Border.CornerRadiusProperty,
-                Windows.CornerRadius(4),
-            )
-        )
-
-        return button_style
-
     def add_result(self, element_result):
         mep_and_intersect_stack_panel = Windows.Controls.StackPanel()
 
@@ -137,7 +109,7 @@ class MepOpeningMonitorDialog(Windows.Window):
         highlight_mep_button.Name = "HighlightMepButton_" + str(
             element_result.mep_element.Id
         )
-        highlight_mep_button.Style = self.get_button_style()
+        highlight_mep_button.Style = get_button_style1()
         highlight_mep_button.Click += self.highlight_mep_button_click
 
         mep_controllers_stack_panel.Children.Add(highlight_mep_button)
@@ -188,7 +160,7 @@ class MepOpeningMonitorDialog(Windows.Window):
                 element_result.mep_element.Id,
                 index,
             )
-            show_intersect_section_box_button.Style = self.get_button_style()
+            show_intersect_section_box_button.Style = get_button_style1()
             show_intersect_section_box_button.Click += (
                 self.show_intersect_section_box_button_click
             )
@@ -200,7 +172,7 @@ class MepOpeningMonitorDialog(Windows.Window):
                 element_result.mep_element.Id,
                 index,
             )
-            show_intersect_zoom_button.Style = self.get_button_style()
+            show_intersect_zoom_button.Style = get_button_style1()
             show_intersect_zoom_button.Click += self.show_intersect_zoom_button_click
 
             intersect_controllers_stack_panel.Children.Add(

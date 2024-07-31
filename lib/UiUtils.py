@@ -80,3 +80,26 @@ class Alert(Windows.Window):
 
     def show(self):
         self.ShowDialog()
+
+
+def get_button_style1():
+    button_style = Windows.Style()
+    button_style.Setters.Add(
+        Windows.Setter(
+            Windows.Controls.Button.PaddingProperty, Windows.Thickness(8, 4, 8, 4)
+        )
+    )
+    button_style.Setters.Add(
+        Windows.Setter(
+            Windows.Controls.Button.BorderBrushProperty,
+            Windows.Media.Brushes.Transparent,
+        )
+    )
+    button_style.Setters.Add(
+        Windows.Setter(
+            Windows.Controls.Button.CursorProperty,
+            Windows.Input.Cursors.Hand,
+        )
+    )
+
+    return button_style
