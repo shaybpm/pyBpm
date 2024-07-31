@@ -37,6 +37,7 @@ class OpeningExplorerDialog(Windows.Window):
         self.uidoc = uidoc
         self.doc = self.uidoc.Document
         self.openings = get_all_openings_include_links(self.doc)
+        self.rendered_openings = None
         self.render_openings()
 
     def get_rendered_openings(self):
@@ -107,6 +108,7 @@ class OpeningExplorerDialog(Windows.Window):
 
     def render_openings(self):
         rendered_openings = self.get_rendered_openings()
+        self.rendered_openings = rendered_openings
 
         main_stack_panel = self.StackPanelMain
         main_stack_panel.Children.Clear()
@@ -158,10 +160,36 @@ class OpeningExplorerDialog(Windows.Window):
             main_stack_panel.Children.Add(opening_grid)
 
     def opening_zoom_button_click(self, sender, e):
-        pass
+        ui_view = get_ui_view(self.uidoc)
+        if not ui_view:
+            self.Hide()
+            forms.alert("Please select a view")
+            self.Show()
+            return
+
+        opening = self.rendered_openings[sender.Tag]
+
+        zoom_increment = 0.8
+        zoom_viewCorner1 = XYZ(
+            opening["min_max_points"]["Min"]["X"],
+            opening["min_max_points"]["Min"]["Y"],
+            opening["min_max_points"]["Min"]["Z"],
+        ).Subtract(XYZ(zoom_increment, zoom_increment, zoom_increment))
+
+        zoom_viewCorner2 = XYZ(
+            opening["min_max_points"]["Max"]["X"],
+            opening["min_max_points"]["Max"]["Y"],
+            opening["min_max_points"]["Max"]["Z"],
+        ).Add(XYZ(zoom_increment, zoom_increment, zoom_increment))
+        ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
 
     def opening_3d_button_click(self, sender, e):
-        pass
+        opening = self.rendered_openings[sender.Tag]
+
+        ex_event_file = ExternalEventDataFile(self.doc)
+        ex_event_file.set_key_value("min_max_points_dict", opening["min_max_points"])
+
+        show_opening_3d_event.Raise()
 
     def filter_selection_changed(self, sender, e):
         self.render_openings()
