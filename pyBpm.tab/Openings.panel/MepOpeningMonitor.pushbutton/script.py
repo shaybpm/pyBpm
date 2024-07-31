@@ -51,9 +51,10 @@ dev_mode = get_env_mode() == "dev"
 
 
 class IntersectWithConcreteResult:
-    def __init__(self, intersect_element, intersect_bounding_box):
+    def __init__(self, intersect_element, intersect_bounding_box, transform=None):
         self.intersect_element = intersect_element
         self.intersect_bounding_box = intersect_bounding_box
+        self.transform = transform
 
 
 class ElementResult:
@@ -167,6 +168,8 @@ def find_concrete_intersect(document_to_search, result, transform=None):
             if solid_intersect.Volume == 0:
                 continue
 
+            # TODO: separate the solid and do the following code for each solid.
+
             intersect_bounding_box = solid_intersect.GetBoundingBox()
             intersect_outline = getOutlineByBoundingBox(
                 intersect_bounding_box, transform
@@ -184,7 +187,7 @@ def find_concrete_intersect(document_to_search, result, transform=None):
                 continue
 
             result.intersect_with_concrete_result.append(
-                IntersectWithConcreteResult(element, intersect_bounding_box)
+                IntersectWithConcreteResult(element, intersect_bounding_box, transform)
             )
 
 
@@ -276,8 +279,7 @@ def run():
         return
 
     dialog = MepOpeningMonitorDialog(uidoc, relevant_results)
-    # dialog.Show()
-    dialog.ShowDialog()
+    dialog.Show()
 
 
 run()

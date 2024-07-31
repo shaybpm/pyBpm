@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os, json
 from Autodesk.Revit.DB import (
     TransactionGroup,
     Transaction,
@@ -10,11 +9,9 @@ from Autodesk.Revit.DB import (
     CategoryType,
 )
 import Utils
-from pyrevit.script import get_instance_data_file
 from RevitUtils import (
     get_ui_view,
     get_bpm_3d_view,
-    get_model_info,
     get_tags_of_element_in_view,
     turn_of_categories,
     get_ogs_by_color,
@@ -22,33 +19,7 @@ from RevitUtils import (
 from RevitUtilsOpenings import get_opening_filter, get_not_opening_filter
 from ExEventHandlers import get_simple_external_event
 
-
-class ExternalEventDataFile:
-    def __init__(self, doc):
-        model_info = get_model_info(doc)
-        self.file_path = get_instance_data_file(
-            "tracking_openings_data-" + model_info["modelGuid"]
-        )
-
-    def get_data(self):
-        if not os.path.exists(self.file_path):
-            return {}
-        with open(self.file_path, "r") as file:
-            data = json.load(file)
-        return data
-
-    def get_key_value(self, key):
-        data = self.get_data()
-        return data.get(key)
-
-    def set_data(self, data):
-        with open(self.file_path, "w") as file:
-            json.dump(data, file)
-
-    def set_key_value(self, key, value):
-        data = self.get_data()
-        data[key] = value
-        self.set_data(data)
+from ExternalEventDataFile import ExternalEventDataFile
 
 
 def show_opening_3d_cb(uiapp):
@@ -63,22 +34,27 @@ def show_opening_3d_cb(uiapp):
     t_group.Start()
 
     if not opening:
+        t_group.RollBack()
         return
 
     if current is None:
+        t_group.RollBack()
         return
 
     bbox = Utils.get_bbox(doc, opening, current)
     if not bbox:
+        t_group.RollBack()
         return
 
     ui_view = get_ui_view(uidoc)
     if not ui_view:
+        t_group.RollBack()
         return
 
     view_3d = get_bpm_3d_view(doc)
     if not view_3d:
         Utils.alert("תקלה בקבלת תצוגת 3D")
+        t_group.RollBack()
         return
     Utils.show_opening_3d(uidoc, ui_view, view_3d, bbox)
     t_group.Assimilate()

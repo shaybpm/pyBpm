@@ -15,6 +15,11 @@ import os
 
 from Autodesk.Revit.DB import ElementId
 
+from RevitUtils import get_min_max_points_from_bbox
+
+from EventHandlers import show_intersect_3d_event
+from ExternalEventDataFile import ExternalEventDataFile
+
 xaml_file = os.path.join(os.path.dirname(__file__), "MepOpeningMonitorDialogUi.xaml")
 
 
@@ -229,7 +234,25 @@ class MepOpeningMonitorDialog(Windows.Window):
         if intersect_res is None:
             return
 
-        print(intersect_res.intersect_bounding_box)
+        bbox_min_point, bbox_max_point = get_min_max_points_from_bbox(
+            intersect_res.intersect_bounding_box, intersect_res.transform
+        )
+        min_max_points_dict = {
+            "Min": {
+                "X": bbox_min_point.X,
+                "Y": bbox_min_point.Y,
+                "Z": bbox_min_point.Z,
+            },
+            "Max": {
+                "X": bbox_max_point.X,
+                "Y": bbox_max_point.Y,
+                "Z": bbox_max_point.Z,
+            },
+        }
+        ex_event_file = ExternalEventDataFile(self.doc)
+        ex_event_file.set_key_value("min_max_points_dict", min_max_points_dict)
+
+        show_intersect_3d_event.Raise()
 
     def render_results(self):
         self.filter_results()
