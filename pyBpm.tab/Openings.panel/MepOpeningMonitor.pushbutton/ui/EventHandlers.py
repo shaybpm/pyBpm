@@ -17,10 +17,6 @@ def show_intersect_3d_cb(uiapp):
     uidoc = uiapp.ActiveUIDocument
     doc = uidoc.Document
 
-    ui_view = get_ui_view(uidoc)
-    if not ui_view:
-        return
-
     ex_event_file = ExternalEventDataFile(doc)
     min_max_points_dict = ex_event_file.get_key_value("min_max_points_dict")
 
@@ -45,6 +41,11 @@ def show_intersect_3d_cb(uiapp):
         return
 
     uidoc.ActiveView = bpm_3d_view
+
+    ui_view = get_ui_view(uidoc)
+    if not ui_view:
+        t_group.RollBack()
+        return
 
     turn_of_categories(
         doc,

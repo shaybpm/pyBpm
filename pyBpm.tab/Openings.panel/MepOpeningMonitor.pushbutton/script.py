@@ -26,9 +26,7 @@ from RevitUtils import (
     get_levels_sorted,
     get_solid_from_element,
 )
-from PyRevitUtils import print_table
 from RevitUtilsOpenings import get_opening_element_filter
-from Config import get_env_mode
 
 import sys, os
 
@@ -43,7 +41,6 @@ uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 output = script.get_output()
 output.close_others()
-dev_mode = get_env_mode() == "dev"
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -124,6 +121,8 @@ def find_concrete_intersect(document_to_search, result, transform=None):
         BuiltInCategory.OST_StructuralFraming,
     ]
 
+    error_message_printed = False
+
     for category in categories:
         elements = (
             FilteredElementCollector(document_to_search)
@@ -159,10 +158,13 @@ def find_concrete_intersect(document_to_search, result, transform=None):
                     BooleanOperationsType.Intersect,
                 )
             except:
-                if dev_mode:
-                    print("- Boolean operation failed for:")
-                    print("....- MEP Element: {}".format(result.mep_element.Id))
-                    print("....- Element: {}".format(element.Id))
+                if not error_message_printed:
+                    output.print_html(
+                        "<h3>Error in element: {}</h3>".format(
+                            output.linkify(result.mep_element.Id)
+                        )
+                    )
+                    error_message_printed = True
                 continue
 
             if solid_intersect.Volume == 0:
@@ -207,49 +209,6 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
     return result
 
 
-def print_results(results, levels):
-    columns = [
-        "Level",
-        "Floor",
-        "Wall",
-        "Structural Framing",
-    ]
-
-    table_data = []
-    for level in levels:
-        row = [level.Name, [], [], []]
-        for res in results:
-            if res.mep_element.LevelId == level.Id:
-                for intersect_res in res.intersect_with_concrete_result:
-                    if (
-                        intersect_res.intersect_element.Category.Name == "Floors"
-                        and res.mep_element.Id not in row[1]
-                    ):
-                        row[1].append(res.mep_element.Id)
-                    elif (
-                        intersect_res.intersect_element.Category.Name == "Walls"
-                        and res.mep_element.Id not in row[2]
-                    ):
-                        row[2].append(res.mep_element.Id)
-                    elif (
-                        intersect_res.intersect_element.Category.Name
-                        == "Structural Framing"
-                        and res.mep_element.Id not in row[3]
-                    ):
-                        row[3].append(res.mep_element.Id)
-
-        row[1] = [output.linkify(x) for x in row[1]]
-        row[2] = [output.linkify(x) for x in row[2]]
-        row[3] = [output.linkify(x) for x in row[3]]
-
-        row[1] = "<br>".join(row[1]) if row[1] else "✅"
-        row[2] = "<br>".join(row[2]) if row[2] else "✅"
-        row[3] = "<br>".join(row[3]) if row[3] else "✅"
-        table_data.append(row)
-
-    print_table(output, columns, table_data)
-
-
 def run():
     relevant_results = []
 
@@ -268,11 +227,6 @@ def run():
         result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
         if result.is_intersect_with_concrete:
             relevant_results.append(result)
-
-    # print_results(
-    #     relevant_results,
-    #     [l for l in levels if levels_id_name_dict[l.Id] in selected_levels],
-    # )
 
     if len(relevant_results) == 0:
         forms.alert("No missing openings were found.")

@@ -13,9 +13,11 @@ from System.Collections.Generic import List
 import wpf
 import os
 
-from Autodesk.Revit.DB import ElementId
+from pyrevit import forms
 
-from RevitUtils import get_min_max_points_from_bbox
+from Autodesk.Revit.DB import ElementId, XYZ
+
+from RevitUtils import get_min_max_points_from_bbox, get_ui_view
 
 from EventHandlers import show_intersect_3d_event
 from ExternalEventDataFile import ExternalEventDataFile
@@ -35,6 +37,7 @@ class MepOpeningMonitorDialog(Windows.Window):
         self.render_results()
 
     def filter_results(self):
+        return
         filtered = []
         for res in self.res_source:
             # TODO
@@ -70,23 +73,23 @@ class MepOpeningMonitorDialog(Windows.Window):
         button_style = Windows.Style()
         button_style.Setters.Add(
             Windows.Setter(
-                Windows.Controls.Button.PaddingProperty, Windows.Thickness(8)
+                Windows.Controls.Button.PaddingProperty, Windows.Thickness(2)
             )
         )
-        button_style.Setters.Add(
-            Windows.Setter(
-                Windows.Controls.Button.BackgroundProperty,
-                Windows.Media.SolidColorBrush(
-                    Windows.Media.Color.FromRgb(255, 223, 51)
-                ),
-            )
-        )
-        button_style.Setters.Add(
-            Windows.Setter(
-                Windows.Controls.Button.ForegroundProperty,
-                Windows.Media.SolidColorBrush(Windows.Media.Color.FromRgb(0, 51, 102)),
-            )
-        )
+        # button_style.Setters.Add(
+        #     Windows.Setter(
+        #         Windows.Controls.Button.BackgroundProperty,
+        #         Windows.Media.SolidColorBrush(
+        #             Windows.Media.Color.FromRgb(255, 223, 51)
+        #         ),
+        #     )
+        # )
+        # button_style.Setters.Add(
+        #     Windows.Setter(
+        #         Windows.Controls.Button.ForegroundProperty,
+        #         Windows.Media.SolidColorBrush(Windows.Media.Color.FromRgb(0, 51, 102)),
+        #     )
+        # )
         button_style.Setters.Add(
             Windows.Setter(
                 Windows.Controls.Button.BorderBrushProperty,
@@ -192,17 +195,32 @@ class MepOpeningMonitorDialog(Windows.Window):
                 Windows.Controls.Orientation.Horizontal
             )
 
-            intersect_button = Windows.Controls.Button()
-            intersect_button.Content = "Section Box"
-            intersect_button.Margin = Windows.Thickness(12)
-            intersect_button.Name = "SectionBoxButton_{}_{}".format(
+            show_intersect_section_box_button = Windows.Controls.Button()
+            show_intersect_section_box_button.Content = "Section Box"
+            show_intersect_section_box_button.Margin = Windows.Thickness(12)
+            show_intersect_section_box_button.Name = "SectionBoxButton_{}_{}".format(
                 element_result.mep_element.Id,
                 index,
             )
-            intersect_button.Style = self.get_button_style()
-            intersect_button.Click += self.section_box_button_click
+            show_intersect_section_box_button.Style = self.get_button_style()
+            show_intersect_section_box_button.Click += (
+                self.show_intersect_section_box_button_click
+            )
 
-            intersect_controllers_stack_panel.Children.Add(intersect_button)
+            show_intersect_zoom_button = Windows.Controls.Button()
+            show_intersect_zoom_button.Content = "Zoom"
+            show_intersect_zoom_button.Margin = Windows.Thickness(12)
+            show_intersect_zoom_button.Name = "ZoomButton_{}_{}".format(
+                element_result.mep_element.Id,
+                index,
+            )
+            show_intersect_zoom_button.Style = self.get_button_style()
+            show_intersect_zoom_button.Click += self.show_intersect_zoom_button_click
+
+            intersect_controllers_stack_panel.Children.Add(
+                show_intersect_section_box_button
+            )
+            intersect_controllers_stack_panel.Children.Add(show_intersect_zoom_button)
 
             intersect_grid.Children.Add(intersect_label)
             intersect_grid.Children.Add(intersect_controllers_stack_panel)
@@ -218,7 +236,7 @@ class MepOpeningMonitorDialog(Windows.Window):
         self.uidoc.Selection.SetElementIds(ids)
         self.uidoc.ShowElements(ids)
 
-    def section_box_button_click(self, sender, e):
+    def get_intersect_by_sender(self, sender):
         button = sender
         name_split = button.Name.split("_")
         mep_id_int = int(name_split[-2])
@@ -231,6 +249,10 @@ class MepOpeningMonitorDialog(Windows.Window):
                 intersect_res = res.intersect_with_concrete_result[index]
                 break
 
+        return intersect_res
+
+    def show_intersect_section_box_button_click(self, sender, e):
+        intersect_res = self.get_intersect_by_sender(sender)
         if intersect_res is None:
             return
 
@@ -253,6 +275,31 @@ class MepOpeningMonitorDialog(Windows.Window):
         ex_event_file.set_key_value("min_max_points_dict", min_max_points_dict)
 
         show_intersect_3d_event.Raise()
+
+    def show_intersect_zoom_button_click(self, sender, e):
+        ui_view = get_ui_view(self.uidoc)
+        if not ui_view:
+            self.Hide()
+            forms.alert("Please select a view")
+            self.Show()
+            return
+
+        intersect_res = self.get_intersect_by_sender(sender)
+        if intersect_res is None:
+            return
+
+        bbox_min_point, bbox_max_point = get_min_max_points_from_bbox(
+            intersect_res.intersect_bounding_box, intersect_res.transform
+        )
+
+        zoom_increment = 0.8
+        zoom_viewCorner1 = bbox_min_point.Add(
+            XYZ(-zoom_increment, -zoom_increment, -zoom_increment)
+        )
+        zoom_viewCorner2 = bbox_max_point.Add(
+            XYZ(zoom_increment, zoom_increment, zoom_increment)
+        )
+        ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
 
     def render_results(self):
         self.filter_results()
