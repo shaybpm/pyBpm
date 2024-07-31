@@ -170,8 +170,6 @@ def find_concrete_intersect(document_to_search, result, transform=None):
             if solid_intersect.Volume == 0:
                 continue
 
-            # TODO: separate the solid and do the following code for each solid.
-
             intersect_bounding_box = solid_intersect.GetBoundingBox()
             intersect_outline = getOutlineByBoundingBox(
                 intersect_bounding_box, transform

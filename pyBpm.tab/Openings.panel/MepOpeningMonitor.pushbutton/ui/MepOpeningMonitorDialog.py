@@ -76,20 +76,6 @@ class MepOpeningMonitorDialog(Windows.Window):
                 Windows.Controls.Button.PaddingProperty, Windows.Thickness(2)
             )
         )
-        # button_style.Setters.Add(
-        #     Windows.Setter(
-        #         Windows.Controls.Button.BackgroundProperty,
-        #         Windows.Media.SolidColorBrush(
-        #             Windows.Media.Color.FromRgb(255, 223, 51)
-        #         ),
-        #     )
-        # )
-        # button_style.Setters.Add(
-        #     Windows.Setter(
-        #         Windows.Controls.Button.ForegroundProperty,
-        #         Windows.Media.SolidColorBrush(Windows.Media.Color.FromRgb(0, 51, 102)),
-        #     )
-        # )
         button_style.Setters.Add(
             Windows.Setter(
                 Windows.Controls.Button.BorderBrushProperty,
@@ -225,7 +211,6 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_grid.Children.Add(intersect_label)
             intersect_grid.Children.Add(intersect_controllers_stack_panel)
 
-            # intersect_border.Child = intersect_grid
             mep_and_intersect_stack_panel.Children.Add(intersect_grid)
 
     def highlight_mep_button_click(self, sender, e):
