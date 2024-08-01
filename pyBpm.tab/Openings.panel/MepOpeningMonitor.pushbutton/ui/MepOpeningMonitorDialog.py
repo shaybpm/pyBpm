@@ -104,7 +104,7 @@ class MepOpeningMonitorDialog(Windows.Window):
 
         highlight_mep_button = Windows.Controls.Button()
         highlight_mep_button.Content = "Highlight MEP"
-        highlight_mep_button.Margin = Windows.Thickness(12)
+        highlight_mep_button.Margin = Windows.Thickness(4)
         highlight_mep_button.Name = "HighlightMepButton_" + str(
             element_result.mep_element.Id
         )
@@ -132,7 +132,7 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_label = Windows.Controls.Label()
             intersect_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
             intersect_label.Content = intersect_res.intersect_element.Category.Name
-            intersect_label.Margin = Windows.Thickness(24, 0, 0, 0)
+            # intersect_label.Margin = Windows.Thickness(24, 0, 0, 0)
             intersect_label.VerticalAlignment = Windows.VerticalAlignment.Center
 
             intersect_controllers_stack_panel = Windows.Controls.StackPanel()
@@ -145,7 +145,7 @@ class MepOpeningMonitorDialog(Windows.Window):
 
             show_intersect_section_box_button = Windows.Controls.Button()
             show_intersect_section_box_button.Content = "Section Box"
-            show_intersect_section_box_button.Margin = Windows.Thickness(12)
+            show_intersect_section_box_button.Margin = Windows.Thickness(4)
             show_intersect_section_box_button.Name = "SectionBoxButton_{}_{}".format(
                 element_result.mep_element.Id,
                 index,
@@ -157,7 +157,7 @@ class MepOpeningMonitorDialog(Windows.Window):
 
             show_intersect_zoom_button = Windows.Controls.Button()
             show_intersect_zoom_button.Content = "Zoom"
-            show_intersect_zoom_button.Margin = Windows.Thickness(12)
+            show_intersect_zoom_button.Margin = Windows.Thickness(4)
             show_intersect_zoom_button.Name = "ZoomButton_{}_{}".format(
                 element_result.mep_element.Id,
                 index,
