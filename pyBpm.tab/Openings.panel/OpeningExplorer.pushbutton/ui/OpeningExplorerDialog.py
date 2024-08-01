@@ -157,7 +157,7 @@ class OpeningExplorerDialog(Windows.Window):
                     BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM
                 ).AsElementId()
                 if opening_level_id and opening_level_id != ElementId.InvalidElementId:
-                    opening_level = self.doc.GetElement(opening_level_id)
+                    opening_level = opening.Document.GetElement(opening_level_id)
                     if opening_level:
                         opening_level_name = opening_level.Name
                 if level_user_input and level_user_input not in opening_level_name:
