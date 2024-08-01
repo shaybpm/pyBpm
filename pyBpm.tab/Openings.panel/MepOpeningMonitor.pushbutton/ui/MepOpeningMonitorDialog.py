@@ -128,15 +128,6 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_grid = Windows.Controls.Grid()
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
-            intersect_grid.Background = (
-                Windows.Media.SolidColorBrush(
-                    Windows.Media.Color.FromRgb(102, 153, 255)
-                )
-                if index % 2 == 0
-                else Windows.Media.SolidColorBrush(
-                    Windows.Media.Color.FromRgb(153, 204, 255)
-                )
-            )
 
             intersect_label = Windows.Controls.Label()
             intersect_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
