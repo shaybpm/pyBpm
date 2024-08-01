@@ -43,6 +43,68 @@ class OpeningExplorerDialog(Windows.Window):
         self.rendered_openings = None
         self.render_openings()
 
+    def get_row_grid(self, row_number, opening_dict, title_row=False):
+        opening_grid = Windows.Controls.Grid()
+        col_def1 = Windows.Controls.ColumnDefinition()
+        col_def1.Width = Windows.GridLength(4, Windows.GridUnitType.Star)
+        col_def2 = Windows.Controls.ColumnDefinition()
+        col_def2.Width = Windows.GridLength(4, Windows.GridUnitType.Star)
+        col_def3 = Windows.Controls.ColumnDefinition()
+        col_def3.Width = Windows.GridLength(4, Windows.GridUnitType.Star)
+        col_def4 = Windows.Controls.ColumnDefinition()
+        col_def4.Width = Windows.GridLength(5, Windows.GridUnitType.Star)
+        opening_grid.ColumnDefinitions.Add(col_def1)
+        opening_grid.ColumnDefinitions.Add(col_def2)
+        opening_grid.ColumnDefinitions.Add(col_def3)
+        opening_grid.ColumnDefinitions.Add(col_def4)
+
+        opening_discipline_label = Windows.Controls.Label()
+        opening_discipline_label.Content = opening_dict["opening_discipline"]
+        opening_discipline_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
+        if title_row:
+            opening_discipline_label.FontWeight = Windows.FontWeights.Bold
+        opening_grid.Children.Add(opening_discipline_label)
+
+        opening_number_label = Windows.Controls.Label()
+        opening_number_label.Content = opening_dict["opening_number"]
+        opening_number_label.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
+        if title_row:
+            opening_number_label.FontWeight = Windows.FontWeights.Bold
+        opening_grid.Children.Add(opening_number_label)
+
+        opening_level_name_label = Windows.Controls.Label()
+        opening_level_name_label.Content = opening_dict["opening_level_name"]
+        opening_level_name_label.SetValue(Windows.Controls.Grid.ColumnProperty, 2)
+        if title_row:
+            opening_level_name_label.FontWeight = Windows.FontWeights.Bold
+        opening_grid.Children.Add(opening_level_name_label)
+
+        if not title_row:
+            opening_controls_stack_panel = Windows.Controls.StackPanel()
+            opening_controls_stack_panel.Orientation = (
+                Windows.Controls.Orientation.Horizontal
+            )
+            opening_controls_stack_panel.SetValue(
+                Windows.Controls.Grid.ColumnProperty, 3
+            )
+            opening_grid.Children.Add(opening_controls_stack_panel)
+
+            opening_zoom_button = Windows.Controls.Button()
+            opening_zoom_button.Content = "Zoom"
+            opening_zoom_button.Tag = row_number
+            opening_zoom_button.Style = get_button_style1()
+            opening_zoom_button.Click += self.opening_zoom_button_click
+            opening_controls_stack_panel.Children.Add(opening_zoom_button)
+
+            opening_3d_button = Windows.Controls.Button()
+            opening_3d_button.Content = "3D"
+            opening_3d_button.Tag = row_number
+            opening_3d_button.Style = get_button_style1()
+            opening_3d_button.Click += self.opening_3d_button_click
+            opening_controls_stack_panel.Children.Add(opening_3d_button)
+
+        return opening_grid
+
     def get_rendered_openings(self):
         discipline_user_input = self.DisciplineFilterTextBox.Text
         number_user_input = self.NumberFilterTextBox.Text
@@ -130,58 +192,19 @@ class OpeningExplorerDialog(Windows.Window):
         main_stack_panel = self.StackPanelMain
         main_stack_panel.Children.Clear()
 
+        title_grid = self.get_row_grid(
+            0,
+            {
+                "opening_discipline": "Discipline",
+                "opening_number": "Number",
+                "opening_level_name": "Level",
+            },
+            title_row=True,
+        )
+        main_stack_panel.Children.Add(title_grid)
+
         for index, opening in enumerate(rendered_openings):
-            opening_grid = Windows.Controls.Grid()
-            col_def1 = Windows.Controls.ColumnDefinition()
-            col_def1.Width = Windows.GridLength(40)
-            col_def2 = Windows.Controls.ColumnDefinition()
-            col_def2.Width = Windows.GridLength(40)
-            col_def3 = Windows.Controls.ColumnDefinition()
-            col_def3.Width = Windows.GridLength(60)
-            col_def4 = Windows.Controls.ColumnDefinition()
-            opening_grid.ColumnDefinitions.Add(col_def1)
-            opening_grid.ColumnDefinitions.Add(col_def2)
-            opening_grid.ColumnDefinitions.Add(col_def3)
-            opening_grid.ColumnDefinitions.Add(col_def4)
-
-            opening_discipline_label = Windows.Controls.Label()
-            opening_discipline_label.Content = opening["opening_discipline"]
-            opening_discipline_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
-            opening_grid.Children.Add(opening_discipline_label)
-
-            opening_number_label = Windows.Controls.Label()
-            opening_number_label.Content = opening["opening_number"]
-            opening_number_label.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
-            opening_grid.Children.Add(opening_number_label)
-
-            opening_level_name_label = Windows.Controls.Label()
-            opening_level_name_label.Content = opening["opening_level_name"]
-            opening_level_name_label.SetValue(Windows.Controls.Grid.ColumnProperty, 2)
-            opening_grid.Children.Add(opening_level_name_label)
-
-            opening_controls_stack_panel = Windows.Controls.StackPanel()
-            opening_controls_stack_panel.Orientation = (
-                Windows.Controls.Orientation.Horizontal
-            )
-            opening_controls_stack_panel.SetValue(
-                Windows.Controls.Grid.ColumnProperty, 3
-            )
-            opening_grid.Children.Add(opening_controls_stack_panel)
-
-            opening_zoom_button = Windows.Controls.Button()
-            opening_zoom_button.Content = "Zoom"
-            opening_zoom_button.Tag = index
-            opening_zoom_button.Style = get_button_style1()
-            opening_zoom_button.Click += self.opening_zoom_button_click
-            opening_controls_stack_panel.Children.Add(opening_zoom_button)
-
-            opening_3d_button = Windows.Controls.Button()
-            opening_3d_button.Content = "3D"
-            opening_3d_button.Tag = index
-            opening_3d_button.Style = get_button_style1()
-            opening_3d_button.Click += self.opening_3d_button_click
-            opening_controls_stack_panel.Children.Add(opening_3d_button)
-
+            opening_grid = self.get_row_grid(index + 1, opening)
             main_stack_panel.Children.Add(opening_grid)
 
     def opening_zoom_button_click(self, sender, e):
