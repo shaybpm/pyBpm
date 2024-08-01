@@ -14,7 +14,7 @@ import os
 
 from pyrevit import forms
 
-from Autodesk.Revit.DB import XYZ
+from Autodesk.Revit.DB import XYZ, BuiltInParameter, ElementId
 
 from RevitUtils import get_min_max_points_from_bbox, get_ui_view
 from RevitUtilsOpenings import (
@@ -46,6 +46,7 @@ class OpeningExplorerDialog(Windows.Window):
     def get_rendered_openings(self):
         discipline_user_input = self.DisciplineFilterTextBox.Text
         number_user_input = self.NumberFilterTextBox.Text
+        level_user_input = self.LevelFilterTextBox.Text
 
         rendered_openings = []
         for opening_dict in self.openings:
@@ -88,11 +89,24 @@ class OpeningExplorerDialog(Windows.Window):
                         "Z": bbox_max_point.Z,
                     },
                 }
+
+                opening_level_name = "None"
+                opening_level_id = opening.get_Parameter(
+                    BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM
+                ).AsElementId()
+                if opening_level_id and opening_level_id != ElementId.InvalidElementId:
+                    opening_level = self.doc.GetElement(opening_level_id)
+                    if opening_level:
+                        opening_level_name = opening_level.Name
+                if level_user_input and level_user_input not in opening_level_name:
+                    continue
+
                 rendered_openings.append(
                     {
                         "opening_discipline": opening_discipline,
                         "opening_number": opening_number,
                         "min_max_points": min_max_points_dict,
+                        "opening_level_name": opening_level_name,
                     }
                 )
 
@@ -123,9 +137,12 @@ class OpeningExplorerDialog(Windows.Window):
             col_def2 = Windows.Controls.ColumnDefinition()
             col_def2.Width = Windows.GridLength(40)
             col_def3 = Windows.Controls.ColumnDefinition()
+            col_def3.Width = Windows.GridLength(60)
+            col_def4 = Windows.Controls.ColumnDefinition()
             opening_grid.ColumnDefinitions.Add(col_def1)
             opening_grid.ColumnDefinitions.Add(col_def2)
             opening_grid.ColumnDefinitions.Add(col_def3)
+            opening_grid.ColumnDefinitions.Add(col_def4)
 
             opening_discipline_label = Windows.Controls.Label()
             opening_discipline_label.Content = opening["opening_discipline"]
@@ -137,12 +154,17 @@ class OpeningExplorerDialog(Windows.Window):
             opening_number_label.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
             opening_grid.Children.Add(opening_number_label)
 
+            opening_level_name_label = Windows.Controls.Label()
+            opening_level_name_label.Content = opening["opening_level_name"]
+            opening_level_name_label.SetValue(Windows.Controls.Grid.ColumnProperty, 2)
+            opening_grid.Children.Add(opening_level_name_label)
+
             opening_controls_stack_panel = Windows.Controls.StackPanel()
             opening_controls_stack_panel.Orientation = (
                 Windows.Controls.Orientation.Horizontal
             )
             opening_controls_stack_panel.SetValue(
-                Windows.Controls.Grid.ColumnProperty, 2
+                Windows.Controls.Grid.ColumnProperty, 3
             )
             opening_grid.Children.Add(opening_controls_stack_panel)
 
