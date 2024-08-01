@@ -19,8 +19,7 @@ from Autodesk.Revit.DB import ElementId, XYZ
 
 from RevitUtils import get_min_max_points_from_bbox, get_ui_view
 from UiUtils import get_button_style1
-
-from EventHandlers import show_intersect_3d_event
+from ReusableExternalEvents import show_bbox_3d_event
 from ExternalEventDataFile import ExternalEventDataFile
 
 xaml_file = os.path.join(os.path.dirname(__file__), "MepOpeningMonitorDialogUi.xaml")
@@ -231,7 +230,7 @@ class MepOpeningMonitorDialog(Windows.Window):
         ex_event_file = ExternalEventDataFile(self.doc)
         ex_event_file.set_key_value("min_max_points_dict", min_max_points_dict)
 
-        show_intersect_3d_event.Raise()
+        show_bbox_3d_event.Raise()
 
     def show_intersect_zoom_button_click(self, sender, e):
         ui_view = get_ui_view(self.uidoc)
