@@ -207,6 +207,9 @@ class OpeningExplorerDialog(Windows.Window):
             opening_grid = self.get_row_grid(index + 1, opening)
             main_stack_panel.Children.Add(opening_grid)
 
+    def get_opening_by_tag(self, tag):
+        return self.rendered_openings[tag - 1]
+
     def opening_zoom_button_click(self, sender, e):
         ui_view = get_ui_view(self.uidoc)
         if not ui_view:
@@ -215,7 +218,7 @@ class OpeningExplorerDialog(Windows.Window):
             self.Show()
             return
 
-        opening = self.rendered_openings[sender.Tag]
+        opening = self.get_opening_by_tag(sender.Tag)
 
         zoom_increment = 0.8
         zoom_viewCorner1 = XYZ(
@@ -232,7 +235,7 @@ class OpeningExplorerDialog(Windows.Window):
         ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
 
     def opening_3d_button_click(self, sender, e):
-        opening = self.rendered_openings[sender.Tag]
+        opening = self.get_opening_by_tag(sender.Tag)
 
         ex_event_file = ExternalEventDataFile(self.doc)
         ex_event_file.set_key_value("min_max_points_dict", opening["min_max_points"])
