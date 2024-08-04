@@ -28,12 +28,14 @@ from UiUtils import SelectFromList
 
 import Utils
 from EventHandlers import (
-    ExternalEventDataFile,
     show_opening_3d_event,
     create_revision_clouds_event,
+)
+from ReusableExternalEvents import (
     turn_on_isolate_mode_event,
     turn_off_isolate_mode_event,
 )
+from ExternalEventDataFile import ExternalEventDataFile
 
 xaml_file = os.path.join(os.path.dirname(__file__), "TrackingOpeningsDialogUi.xaml")
 

@@ -52,7 +52,13 @@ def run():
         return
     discipline = discipline_list_dict[discipline_key]
 
-    main(excel_path, discipline)
+    try:
+        main(excel_path, discipline)
+    except Exception as e:
+        print("An error occurred while creating the worksets.")
+        print(e)
+        print("-" * 50)
+        print("Please check the Excel file and try again.")
 
 
 run()

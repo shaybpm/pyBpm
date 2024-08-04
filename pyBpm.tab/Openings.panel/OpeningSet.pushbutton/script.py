@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-""" This script iterates over all the openings (Generic Model from the BPM library) and set their parameters according to the BPM standards.
+""" This script iterates over all the openings and set their parameters according to the BPM standards.
 
 To get the full results of the script, hold Shift and click the button. """
 __title__ = "Opening\nSet"
@@ -17,6 +17,7 @@ import os, sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 import OpeningSet  # type: ignore
+from RevitUtilsOpenings import get_all_openings
 
 # -------------------------------
 # -------------MAIN--------------
@@ -128,7 +129,7 @@ def print_full_results(results):
 
 
 def run():
-    all_openings = OpeningSet.get_all_openings(doc)
+    all_openings = get_all_openings(doc)
     if len(all_openings) == 0:
         alert("No openings found.")
         return

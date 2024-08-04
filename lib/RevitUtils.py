@@ -319,3 +319,136 @@ def get_model_guids(doc):
             model_guids.append(link_doc_model_info["modelGuid"])
 
     return model_guids
+
+
+def get_min_max_from_two_points(min_point, max_point):
+    from Autodesk.Revit.DB import XYZ
+
+    min_x = min(min_point.X, max_point.X)
+    min_y = min(min_point.Y, max_point.Y)
+    min_z = min(min_point.Z, max_point.Z)
+    max_x = max(min_point.X, max_point.X)
+    max_y = max(min_point.Y, max_point.Y)
+    max_z = max(min_point.Z, max_point.Z)
+    return XYZ(min_x, min_y, min_z), XYZ(max_x, max_y, max_z)
+
+
+def get_min_max_points_from_bbox(bbox, transform=None):
+    min_rel_to_bbox = bbox.Min
+    max_rel_to_bbox = bbox.Max
+    bbox_transform = bbox.Transform
+    min_rel_to_document = bbox_transform.OfPoint(min_rel_to_bbox)
+    max_rel_to_document = bbox_transform.OfPoint(max_rel_to_bbox)
+    if not transform:
+        return get_min_max_from_two_points(min_rel_to_document, max_rel_to_document)
+
+    min_rel_to_transform = transform.OfPoint(min_rel_to_document)
+    max_rel_to_transform = transform.OfPoint(max_rel_to_document)
+
+    return get_min_max_from_two_points(min_rel_to_transform, max_rel_to_transform)
+
+
+def getOutlineByBoundingBox(bbox, transform=None):
+    from Autodesk.Revit.DB import Outline, XYZ, Transform
+
+    if transform is None:
+        transform = Transform.Identity
+
+    min, max = get_min_max_points_from_bbox(bbox, transform)
+    outline = Outline(min, max)
+    outline.AddPoint(XYZ(min.X, min.Y, max.Z))
+    outline.AddPoint(XYZ(max.X, max.Y, min.Z))
+    outline.AddPoint(XYZ(min.X, max.Y, max.Z))
+    outline.AddPoint(XYZ(max.X, min.Y, min.Z))
+    outline.AddPoint(XYZ(max.X, min.Y, max.Z))
+    outline.AddPoint(XYZ(min.X, max.Y, min.Z))
+    return outline
+
+
+def is_wall_concrete(wall):
+    """
+    This function try many checks to determine if the wall is concrete.
+    Note that this is not a perfect solution, and there are many some where it will fail.
+    """
+    from Autodesk.Revit.DB import BuiltInParameter
+
+    wall_doc = wall.Document
+
+    if convertRevitNumToCm(wall_doc, wall.Width) >= 15:
+        # * Don't sure if this is a good check
+        return True
+
+    doc_title = wall_doc.Title
+    if "str" in doc_title.lower() or "con" in doc_title.lower():
+        return True
+
+    if "בטון" in wall.Name:
+        return True
+    if "con" in wall.Name.lower():
+        return True
+    if "str" in wall.Name.lower():
+        return
+
+    material_ids = wall.GetMaterialIds(False)
+    for material_id in material_ids:
+        material = wall.Document.GetElement(material_id)
+        if "בטון" in material.Name:
+            return True
+        if "con" in material.Name.lower():
+            return True
+        if "str" in material.Name.lower():
+            return True
+
+    wall_structural_param = wall.get_Parameter(
+        BuiltInParameter.WALL_STRUCTURAL_SIGNIFICANT
+    )
+    if wall_structural_param and wall_structural_param.AsInteger() == 1:
+        return True
+
+    return False
+
+
+def get_levels_sorted(doc):
+    from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory
+
+    levels = (
+        FilteredElementCollector(doc)
+        .OfCategory(BuiltInCategory.OST_Levels)
+        .WhereElementIsNotElementType()
+        .ToElements()
+    )
+    levels = sorted(levels, key=lambda level: level.ProjectElevation)
+    return levels
+
+
+def get_solid_from_geometry_element(geometry_element, transform=None):
+    from Autodesk.Revit.DB import Solid, SolidUtils, Line
+
+    for geo_instance in geometry_element:
+        if isinstance(geo_instance, Line):
+            continue
+        if isinstance(geo_instance, Solid):
+            if geo_instance.Volume > 0:
+                if transform:
+                    geo_instance = SolidUtils.CreateTransformed(geo_instance, transform)
+                return geo_instance
+            else:
+                continue
+        instance_geometry = geo_instance.GetInstanceGeometry()
+        for geo_instance_2 in instance_geometry:
+            if isinstance(geo_instance_2, Solid):
+                if geo_instance_2.Volume > 0:
+                    if transform:
+                        geo_instance_2 = SolidUtils.CreateTransformed(
+                            geo_instance_2, transform
+                        )
+                    return geo_instance_2
+
+
+def get_solid_from_element(element, transform=None, options=None):
+    from Autodesk.Revit.DB import Options
+
+    if not options:
+        options = Options()
+    geometry_element = element.get_Geometry(options)
+    return get_solid_from_geometry_element(geometry_element, transform)
