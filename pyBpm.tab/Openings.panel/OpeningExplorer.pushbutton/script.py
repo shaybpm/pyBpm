@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-""" Opening Explorer """
+""" Opening Explorer is a simple tool to help you navigate through the openings in the project. """
 __title__ = "Opening\nExplorer"
 __author__ = "BPM"
 
