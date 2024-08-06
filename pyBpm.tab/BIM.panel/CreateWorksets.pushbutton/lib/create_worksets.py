@@ -23,6 +23,34 @@ doc = uidoc.Document
 html_utils = HtmlUtils()
 
 
+def get_discipline_list_dict(excel_path):
+    excel_app = ExcelUtils.get_excel_app_class()
+    workbook = excel_app.Workbooks.Open(excel_path)
+    worksheet_name = "ANNEXE BEP 02"
+    # The titles is a ro with one value in column A.
+    # The firs title is in row 6.
+    # discipline_list_dict dict will be with the title as a key and the value is the first value in column A in the next row.
+    START_FROM_ROW = 6
+    worksheet = workbook.Worksheets[worksheet_name]
+    if not worksheet:
+        raise ValueError(
+            "Worksheet {} not found in the Excel file.".format(worksheet_name)
+        )
+
+    discipline_list_dict = {}
+    for row in range(START_FROM_ROW, worksheet.UsedRange.Rows.Count + 1):
+        cell_a = worksheet.Range["A" + str(row)]
+        cell_b = worksheet.Range["B" + str(row)]
+        if cell_a.Value2 and not cell_b.Value2:
+            discipline_list_dict[cell_a.Value2] = worksheet.Range[
+                "A" + str(row + 1)
+            ].Value2
+
+    workbook.Close()
+    excel_app.Quit()
+    return discipline_list_dict
+
+
 def get_workset_names(path, discipline):
     excel_app = ExcelUtils.get_excel_app_class()
     workbook = excel_app.Workbooks.Open(path)
@@ -151,8 +179,10 @@ def main(excel_path, discipline):
             continue
         workset_names.append(user_workset_name)
     if len(workset_names) == 0:
+        html_utils.add_break()
         html_utils.add_html('<div style="color:red" >No worksets to create</div>')
         t_group.Assimilate()
+        output.print_html(html_utils.get_html())
         return
     html_utils.add_html("<h4>{} worksets to create:</h4>".format(len(workset_names)))
     t = Transaction(doc, "BPM | Create Worksets")
@@ -164,5 +194,6 @@ def main(excel_path, discipline):
         )
     t.Commit()
     t_group.Assimilate()
+    html_utils.add_break()
     html_utils.add_html('<h4 style="margin-top:8px; color:blue">Done</h4>')
     output.print_html(html_utils.get_html())
