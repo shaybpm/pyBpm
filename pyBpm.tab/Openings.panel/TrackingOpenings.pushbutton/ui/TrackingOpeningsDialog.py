@@ -2,11 +2,11 @@
 
 import clr
 
-clr.AddReferenceByPartialName("System")
-clr.AddReference("PresentationCore")
-clr.AddReference("PresentationFramework")
 clr.AddReference("System.Windows.Forms")
-clr.AddReference("IronPython.Wpf")
+try:
+    clr.AddReference("IronPython.Wpf")
+except:
+    pass
 
 from Autodesk.Revit.DB import XYZ
 
