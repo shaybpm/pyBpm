@@ -16,6 +16,7 @@ from Autodesk.Revit.DB import (
     BooleanOperationsUtils,
     BooleanOperationsType,
     ElementId,
+    BuiltInParameter,
 )
 
 from pyrevit import script, forms
@@ -96,6 +97,30 @@ def is_opening_there(element_filter):
     return openings_count > 0
 
 
+def get_thickness_of_vertical_element(element):
+    """
+    Works for walls, columns and beams.
+    For columns, returns the minimum.
+    """
+    if element.Category.Id == ElementId(BuiltInCategory.OST_Walls):
+        return element.Width if hasattr(element, "Width") else 0
+    if element.Category.Id == ElementId(BuiltInCategory.OST_StructuralColumns):
+        bbox = element.get_BoundingBox(None)
+        if not bbox:
+            return 0
+        delta_x = bbox.Max.X - bbox.Min.X
+        delta_y = bbox.Max.Y - bbox.Min.Y
+        return min(delta_x, delta_y)
+    if element.Category.Id == ElementId(BuiltInCategory.OST_StructuralFraming):
+        bbox = element.get_BoundingBox(None)
+        if not bbox:
+            return 0
+        # TODO: Find better way to get the thickness of the beam
+        delta_x = bbox.Max.X - bbox.Min.X
+        delta_y = bbox.Max.Y - bbox.Min.Y
+        return min(delta_x, delta_y)
+
+
 def find_concrete_intersect(document_to_search, result, transform=None):
     bbox = result.mep_element.get_BoundingBox(None)
     if not bbox:
@@ -120,6 +145,7 @@ def find_concrete_intersect(document_to_search, result, transform=None):
         BuiltInCategory.OST_Walls,
         BuiltInCategory.OST_Floors,
         BuiltInCategory.OST_StructuralFraming,
+        BuiltInCategory.OST_StructuralColumns,
     ]
 
     error_message_printed = False
@@ -171,7 +197,36 @@ def find_concrete_intersect(document_to_search, result, transform=None):
             if solid_intersect.Volume == 0:
                 continue
 
+            # check if the intersect is inside the element
+            # - if its a floor, the delta z of the bbox need to be at last as the height of the floor
+            # - if its a wall or a beam, the delta x or delta y of the bbox need to be at last as the thickness of the wall
+
             intersect_bounding_box = solid_intersect.GetBoundingBox()
+            if category == BuiltInCategory.OST_Floors:
+                floor_thickness_param = element.get_Parameter(
+                    BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM
+                )
+                if floor_thickness_param:
+                    floor_thickness = floor_thickness_param.AsDouble()
+                    if floor_thickness:
+                        intersect_delta_z = (
+                            intersect_bounding_box.Max.Z - intersect_bounding_box.Min.Z
+                        )
+                        if intersect_delta_z < floor_thickness:
+                            continue
+            else:
+                pass
+                # thickness = get_thickness_of_vertical_element(element)
+                # if thickness:
+                #     intersect_delta_x = (
+                #         intersect_bounding_box.Max.X - intersect_bounding_box.Min.X
+                #     )
+                #     intersect_delta_y = (
+                #         intersect_bounding_box.Max.Y - intersect_bounding_box.Min.Y
+                #     )
+                #     if intersect_delta_x < thickness and intersect_delta_y < thickness:
+                #         continue
+
             intersect_outline = getOutlineByBoundingBox(
                 intersect_bounding_box, transform
             )
