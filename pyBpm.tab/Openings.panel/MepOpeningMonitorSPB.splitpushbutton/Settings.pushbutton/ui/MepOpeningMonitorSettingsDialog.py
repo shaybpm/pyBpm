@@ -79,8 +79,7 @@ class MepOpeningMonitorSettingsDialog(Windows.Window):
         for child in self.structural_models_stack_panel.Children:
             if not isinstance(child, Windows.Controls.CheckBox):
                 continue
-            if child.IsChecked:
-                structural_models.append(child.Tag)
+            structural_models.append({"guid": child.Tag, "value": child.IsChecked})
         self.project_structural_models.set_structural_models(structural_models)
         self.Close()
 
