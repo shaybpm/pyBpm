@@ -7,14 +7,12 @@ __author__ = "BPM"
 # ------------IMPORTS------------
 # -------------------------------
 
-# from Autodesk.Revit.DB import ...
-# from Autodesk.Revit.UI import ...
+from pyrevit import forms
 
-# from pyrevit import forms, script
+import sys, os
 
-# import RevitUtils
-# import HttpRequest
-# import PyUtils
+sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
+from MepOpeningMonitorSettingsDialog import MepOpeningMonitorSettingsDialog  # type: ignore
 
 # -------------------------------
 # -------------MAIN--------------
@@ -29,7 +27,11 @@ doc = uidoc.Document
 
 
 def run():
-    pass
+    if not doc.IsModelInCloud:
+        forms.alert("This model is not in the cloud.")
+        return
+    dialog = MepOpeningMonitorSettingsDialog(doc)
+    dialog.ShowDialog()
 
 
 run()

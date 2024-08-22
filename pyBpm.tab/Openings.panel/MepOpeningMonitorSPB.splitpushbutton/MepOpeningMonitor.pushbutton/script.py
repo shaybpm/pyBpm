@@ -29,6 +29,7 @@ from RevitUtils import (
     get_solid_from_element,
 )
 from RevitUtilsOpenings import get_opening_element_filter
+from ServerUtils import ProjectStructuralModels
 
 import sys, os
 
@@ -43,6 +44,8 @@ uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 output = script.get_output()
 output.close_others()
+
+project_structural_models = ProjectStructuralModels(doc)
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -250,12 +253,17 @@ def find_concrete_intersect(document_to_search, result, transform=None):
 def get_is_mep_without_opening_intersect_with_concrete(mep_element):
     result = ElementResult(mep_element)
 
-    find_concrete_intersect(doc, result)
+    doc_guid = doc.GetCloudModelPath().GetModelGUID().ToString()
+    if doc_guid in project_structural_models.structural_models:
+        find_concrete_intersect(doc, result)
 
     all_links = get_all_link_instances(doc)
     for link in all_links:
         link_doc = link.GetLinkDocument()
         if not link_doc:
+            continue
+        link_doc_guid = link_doc.GetCloudModelPath().GetModelGUID().ToString()
+        if link_doc_guid not in project_structural_models.structural_models:
             continue
 
         find_concrete_intersect(link_doc, result, link.GetTotalTransform())
@@ -264,6 +272,10 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
 
 
 def run():
+    if not doc.IsModelInCloud:
+        forms.alert("This model is not in the cloud.")
+        return
+
     relevant_results = []
 
     levels = get_levels_sorted(doc)
