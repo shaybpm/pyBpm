@@ -271,9 +271,27 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element):
     return result
 
 
+def is_structural_model_exists():
+    all_links = get_all_link_instances(doc)
+    for link in all_links:
+        link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
+        link_doc_guid = link_doc.GetCloudModelPath().GetModelGUID().ToString()
+        if link_doc_guid in project_structural_models.structural_models:
+            return True
+    return False
+
+
 def run():
     if not doc.IsModelInCloud:
         forms.alert("This model is not in the cloud.")
+        return
+
+    if not is_structural_model_exists():
+        forms.alert(
+            "No structural model was found in model.\nPlease make sure that the structural model is loaded, open the settings dialog and add a structural model."
+        )
         return
 
     relevant_results = []
