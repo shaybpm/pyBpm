@@ -6,7 +6,11 @@ from pyrevit.script import get_instance_data_file, get_bundle_name
 
 class ExternalEventDataFile:
     def __init__(self, doc):
-        model_guid = doc.GetCloudModelPath().GetModelGUID().ToString()
+        model_guid = (
+            doc.GetCloudModelPath().GetModelGUID().ToString()
+            if doc.IsModelInCloud
+            else doc.Title
+        )
         bundle_name = get_bundle_name()
         self.file_path = get_instance_data_file("{}_{}".format(bundle_name, model_guid))
 

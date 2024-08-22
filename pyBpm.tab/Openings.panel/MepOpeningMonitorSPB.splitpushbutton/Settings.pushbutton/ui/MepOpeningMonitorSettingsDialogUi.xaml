@@ -1,0 +1,39 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Opening Explorer" Height="480" Width="480" WindowStartupLocation="CenterScreen" MinWidth="480" MinHeight="200" Topmost="True">
+
+	<Border Margin="8" BorderThickness="1" BorderBrush="Black" CornerRadius="8">
+		<Grid x:Name="main_grid" Margin="8">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="*" />
+				<RowDefinition Height="20" />
+				<RowDefinition Height="40" />
+			</Grid.RowDefinitions>
+
+			<StackPanel x:Name="main_stack_panel" Grid.Row="0">
+				<Grid x:Name="structural_models_grid" Margin="0,0,0,8">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<TextBlock x:Name="structural_models_text" Grid.Column="0" Text="Structural Models" FontWeight="Bold" />
+					<StackPanel x:Name="structural_models_stack_panel" Grid.Column="1" Margin="0,0,20,0">
+						<!-- Adding in code -->
+					</StackPanel>
+				</Grid>
+			</StackPanel>
+
+			<Grid x:Name="bottom_message_grid" Grid.Row="1">
+				<TextBlock x:Name="bottom_message_text" Text="Pay attention! These settings will be saved for this entire cloud project." FontWeight="Bold" Foreground="Red" />
+			</Grid>
+			<Grid x:Name="save_cancel_controls_grid" Grid.Row="2">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition />
+					<ColumnDefinition />
+				</Grid.ColumnDefinitions>
+				<Button x:Name="cancel_button" Grid.Column="0" Content="Cancel" Margin="0,0,8,0" Click="CancelButton_Click" />
+				<Button x:Name="save_button" Grid.Column="1" Content="Save" Click="SaveButton_Click" />
+			</Grid>
+
+		</Grid>
+	</Border>
+</Window>

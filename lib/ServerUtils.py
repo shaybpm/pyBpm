@@ -1,6 +1,6 @@
 import json, os
 from pyrevit import script
-from HttpRequest import get, patch
+from HttpRequest import get, patch, post
 from RevitUtils import get_model_info
 from Config import server_url
 
@@ -80,3 +80,33 @@ def change_openings_approved_status(doc, password, newStatusArr):
         "newStatusArr": newStatusArr,
     }
     return patch(server_url + "api/openings/tracking/opening-approved", data)
+
+
+class ProjectStructuralModels:
+    def __init__(self, doc):
+        self.doc = doc
+        self.structural_models = self.get_structural_models()
+
+    def set_structural_models(self, value):
+        url = "{}api/projects/set-structural-models".format(server_url)
+        model_info = get_model_info(self.doc)
+        data = {
+            "projectGuid": model_info["projectGuid"],
+            "modelGuid": model_info["modelGuid"],
+            "modelPathName": model_info["modelPathName"],
+            "structuralModelGuids": value,
+        }
+        post(url, data)
+        self.structural_models = value
+
+    def get_structural_models(self):
+        model_info = get_model_info(self.doc)
+        url = "{}api/projects/{}".format(server_url, model_info["projectGuid"])
+        try:
+            data = get(url)
+            more_data = data.get("moreData")
+            if more_data is None:
+                return []
+            return more_data.get("structuralModelGuids", [])
+        except Exception:
+            return []
