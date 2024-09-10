@@ -32,12 +32,14 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="40"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="start_date_DatePicker" SelectedDateFormat="Long" />
+                    <DatePicker Grid.Column="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="start_date_DatePicker" SelectedDateFormat="Long" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
                         <ComboBox x:Name="start_hour_ComboBox"/>
                         <ComboBox x:Name="start_minute_ComboBox"/>
                     </StackPanel>
+                    <Button Grid.Column="2" Margin="2" Click="start_date_long_ago_btn_click">מזמן</Button>
                 </Grid>
 
                 <TextBlock Text="עד תאריך:" />
@@ -45,12 +47,14 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="40"/>
                     </Grid.ColumnDefinitions>
-                    <DatePicker Grid.Row="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="end_date_DatePicker" SelectedDateFormat="Long" />
+                    <DatePicker Grid.Column="0" FlowDirection="LeftToRight" IsTodayHighlighted="True" Margin="2" x:Name="end_date_DatePicker" SelectedDateFormat="Long" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="2" FlowDirection="LeftToRight">
                         <ComboBox x:Name="end_hour_ComboBox"/>
                         <ComboBox x:Name="end_minute_ComboBox"/>
                     </StackPanel>
+                    <Button Grid.Column="2" Margin="2" Click="end_date_now_btn_click">עכשיו</Button>
                 </Grid>
 
             </StackPanel>

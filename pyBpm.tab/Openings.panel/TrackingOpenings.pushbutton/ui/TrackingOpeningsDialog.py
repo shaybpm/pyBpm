@@ -341,6 +341,7 @@ class TrackingOpeningsDialog(Windows.Window):
             "approved but later modified",
             "not approved",
             "not treated",
+            "conditionally approved",
         ]
         self.approved_filter_ComboBox.Items.Clear()
         self.approved_filter_ComboBox.Items.Add("All Approved")
@@ -662,6 +663,23 @@ class TrackingOpeningsDialog(Windows.Window):
     def update_end_date_event(self, sender, e):
         self.update_end_date()
 
+    def start_date_long_ago_btn_click(self, sender, e):
+        """update the start date to 10 years ago"""
+        time_now = DateTime.Now
+        time_10_years_ago = time_now.AddYears(-10)
+        self.start_date_DatePicker.SelectedDate = time_10_years_ago
+        self.start_hour_ComboBox.SelectedValue = "00"
+        self.start_minute_ComboBox.SelectedValue = "00"
+        self.update_start_date()
+
+    def end_date_now_btn_click(self, sender, e):
+        """update the end date to now"""
+        time_now = DateTime.Now
+        self.end_date_DatePicker.SelectedDate = time_now
+        self.end_hour_ComboBox.SelectedValue = time_now.ToString("HH")
+        self.end_minute_ComboBox.SelectedValue = time_now.ToString("mm")
+        self.update_end_date()
+
     def show_openings_btn_click(self, sender, e):
         model_guids = get_model_guids(self.doc)
         try:
@@ -858,6 +876,7 @@ class TrackingOpeningsDialog(Windows.Window):
         new_approved_status_options = [
             "approved",
             "not approved",
+            "conditionally approved",
         ]
 
         select_from_list = SelectFromList(new_approved_status_options)
@@ -995,6 +1014,8 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
                 text_block.Padding = Windows.Thickness(4, 0, 4, 0)
                 if text == "approved":
                     text_block.Background = Windows.Media.Brushes.LightGreen
+                if text == "conditionally approved":
+                    text_block.Background = Windows.Media.Brushes.LightBlue
                 elif text == "approved but later modified":
                     text_block.Background = Windows.Media.Brushes.LightYellow
                 elif text == "not approved":
