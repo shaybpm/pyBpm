@@ -61,10 +61,10 @@ class IntersectWithConcreteResult:
 
 
 class ElementResult:
-    def __init__(self, mep_element):
+    def __init__(self, mep_element, found_in_level_id):
         self.mep_element = mep_element
         self.intersect_with_concrete_result = []
-        found_in_level_id = None
+        self.found_in_level_id = found_in_level_id
 
     def is_intersect_with_concrete(self):
         return len(self.intersect_with_concrete_result) > 0
@@ -257,8 +257,8 @@ def find_concrete_intersect(document_to_search, result, transform=None):
             )
 
 
-def get_is_mep_without_opening_intersect_with_concrete(mep_element):
-    result = ElementResult(mep_element)
+def get_is_mep_without_opening_intersect_with_concrete(mep_element, found_in_level_id):
+    result = ElementResult(mep_element, found_in_level_id)
 
     doc_guid = doc.GetCloudModelPath().GetModelGUID().ToString()
     if doc_guid in project_structural_models.structural_models:
@@ -325,9 +325,10 @@ def run():
             if mep_element.Id in [r.mep_element.Id for r in relevant_results]:
                 continue
 
-            result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
+            result = get_is_mep_without_opening_intersect_with_concrete(
+                mep_element, level_id
+            )
             if result.is_intersect_with_concrete():
-                result.found_in_level_id = level_id
                 relevant_results.append(result)
 
     if len(relevant_results) == 0:
