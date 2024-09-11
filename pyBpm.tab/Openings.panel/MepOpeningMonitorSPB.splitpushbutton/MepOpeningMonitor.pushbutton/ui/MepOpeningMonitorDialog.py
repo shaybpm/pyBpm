@@ -47,7 +47,7 @@ class MepOpeningMonitorDialog(Windows.Window):
 
     def sort_results(self):
         def sort_func(element_result):
-            level_id = element_result.mep_element.LevelId
+            level_id = element_result.found_in_level_id
             level = self.doc.GetElement(level_id)
             return level.ProjectElevation
 
@@ -266,9 +266,9 @@ class MepOpeningMonitorDialog(Windows.Window):
         for index, res in enumerate(self.res_current):
             if (
                 index == 0
-                or res.mep_element.LevelId
-                != self.res_current[index - 1].mep_element.LevelId
+                or res.found_in_level_id
+                != self.res_current[index - 1].found_in_level_id
             ):
-                self.add_level(res.mep_element.LevelId)
+                self.add_level(res.found_in_level_id)
 
             self.add_result(res)

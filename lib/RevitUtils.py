@@ -452,3 +452,94 @@ def get_solid_from_element(element, transform=None, options=None):
         options = Options()
     geometry_element = element.get_Geometry(options)
     return get_solid_from_geometry_element(geometry_element, transform)
+
+
+def get_bbox_all_model(doc):
+    from Autodesk.Revit.DB import (
+        CategoryType,
+        FilteredElementCollector,
+        BoundingBoxXYZ,
+        XYZ,
+    )
+
+    model_category_ids = []
+    categories = doc.Settings.Categories
+    for category in categories:
+        if category.CategoryType == CategoryType.Model:
+            model_category_ids.append(category.Id)
+
+    element_collector = FilteredElementCollector(doc)
+    for model_category_id in model_category_ids:
+        element_collector.OfCategoryId(model_category_id)
+
+    elements = element_collector.ToElements()
+
+    min_x, min_y, min_z, max_x, max_y, max_z = None, None, None, None, None, None
+    for element in elements:
+        bbox = element.get_BoundingBox(None)
+        if not bbox:
+            continue
+        min_p = bbox.Min
+        max_p = bbox.Max
+
+        if min_x is None or min_p.X < min_x:
+            min_x = min_p.X
+        if min_y is None or min_p.Y < min_y:
+            min_y = min_p.Y
+        if min_z is None or min_p.Z < min_z:
+            min_z = min_p.Z
+        if max_x is None or max_p.X > max_x:
+            max_x = max_p.X
+        if max_y is None or max_p.Y > max_y:
+            max_y = max_p.Y
+        if max_z is None or max_p.Z > max_z:
+            max_z = max_p.Z
+
+    bbox = BoundingBoxXYZ()
+    if not all([min_x, min_y, min_z, max_x, max_y, max_z]):
+        return bbox
+
+    bbox.Min = XYZ(min_x, min_y, min_z)
+    bbox.Max = XYZ(max_x, max_y, max_z)
+    return bbox
+
+
+def get_level_bounding_boxes(doc):
+    from Autodesk.Revit.DB import BoundingBoxXYZ, XYZ
+
+    levels = get_levels_sorted(doc)
+
+    bbox_all_model = get_bbox_all_model(doc)
+
+    min_x_all_model = bbox_all_model.Min.X
+    min_y_all_model = bbox_all_model.Min.Y
+    min_z_all_model = (
+        bbox_all_model.Min.Z
+        if bbox_all_model.Min.Z < levels[0].ProjectElevation
+        else levels[0].ProjectElevation - 100
+    )
+
+    max_x_all_model = bbox_all_model.Max.X
+    max_y_all_model = bbox_all_model.Max.Y
+    max_z_all_model = (
+        bbox_all_model.Max.Z
+        if bbox_all_model.Max.Z > levels[len(levels) - 1].ProjectElevation
+        else levels[len(levels) - 1].ProjectElevation + 100
+    )
+
+    model_bboxes = []
+
+    for index, level in enumerate(levels):
+        min_z = level.ProjectElevation if not index == 0 else min_z_all_model
+        max_z = (
+            levels[index + 1].ProjectElevation
+            if index + 1 < len(levels)
+            else max_z_all_model
+        )
+        bbox = BoundingBoxXYZ()
+        bbox.Min = XYZ(min_x_all_model, min_y_all_model, min_z)
+        bbox.Max = XYZ(max_x_all_model, max_y_all_model, max_z)
+        bbox_dict = {"level_id": level.Id, "bbox": bbox}
+        model_bboxes.append(bbox_dict)
+
+    return model_bboxes

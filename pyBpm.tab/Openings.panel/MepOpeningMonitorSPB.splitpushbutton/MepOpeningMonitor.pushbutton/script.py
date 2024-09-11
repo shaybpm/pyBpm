@@ -27,6 +27,7 @@ from RevitUtils import (
     is_wall_concrete,
     get_levels_sorted,
     get_solid_from_element,
+    get_level_bounding_boxes,
 )
 from RevitUtilsOpenings import get_opening_element_filter
 from ServerUtils import ProjectStructuralModels
@@ -63,13 +64,13 @@ class ElementResult:
     def __init__(self, mep_element):
         self.mep_element = mep_element
         self.intersect_with_concrete_result = []
+        found_in_level_id = None
 
-    @property
     def is_intersect_with_concrete(self):
         return len(self.intersect_with_concrete_result) > 0
 
 
-def get_all_MEP_elements():
+def get_all_MEP_elements(bbox_to_filter=None):
     for b_i_category in [
         BuiltInCategory.OST_DuctCurves,
         BuiltInCategory.OST_PipeCurves,
@@ -79,12 +80,18 @@ def get_all_MEP_elements():
         BuiltInCategory.OST_PipeFitting,
         BuiltInCategory.OST_CableTrayFitting,
     ]:
-        elements = (
+        element_collector = (
             FilteredElementCollector(doc)
             .OfCategory(b_i_category)
             .WhereElementIsNotElementType()
-            .ToElements()
         )
+        if bbox_to_filter:
+            outline = getOutlineByBoundingBox(bbox_to_filter)
+            bbox_intersect_filter = BoundingBoxIntersectsFilter(outline)
+            bbox_inside_filter = BoundingBoxIsInsideFilter(outline)
+            bbox_filter = LogicalOrFilter(bbox_intersect_filter, bbox_inside_filter)
+            element_collector.WherePasses(bbox_filter)
+        elements = element_collector.ToElements()
         for element in elements:
             yield element
 
@@ -294,6 +301,8 @@ def run():
         )
         return
 
+    level_bounding_boxes = get_level_bounding_boxes(doc)
+
     relevant_results = []
 
     levels = get_levels_sorted(doc)
@@ -304,17 +313,22 @@ def run():
     if not selected_levels:
         return
 
-    for mep_element in get_all_MEP_elements():
-        if mep_element.LevelId == ElementId.InvalidElementId:
+    for level_bbox in level_bounding_boxes:
+        level_id = level_bbox["level_id"]
+        if level_id not in levels_id_name_dict:
             continue
-        if mep_element.LevelId not in levels_id_name_dict:
-            continue
-        if levels_id_name_dict[mep_element.LevelId] not in selected_levels:
+        if levels_id_name_dict[level_id] not in selected_levels:
             continue
 
-        result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
-        if result.is_intersect_with_concrete:
-            relevant_results.append(result)
+        mep_elements = get_all_MEP_elements(level_bbox["bbox"])
+        for mep_element in mep_elements:
+            if mep_element.Id in [r.mep_element.Id for r in relevant_results]:
+                continue
+
+            result = get_is_mep_without_opening_intersect_with_concrete(mep_element)
+            if result.is_intersect_with_concrete():
+                result.found_in_level_id = level_id
+                relevant_results.append(result)
 
     if len(relevant_results) == 0:
         forms.alert("No missing openings were found.")
