@@ -15,7 +15,6 @@ from Autodesk.Revit.DB import (
     LogicalOrFilter,
     BooleanOperationsUtils,
     BooleanOperationsType,
-    ElementId,
     BuiltInParameter,
 )
 
@@ -37,6 +36,7 @@ import sys, os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
 from MepOpeningMonitorDialog import MepOpeningMonitorDialog  # type: ignore
+from PreFiltersDialog import PreFiltersDialog  # type: ignore
 
 # -------------------------------
 # -------------MAIN--------------
@@ -295,21 +295,18 @@ def run():
 
     relevant_results = []
 
-    levels = get_levels_sorted(doc)
-    levels_id_name_dict = {l.Id: l.Name for l in levels}
-    selected_levels = forms.SelectFromList.show(
-        levels_id_name_dict.values(), title="Select Levels", multiselect=True
-    )
-    if not selected_levels:
+    pre_filters_res = PreFiltersDialog(doc).show_dialog()
+    if not pre_filters_res:
+        return
+    selected_level_ids = pre_filters_res["levels"]
+    if not selected_level_ids:
         return
 
     level_bounding_boxes = get_level_bounding_boxes(doc)
     level_bounding_boxes_filtered = []
     for level_bbox in level_bounding_boxes:
         level_id = level_bbox["level_id"]
-        if level_id not in levels_id_name_dict:
-            continue
-        if levels_id_name_dict[level_id] not in selected_levels:
+        if level_id not in selected_level_ids:
             continue
         level_bounding_boxes_filtered.append(level_bbox)
 
