@@ -494,8 +494,7 @@ def get_bbox_all_model(doc):
         bbox = element.get_BoundingBox(None)
         if not bbox:
             continue
-        min_p = bbox.Min
-        max_p = bbox.Max
+        min_p, max_p = get_min_max_points_from_bbox(bbox)
 
         if min_x is None or min_p.X < min_x:
             min_x = min_p.X
