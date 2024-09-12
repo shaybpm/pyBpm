@@ -81,7 +81,9 @@ class MepOpeningMonitorDialog(Windows.Window):
 
         mep_grid = Windows.Controls.Grid()
         mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
-        mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+        mep_grid_ColumnDefinition_1 = Windows.Controls.ColumnDefinition()
+        mep_grid_ColumnDefinition_1.Width = Windows.GridLength(160)
+        mep_grid.ColumnDefinitions.Add(mep_grid_ColumnDefinition_1)
         mep_grid.Background = Windows.Media.SolidColorBrush(
             Windows.Media.Color.FromRgb(0, 51, 102)
         )
@@ -129,7 +131,9 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_grid = Windows.Controls.Grid()
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
-            intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+            intersect_grid_columnDefinition_2 = Windows.Controls.ColumnDefinition()
+            intersect_grid_columnDefinition_2.Width = Windows.GridLength(160)
+            intersect_grid.ColumnDefinitions.Add(intersect_grid_columnDefinition_2)
 
             intersect_label = Windows.Controls.Label()
             intersect_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
