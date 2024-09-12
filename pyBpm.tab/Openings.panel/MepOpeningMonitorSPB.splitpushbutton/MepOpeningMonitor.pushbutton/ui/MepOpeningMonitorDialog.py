@@ -129,6 +129,7 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_grid = Windows.Controls.Grid()
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+            intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
 
             intersect_label = Windows.Controls.Label()
             intersect_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
@@ -136,9 +137,16 @@ class MepOpeningMonitorDialog(Windows.Window):
             # intersect_label.Margin = Windows.Thickness(24, 0, 0, 0)
             intersect_label.VerticalAlignment = Windows.VerticalAlignment.Center
 
+            intersect_level = self.doc.GetElement(intersect_res.level_id)
+            intersect_level_label = Windows.Controls.Label()
+            intersect_level_label.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
+            intersect_level_label.Content = intersect_level.Name
+            # intersect_level_label.Margin = Windows.Thickness(4, 0, 0, 0)
+            intersect_level_label.VerticalAlignment = Windows.VerticalAlignment.Center
+
             intersect_controllers_stack_panel = Windows.Controls.StackPanel()
             intersect_controllers_stack_panel.SetValue(
-                Windows.Controls.Grid.ColumnProperty, 1
+                Windows.Controls.Grid.ColumnProperty, 2
             )
             intersect_controllers_stack_panel.Orientation = (
                 Windows.Controls.Orientation.Horizontal
@@ -172,6 +180,7 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_controllers_stack_panel.Children.Add(show_intersect_zoom_button)
 
             intersect_grid.Children.Add(intersect_label)
+            intersect_grid.Children.Add(intersect_level_label)
             intersect_grid.Children.Add(intersect_controllers_stack_panel)
 
             mep_and_intersect_stack_panel.Children.Add(intersect_grid)

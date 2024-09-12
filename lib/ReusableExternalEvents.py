@@ -110,6 +110,7 @@ def show_bbox_3d_cb(uiapp):
         t_group.RollBack()
         return
 
+    # TODO: Turn off categories only if it's a new view
     turn_of_categories(
         doc,
         bpm_3d_view,
