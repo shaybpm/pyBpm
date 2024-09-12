@@ -46,28 +46,29 @@ class MepOpeningMonitorDialog(Windows.Window):
         self.res_current = filtered
 
     def sort_results(self):
-        def sort_func(element_result):
-            level_id = element_result.found_in_level_id
-            level = self.doc.GetElement(level_id)
-            return level.ProjectElevation
+        # def sort_func(element_result):
+        #     level_id = element_result.found_in_level_id
+        #     level = self.doc.GetElement(level_id)
+        #     return level.ProjectElevation
 
-        self.res_current = sorted(self.res_current, key=sort_func)
+        # self.res_current = sorted(self.res_current, key=sort_func)
+        pass
 
     def clear_results(self):
         self.StackPanelMain.Children.Clear()
 
-    def add_level(self, level_id):
-        level = self.doc.GetElement(level_id)
-        level_name = level.Name
+    # def add_level(self, level_id):
+    #     level = self.doc.GetElement(level_id)
+    #     level_name = level.Name
 
-        label = Windows.Controls.Label()
-        label.Content = level_name
-        label.FontWeight = Windows.FontWeights.Bold
-        label.FontSize = 16
-        label.HorizontalAlignment = Windows.HorizontalAlignment.Center
-        label.Margin = Windows.Thickness(0, 12, 0, 0)
+    #     label = Windows.Controls.Label()
+    #     label.Content = level_name
+    #     label.FontWeight = Windows.FontWeights.Bold
+    #     label.FontSize = 16
+    #     label.HorizontalAlignment = Windows.HorizontalAlignment.Center
+    #     label.Margin = Windows.Thickness(0, 12, 0, 0)
 
-        self.StackPanelMain.Children.Add(label)
+    #     self.StackPanelMain.Children.Add(label)
 
     def add_result(self, element_result):
         mep_and_intersect_stack_panel = Windows.Controls.StackPanel()
@@ -264,11 +265,11 @@ class MepOpeningMonitorDialog(Windows.Window):
         self.clear_results()
 
         for index, res in enumerate(self.res_current):
-            if (
-                index == 0
-                or res.found_in_level_id
-                != self.res_current[index - 1].found_in_level_id
-            ):
-                self.add_level(res.found_in_level_id)
+            # if (
+            #     index == 0
+            #     or res.found_in_level_id
+            #     != self.res_current[index - 1].found_in_level_id
+            # ):
+            #     self.add_level(res.found_in_level_id)
 
             self.add_result(res)

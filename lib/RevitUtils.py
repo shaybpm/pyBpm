@@ -455,11 +455,17 @@ def get_solid_from_element(element, transform=None, options=None):
 
 
 def get_bbox_all_model(doc):
+    import clr
+
+    clr.AddReferenceByPartialName("System")
+    from System.Collections.Generic import List
     from Autodesk.Revit.DB import (
         CategoryType,
         FilteredElementCollector,
         BoundingBoxXYZ,
         XYZ,
+        Element,
+        BuiltInCategory,
     )
 
     model_category_ids = []
@@ -468,11 +474,20 @@ def get_bbox_all_model(doc):
         if category.CategoryType == CategoryType.Model:
             model_category_ids.append(category.Id)
 
-    element_collector = FilteredElementCollector(doc)
+    elements = List[Element]()
     for model_category_id in model_category_ids:
-        element_collector.OfCategoryId(model_category_id)
-
-    elements = element_collector.ToElements()
+        elements.AddRange(
+            FilteredElementCollector(doc)
+            .OfCategoryId(model_category_id)
+            .WhereElementIsNotElementType()
+            .ToElements()
+        )
+    elements.AddRange(
+        FilteredElementCollector(doc)
+        .OfCategory(BuiltInCategory.OST_RvtLinks)
+        .WhereElementIsNotElementType()
+        .ToElements()
+    )
 
     min_x, min_y, min_z, max_x, max_y, max_z = None, None, None, None, None, None
     for element in elements:

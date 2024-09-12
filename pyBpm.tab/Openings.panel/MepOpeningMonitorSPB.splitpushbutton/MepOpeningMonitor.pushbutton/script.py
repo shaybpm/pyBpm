@@ -28,6 +28,7 @@ from RevitUtils import (
     get_levels_sorted,
     get_solid_from_element,
     get_level_bounding_boxes,
+    get_min_max_points_from_bbox,
 )
 from RevitUtilsOpenings import get_opening_element_filter
 from ServerUtils import ProjectStructuralModels
@@ -54,23 +55,25 @@ project_structural_models = ProjectStructuralModels(doc)
 
 
 class IntersectWithConcreteResult:
-    def __init__(self, intersect_element, intersect_bounding_box, transform=None):
+    def __init__(
+        self, intersect_element, intersect_bounding_box, level_id, transform=None
+    ):
         self.intersect_element = intersect_element
         self.intersect_bounding_box = intersect_bounding_box
         self.transform = transform
+        self.level_id = level_id
 
 
 class ElementResult:
-    def __init__(self, mep_element, found_in_level_id):
+    def __init__(self, mep_element):
         self.mep_element = mep_element
         self.intersect_with_concrete_result = []
-        self.found_in_level_id = found_in_level_id
 
     def is_intersect_with_concrete(self):
         return len(self.intersect_with_concrete_result) > 0
 
 
-def get_all_MEP_elements(bbox_to_filter=None):
+def get_MEP_elements_within_bbox(bbox_to_filter=None):
     for b_i_category in [
         BuiltInCategory.OST_DuctCurves,
         BuiltInCategory.OST_PipeCurves,
@@ -107,31 +110,9 @@ def is_opening_there(element_filter):
     return openings_count > 0
 
 
-def get_thickness_of_vertical_element(element):
-    """
-    Works for walls, columns and beams.
-    For columns, returns the minimum.
-    """
-    if element.Category.Id == ElementId(BuiltInCategory.OST_Walls):
-        return element.Width if hasattr(element, "Width") else 0
-    if element.Category.Id == ElementId(BuiltInCategory.OST_StructuralColumns):
-        bbox = element.get_BoundingBox(None)
-        if not bbox:
-            return 0
-        delta_x = bbox.Max.X - bbox.Min.X
-        delta_y = bbox.Max.Y - bbox.Min.Y
-        return min(delta_x, delta_y)
-    if element.Category.Id == ElementId(BuiltInCategory.OST_StructuralFraming):
-        bbox = element.get_BoundingBox(None)
-        if not bbox:
-            return 0
-        # TODO: Find better way to get the thickness of the beam
-        delta_x = bbox.Max.X - bbox.Min.X
-        delta_y = bbox.Max.Y - bbox.Min.Y
-        return min(delta_x, delta_y)
-
-
-def find_concrete_intersect(document_to_search, result, transform=None):
+def find_concrete_intersect(
+    document_to_search, result, level_bounding_boxes, transform=None
+):
     bbox = result.mep_element.get_BoundingBox(None)
     if not bbox:
         return
@@ -207,11 +188,25 @@ def find_concrete_intersect(document_to_search, result, transform=None):
             if solid_intersect.Volume == 0:
                 continue
 
+            intersect_bounding_box = solid_intersect.GetBoundingBox()
+
+            level_id = None
+            intersect_min, intersect_max = get_min_max_points_from_bbox(
+                intersect_bounding_box, transform.Inverse
+            )
+            intersect_center_point = (intersect_min + intersect_max) / 2
+            for level_bbox in level_bounding_boxes:
+                level_outline = getOutlineByBoundingBox(level_bbox["bbox"])
+                if level_outline.Contains(intersect_center_point, 0.1):
+                    level_id = level_bbox["level_id"]
+                    break
+            if not level_id:
+                continue
+
             # check if the intersect is inside the element
             # - if its a floor, the delta z of the bbox need to be at last as the height of the floor
             # - if its a wall or a beam, the delta x or delta y of the bbox need to be at last as the thickness of the wall
 
-            intersect_bounding_box = solid_intersect.GetBoundingBox()
             if category == BuiltInCategory.OST_Floors:
                 floor_thickness_param = element.get_Parameter(
                     BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM
@@ -225,17 +220,8 @@ def find_concrete_intersect(document_to_search, result, transform=None):
                         if intersect_delta_z < floor_thickness:
                             continue
             else:
+                # TODO: Avoid elements that are parallel to the MEP element
                 pass
-                # thickness = get_thickness_of_vertical_element(element)
-                # if thickness:
-                #     intersect_delta_x = (
-                #         intersect_bounding_box.Max.X - intersect_bounding_box.Min.X
-                #     )
-                #     intersect_delta_y = (
-                #         intersect_bounding_box.Max.Y - intersect_bounding_box.Min.Y
-                #     )
-                #     if intersect_delta_x < thickness and intersect_delta_y < thickness:
-                #         continue
 
             intersect_outline = getOutlineByBoundingBox(
                 intersect_bounding_box, transform
@@ -253,16 +239,20 @@ def find_concrete_intersect(document_to_search, result, transform=None):
                 continue
 
             result.intersect_with_concrete_result.append(
-                IntersectWithConcreteResult(element, intersect_bounding_box, transform)
+                IntersectWithConcreteResult(
+                    element, intersect_bounding_box, level_id, transform
+                )
             )
 
 
-def get_is_mep_without_opening_intersect_with_concrete(mep_element, found_in_level_id):
-    result = ElementResult(mep_element, found_in_level_id)
+def get_is_mep_without_opening_intersect_with_concrete(
+    mep_element, level_bounding_boxes
+):
+    result = ElementResult(mep_element)
 
     doc_guid = doc.GetCloudModelPath().GetModelGUID().ToString()
     if doc_guid in project_structural_models.structural_models:
-        find_concrete_intersect(doc, result)
+        find_concrete_intersect(doc, result, level_bounding_boxes)
 
     all_links = get_all_link_instances(doc)
     for link in all_links:
@@ -273,7 +263,9 @@ def get_is_mep_without_opening_intersect_with_concrete(mep_element, found_in_lev
         if link_doc_guid not in project_structural_models.structural_models:
             continue
 
-        find_concrete_intersect(link_doc, result, link.GetTotalTransform())
+        find_concrete_intersect(
+            link_doc, result, level_bounding_boxes, link.GetTotalTransform()
+        )
 
     return result
 
@@ -301,8 +293,6 @@ def run():
         )
         return
 
-    level_bounding_boxes = get_level_bounding_boxes(doc)
-
     relevant_results = []
 
     levels = get_levels_sorted(doc)
@@ -313,20 +303,24 @@ def run():
     if not selected_levels:
         return
 
+    level_bounding_boxes = get_level_bounding_boxes(doc)
+    level_bounding_boxes_filtered = []
     for level_bbox in level_bounding_boxes:
         level_id = level_bbox["level_id"]
         if level_id not in levels_id_name_dict:
             continue
         if levels_id_name_dict[level_id] not in selected_levels:
             continue
+        level_bounding_boxes_filtered.append(level_bbox)
 
-        mep_elements = get_all_MEP_elements(level_bbox["bbox"])
+    for level_bbox in level_bounding_boxes_filtered:
+        mep_elements = get_MEP_elements_within_bbox(level_bbox["bbox"])
         for mep_element in mep_elements:
             if mep_element.Id in [r.mep_element.Id for r in relevant_results]:
                 continue
 
             result = get_is_mep_without_opening_intersect_with_concrete(
-                mep_element, level_id
+                mep_element, level_bounding_boxes_filtered
             )
             if result.is_intersect_with_concrete():
                 relevant_results.append(result)
