@@ -681,8 +681,8 @@ class TrackingOpeningsDialog(Windows.Window):
         self.update_end_date()
 
     def show_openings_btn_click(self, sender, e):
-        model_guids = get_model_guids(self.doc)
         try:
+            model_guids = get_model_guids(self.doc)
             self.openings = get_openings_changes(
                 self.doc, self.start_time_str, self.end_time_str, model_guids
             )
