@@ -46,28 +46,29 @@ class MepOpeningMonitorDialog(Windows.Window):
         self.res_current = filtered
 
     def sort_results(self):
-        def sort_func(element_result):
-            level_id = element_result.mep_element.LevelId
-            level = self.doc.GetElement(level_id)
-            return level.ProjectElevation
+        # def sort_func(element_result):
+        #     level_id = element_result.found_in_level_id
+        #     level = self.doc.GetElement(level_id)
+        #     return level.ProjectElevation
 
-        self.res_current = sorted(self.res_current, key=sort_func)
+        # self.res_current = sorted(self.res_current, key=sort_func)
+        pass
 
     def clear_results(self):
         self.StackPanelMain.Children.Clear()
 
-    def add_level(self, level_id):
-        level = self.doc.GetElement(level_id)
-        level_name = level.Name
+    # def add_level(self, level_id):
+    #     level = self.doc.GetElement(level_id)
+    #     level_name = level.Name
 
-        label = Windows.Controls.Label()
-        label.Content = level_name
-        label.FontWeight = Windows.FontWeights.Bold
-        label.FontSize = 16
-        label.HorizontalAlignment = Windows.HorizontalAlignment.Center
-        label.Margin = Windows.Thickness(0, 12, 0, 0)
+    #     label = Windows.Controls.Label()
+    #     label.Content = level_name
+    #     label.FontWeight = Windows.FontWeights.Bold
+    #     label.FontSize = 16
+    #     label.HorizontalAlignment = Windows.HorizontalAlignment.Center
+    #     label.Margin = Windows.Thickness(0, 12, 0, 0)
 
-        self.StackPanelMain.Children.Add(label)
+    #     self.StackPanelMain.Children.Add(label)
 
     def add_result(self, element_result):
         mep_and_intersect_stack_panel = Windows.Controls.StackPanel()
@@ -80,7 +81,9 @@ class MepOpeningMonitorDialog(Windows.Window):
 
         mep_grid = Windows.Controls.Grid()
         mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
-        mep_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+        mep_grid_ColumnDefinition_1 = Windows.Controls.ColumnDefinition()
+        mep_grid_ColumnDefinition_1.Width = Windows.GridLength(160)
+        mep_grid.ColumnDefinitions.Add(mep_grid_ColumnDefinition_1)
         mep_grid.Background = Windows.Media.SolidColorBrush(
             Windows.Media.Color.FromRgb(0, 51, 102)
         )
@@ -128,6 +131,9 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_grid = Windows.Controls.Grid()
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
             intersect_grid.ColumnDefinitions.Add(Windows.Controls.ColumnDefinition())
+            intersect_grid_columnDefinition_2 = Windows.Controls.ColumnDefinition()
+            intersect_grid_columnDefinition_2.Width = Windows.GridLength(160)
+            intersect_grid.ColumnDefinitions.Add(intersect_grid_columnDefinition_2)
 
             intersect_label = Windows.Controls.Label()
             intersect_label.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
@@ -135,9 +141,16 @@ class MepOpeningMonitorDialog(Windows.Window):
             # intersect_label.Margin = Windows.Thickness(24, 0, 0, 0)
             intersect_label.VerticalAlignment = Windows.VerticalAlignment.Center
 
+            intersect_level = self.doc.GetElement(intersect_res.level_id)
+            intersect_level_label = Windows.Controls.Label()
+            intersect_level_label.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
+            intersect_level_label.Content = intersect_level.Name
+            # intersect_level_label.Margin = Windows.Thickness(4, 0, 0, 0)
+            intersect_level_label.VerticalAlignment = Windows.VerticalAlignment.Center
+
             intersect_controllers_stack_panel = Windows.Controls.StackPanel()
             intersect_controllers_stack_panel.SetValue(
-                Windows.Controls.Grid.ColumnProperty, 1
+                Windows.Controls.Grid.ColumnProperty, 2
             )
             intersect_controllers_stack_panel.Orientation = (
                 Windows.Controls.Orientation.Horizontal
@@ -171,6 +184,7 @@ class MepOpeningMonitorDialog(Windows.Window):
             intersect_controllers_stack_panel.Children.Add(show_intersect_zoom_button)
 
             intersect_grid.Children.Add(intersect_label)
+            intersect_grid.Children.Add(intersect_level_label)
             intersect_grid.Children.Add(intersect_controllers_stack_panel)
 
             mep_and_intersect_stack_panel.Children.Add(intersect_grid)
@@ -264,11 +278,11 @@ class MepOpeningMonitorDialog(Windows.Window):
         self.clear_results()
 
         for index, res in enumerate(self.res_current):
-            if (
-                index == 0
-                or res.mep_element.LevelId
-                != self.res_current[index - 1].mep_element.LevelId
-            ):
-                self.add_level(res.mep_element.LevelId)
+            # if (
+            #     index == 0
+            #     or res.found_in_level_id
+            #     != self.res_current[index - 1].found_in_level_id
+            # ):
+            #     self.add_level(res.found_in_level_id)
 
             self.add_result(res)
