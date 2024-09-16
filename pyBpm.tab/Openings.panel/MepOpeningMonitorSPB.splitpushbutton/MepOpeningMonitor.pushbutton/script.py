@@ -137,6 +137,9 @@ def find_concrete_intersect(
         BuiltInCategory.OST_Floors,
         BuiltInCategory.OST_StructuralFraming,
         BuiltInCategory.OST_StructuralColumns,
+        BuiltInCategory.OST_Stairs,
+        BuiltInCategory.OST_StairsLandings,
+        BuiltInCategory.OST_Ramps,
     ]
 
     error_message_printed = False
@@ -152,13 +155,23 @@ def find_concrete_intersect(
             if category == BuiltInCategory.OST_Walls and not is_wall_concrete(element):
                 continue
 
-            if hasattr(result.mep_element.Location, "Curve"):
+            if hasattr(result.mep_element.Location, "Curve") and category in [
+                BuiltInCategory.OST_Walls,
+                BuiltInCategory.OST_Floors,
+                BuiltInCategory.OST_StructuralFraming,
+                BuiltInCategory.OST_StructuralColumns,
+                BuiltInCategory.OST_StairsLandings,
+            ]:
                 z_direction = result.mep_element.Location.Curve.Direction.Z
-                if category == BuiltInCategory.OST_Floors:
-                    if -0.5 <= z_direction <= 0.5:
+                term = -0.5 <= z_direction <= 0.5
+                if (
+                    category == BuiltInCategory.OST_Floors
+                    or category == BuiltInCategory.OST_StairsLandings
+                ):
+                    if term:
                         continue
                 else:
-                    if not (-0.5 <= z_direction <= 0.5):
+                    if not term:
                         continue
 
             bbox_element = element.get_BoundingBox(None)
