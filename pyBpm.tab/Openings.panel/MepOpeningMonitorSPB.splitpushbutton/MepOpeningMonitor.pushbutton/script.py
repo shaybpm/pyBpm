@@ -310,6 +310,7 @@ def run():
         forms.alert(
             "No opening families were found in the model.\nPlease make sure that the model contains the BPM openings families."
         )
+        return
 
     relevant_results = []
 
