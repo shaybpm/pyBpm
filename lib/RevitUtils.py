@@ -365,14 +365,19 @@ def getOutlineByBoundingBox(bbox, transform=None):
     return outline
 
 
-def is_wall_concrete(wall):
+def is_wall_concrete(wall, premise=True):
     """
     This function try many checks to determine if the wall is concrete.
     Note that this is not a perfect solution, and there are many some where it will fail.
+
+    premise - if something went wrong, return this value. Default is True.
     """
     from Autodesk.Revit.DB import BuiltInParameter
 
     wall_doc = wall.Document
+
+    if not hasattr(wall, "Width"):
+        return premise
 
     if convertRevitNumToCm(wall_doc, wall.Width) >= 15:
         # * Don't sure if this is a good check
