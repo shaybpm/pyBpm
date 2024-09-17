@@ -48,6 +48,7 @@ output = script.get_output()
 output.close_others()
 
 project_structural_models = ProjectStructuralModels(doc)
+opening_element_filter = get_opening_element_filter(doc)
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -100,7 +101,6 @@ def get_MEP_elements_within_bbox(bbox_to_filter=None):
 
 
 def is_opening_there(element_filter):
-    opening_element_filter = get_opening_element_filter(doc)
     openings_count = (
         FilteredElementCollector(doc)
         .WherePasses(opening_element_filter)
@@ -305,6 +305,11 @@ def run():
             "No structural model was found in model.\nPlease make sure that the structural model is loaded, open the settings dialog and add a structural model."
         )
         return
+
+    if not opening_element_filter:
+        forms.alert(
+            "No opening families were found in the model.\nPlease make sure that the model contains the BPM openings families."
+        )
 
     relevant_results = []
 
