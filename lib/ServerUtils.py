@@ -112,6 +112,48 @@ class ProjectStructuralModels:
             return []
 
 
+def get_model_quality_auto_checks_data(doc):
+    if not doc.IsModelInCloud:
+        return None
+    comp_link = get_comp_link(doc)
+    if not comp_link:
+        return None
+    comp_doc = comp_link.GetLinkDocument()
+
+    comp_doc_model_guid = get_model_info(comp_doc)["modelGuid"]
+    url = "{}api/model-quality-auto/model-guid/{}".format(
+        server_url, comp_doc_model_guid
+    )
+    return get(url)
+
+
+def get_filtered_model_quality_auto_checks(doc, filter_by_importance="A"):
+    data = get_model_quality_auto_checks_data(doc)
+    if not data:
+        return None
+
+    checks = data.get("data")
+    if not checks:
+        return None
+
+    filter_by_importance_list = (
+        ["A", "B", "C"]
+        if filter_by_importance == "C"
+        else ["A", "B"] if filter_by_importance == "B" else ["A"]
+    )
+
+    filtered_checks = []
+    doc_model_guid = get_model_info(doc)["modelGuid"]
+    for check in checks:
+        if check.get("modelGuid") != doc_model_guid:
+            continue
+        if check.get("importanceGroup") not in filter_by_importance_list:
+            continue
+        filtered_checks.append(check)
+
+    return filtered_checks
+
+
 def is_model_quality_auto_checks_successful(doc, filter_by_importance="A"):
     """
     By default, return True.
@@ -119,34 +161,13 @@ def is_model_quality_auto_checks_successful(doc, filter_by_importance="A"):
     filter_by_importance: A returns only A, B returns A and B, and C returns all.
     """
     try:
-        if not doc.IsModelInCloud:
-            return True
-        comp_link = get_comp_link(doc)
-        if not comp_link:
-            return True
-        comp_doc = comp_link.GetLinkDocument()
-
-        comp_doc_model_guid = get_model_info(comp_doc)["modelGuid"]
-        url = "{}api/model-quality-auto/model-guid/{}".format(
-            server_url, comp_doc_model_guid
+        filtered_checks = get_filtered_model_quality_auto_checks(
+            doc, filter_by_importance
         )
-        data = get(url)
-
-        checks = data.get("data")
-        if not checks:
+        if not filtered_checks:
             return True
 
-        filter_by_importance_list = (
-            ["A", "B", "C"]
-            if filter_by_importance == "C"
-            else ["A", "B"] if filter_by_importance == "B" else ["A"]
-        )
-        doc_model_guid = get_model_info(doc)["modelGuid"]
-        for check in checks:
-            if check.get("modelGuid") != doc_model_guid:
-                continue
-            if check.get("importanceGroup") not in filter_by_importance_list:
-                continue
+        for check in filtered_checks:
             if check.get("boolResult") is False:
                 return False
 
