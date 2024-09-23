@@ -8,13 +8,9 @@ __author__ = "BPM"
 # ------------IMPORTS------------
 # -------------------------------
 
-from System import Net
-from System.Text import Encoding
-
 from pyrevit import script
 from RevitUtils import get_model_info
-from Config import server_url
-from PyRevitUtils import start_process
+from PyRevitUtils import open_pybpm_page
 
 # -------------------------------
 # -------------MAIN--------------
@@ -22,8 +18,6 @@ from PyRevitUtils import start_process
 
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
-
-output = script.get_output()
 
 # --------------------------------
 # -------------SCRIPT-------------
@@ -33,29 +27,14 @@ output = script.get_output()
 def run():
     model_info = get_model_info(doc)
 
-    target_html = "{}{}/model-quality/{}?revit=true".format(
-        server_url, model_info["projectGuid"], model_info["modelGuid"]
+    rel_target_html = "{}/model-quality/{}".format(
+        model_info["projectGuid"], model_info["modelGuid"]
     )
-    target_css = "{}styles/mq-model.css".format(server_url)
+    rel_target_css = "styles/mq-model.css"
 
-    if not __shiftclick__:  # type: ignore
-        web_client = Net.WebClient()
-        web_client.Encoding = Encoding.UTF8
+    output = script.get_output() if not __shiftclick__ else None  # type: ignore
 
-        html = web_client.DownloadString(target_html)
-
-        css_file = web_client.DownloadString(target_css)
-
-        output.close_others()
-
-        output.add_style(css_file)
-        output.print_html(html)
-
-        output.center()
-        output.inject_script("window.scrollTo(0, 0);")
-    else:
-        path_to_open_in_browser = target_html.replace("?revit=true", "")
-        start_process(path_to_open_in_browser)
+    open_pybpm_page(rel_target_html, rel_target_css, output)
 
 
 run()

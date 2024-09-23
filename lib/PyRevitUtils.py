@@ -10,7 +10,7 @@ from Autodesk.Revit.DB import ElementId
 from pyrevit import script
 from pyrevit.coreutils import ribbon
 
-from Config import root_path
+from Config import root_path, server_url
 
 
 class TempElementStorage:
@@ -151,3 +151,29 @@ class ModelQualityAutoChecksToggleIcon:
                     icon_size=32,
                 )
             self.set_set_once()
+
+
+def open_pybpm_page(rel_target_html, rel_target_css, output=None):
+    from HttpRequest import download_string
+
+    target_html = server_url + rel_target_html
+    target_css = server_url + rel_target_css
+
+    if output:
+        target_html += "?revit=true"
+
+        html = download_string(target_html)
+        # clear brake lines (because pyrevit output do it <br> tags)
+        html = html.replace("\n", "")
+
+        css_file = download_string(target_css)
+
+        output.close_others()
+
+        output.add_style(css_file)
+        output.print_html(html)
+
+        output.center()
+        output.inject_script("window.scrollTo(0, 0);")
+    else:
+        start_process(target_html)
