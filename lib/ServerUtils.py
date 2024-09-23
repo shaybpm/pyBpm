@@ -1,7 +1,7 @@
 import json, os
 from pyrevit import script
 from HttpRequest import get, patch, post
-from RevitUtils import get_model_info
+from RevitUtils import get_model_info, get_comp_link
 from Config import server_url
 
 
@@ -110,3 +110,47 @@ class ProjectStructuralModels:
             return more_data.get("structuralModelGuids", [])
         except Exception:
             return []
+
+
+def is_model_quality_auto_checks_successful(doc, filter_by_importance="A"):
+    """
+    By default, return True.
+
+    filter_by_importance: A returns only A, B returns A and B, and C returns all.
+    """
+    try:
+        if not doc.IsModelInCloud:
+            return True
+        comp_link = get_comp_link(doc)
+        if not comp_link:
+            return True
+        comp_doc = comp_link.GetLinkDocument()
+
+        comp_doc_model_guid = get_model_info(comp_doc)["modelGuid"]
+        url = "{}api/model-quality-auto/model-guid/{}".format(
+            server_url, comp_doc_model_guid
+        )
+        data = get(url)
+
+        checks = data.get("data")
+        if not checks:
+            return True
+
+        filter_by_importance_list = (
+            ["A", "B", "C"]
+            if filter_by_importance == "C"
+            else ["A", "B"] if filter_by_importance == "B" else ["A"]
+        )
+        doc_model_guid = get_model_info(doc)["modelGuid"]
+        for check in checks:
+            if check.get("modelGuid") != doc_model_guid:
+                continue
+            if check.get("importanceGroup") not in filter_by_importance_list:
+                continue
+            if check.get("boolResult") is False:
+                return False
+
+        return True
+
+    except Exception:
+        return True

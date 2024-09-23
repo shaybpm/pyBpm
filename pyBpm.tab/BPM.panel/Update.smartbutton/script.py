@@ -33,7 +33,7 @@ def __selfinit__(script_cmp, ui_button_cmp, __rvt__):
 
         has_update_icon = script_cmp.get_bundle_file("icon_hasupdates.png")
         if last_version != current_version:
-            ui_button_cmp.set_icon(has_update_icon)
+            ui_button_cmp.set_icon(has_update_icon, icon_size=32)
         return True
     except:
         return False

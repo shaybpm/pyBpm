@@ -1,5 +1,6 @@
 import os
 import clr
+import json
 
 clr.AddReferenceByPartialName("System")
 from System.Collections.Generic import List
@@ -7,6 +8,9 @@ from System.Collections.Generic import List
 from Autodesk.Revit.DB import ElementId
 
 from pyrevit import script
+from pyrevit.coreutils import ribbon
+
+from Config import root_path
 
 
 class TempElementStorage:
@@ -87,3 +91,63 @@ def start_process(path):
     from System.Diagnostics.Process import Start  # type: ignore
 
     Start(path)
+
+
+class ModelQualityAutoChecksToggleIcon:
+    def __init__(self, doc):
+        self.doc = doc
+
+        self.temp_file_path = script.get_instance_data_file(
+            ModelQualityAutoChecksToggleIcon.__name__
+        )
+
+    def get_file_data(self):
+        if not os.path.exists(self.temp_file_path):
+            return {}
+        with open(self.temp_file_path, "r") as f:
+            return json.loads(f.read())
+
+    def set_file_data(self, data):
+        with open(self.temp_file_path, "w") as f:
+            f.write(json.dumps(data))
+
+    def set_set_once(self):
+        data = self.get_file_data()
+        if not data:
+            data = {}
+        if not data.get(self.doc.Title):
+            data[self.doc.Title] = {}
+        data[self.doc.Title]["set_once"] = True
+        self.set_file_data(data)
+
+    def is_set_once(self):
+        data = self.get_file_data()
+        if not data:
+            return False
+        model_data = data.get(self.doc.Title)
+        if not model_data:
+            return False
+        return model_data.get("set_once", False)
+
+    def set_icon(self):
+        from ServerUtils import (
+            is_model_quality_auto_checks_successful,
+        )
+
+        model_quality_auto_button_name = "ModelQualityAutoChecks"
+        model_quality_auto_path = "{}\\pyBpm.tab\\BIM.panel\\{}.pushbutton\\".format(
+            root_path, model_quality_auto_button_name
+        )
+        ui_button = ribbon.get_uibutton(model_quality_auto_button_name)
+        if ui_button:
+            if not is_model_quality_auto_checks_successful(self.doc, "A"):
+                ui_button.set_icon(
+                    model_quality_auto_path + "icon_failed.png",
+                    icon_size=32,
+                )
+            else:
+                ui_button.set_icon(
+                    model_quality_auto_path + "icon.png",
+                    icon_size=32,
+                )
+            self.set_set_once()
