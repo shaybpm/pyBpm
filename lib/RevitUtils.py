@@ -562,3 +562,17 @@ def get_level_bounding_boxes(doc):
         model_bboxes.append(bbox_dict)
 
     return model_bboxes
+
+
+def handle_document_activated(doc):
+    from ServerUtils import ServerPermissions
+    from PyRevitUtils import ModelQualityAutoChecksToggleIcon
+
+    # Set the project permissions
+    if doc.IsModelInCloud:
+        server_permissions = ServerPermissions(doc)
+        server_permissions.set_project_permissions()
+
+    # Set the model quality auto checks icon
+    model_quality_auto_checks_toggle_icon = ModelQualityAutoChecksToggleIcon(doc)
+    model_quality_auto_checks_toggle_icon.set_icon()

@@ -6,7 +6,6 @@ def get_env_mode():
         return "prod"
 
 
-# TODO: change the prod url
 server_url = (
     "http://localhost:5000/"
     if get_env_mode() == "dev"

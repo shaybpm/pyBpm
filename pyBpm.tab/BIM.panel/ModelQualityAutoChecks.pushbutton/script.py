@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-""" Open the Model Quality Report 
-Click with Shift to open in browser """
-__title__ = "Model Quality\nReport"
+"""
+Open model quality auto checks results
+Click with Shift to open in browser
+"""
+__title__ = "Model Quality\nAuto Checks"
 __author__ = "BPM"
 
 # -------------------------------
@@ -11,6 +13,8 @@ __author__ = "BPM"
 from pyrevit import script
 from RevitUtils import get_model_info
 from PyRevitUtils import open_pybpm_page
+
+from PyRevitUtils import ModelQualityAutoChecksToggleIcon
 
 # -------------------------------
 # -------------MAIN--------------
@@ -25,12 +29,15 @@ doc = uidoc.Document
 
 
 def run():
+    model_quality_auto_checks_toggle_icon = ModelQualityAutoChecksToggleIcon(doc)
+    model_quality_auto_checks_toggle_icon.set_icon()
+
     model_info = get_model_info(doc)
 
-    rel_target_html = "{}/model-quality/{}".format(
+    rel_target_html = "{}/model-quality-auto/{}".format(
         model_info["projectGuid"], model_info["modelGuid"]
     )
-    rel_target_css = "styles/mq-model.css"
+    rel_target_css = "styles/mq-model-auto.css"
 
     output = script.get_output() if not __shiftclick__ else None  # type: ignore
 

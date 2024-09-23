@@ -1,16 +1,19 @@
+# -*- coding: utf-8 -*-
+
+
 def run():
     from pyrevit import EXEC_PARAMS
     import os, sys
 
-    sys.path.append(os.path.join("..", "lib"))
-    from ServerUtils import ServerPermissions
+    lib_path = os.path.join("..", "lib")
+    if lib_path not in sys.path:
+        sys.path.append(lib_path)
+
+    from RevitUtils import handle_document_activated
 
     doc = EXEC_PARAMS.event_args.Document
-    if not doc.IsModelInCloud:
-        return
 
-    server_permissions = ServerPermissions(doc)
-    server_permissions.set_project_permissions()
+    handle_document_activated(doc)
 
 
 try:
