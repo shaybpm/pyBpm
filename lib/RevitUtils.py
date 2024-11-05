@@ -576,3 +576,25 @@ def handle_document_activated(doc):
     # Set the model quality auto checks icon
     model_quality_auto_checks_toggle_icon = ModelQualityAutoChecksToggleIcon(doc)
     model_quality_auto_checks_toggle_icon.set_icon()
+
+
+def get_level_by_point(point, doc, only_above=False):
+    from pyUtils import is_close
+
+    levels = get_levels_sorted(doc)
+    if only_above:
+        levels_filtered = [
+            level
+            for level in levels
+            if level.ProjectElevation <= point.Z
+            or is_close(level.ProjectElevation, point.Z, abs_tol=0.01)
+        ]
+        min_level = min(levels, key=lambda level: level.ProjectElevation)
+        levels = levels_filtered if len(levels_filtered) > 0 else [min_level]
+    target_level = levels[0]
+    for level in levels:
+        if abs(level.ProjectElevation - point.Z) < abs(
+            target_level.ProjectElevation - point.Z
+        ):
+            target_level = level
+    return target_level

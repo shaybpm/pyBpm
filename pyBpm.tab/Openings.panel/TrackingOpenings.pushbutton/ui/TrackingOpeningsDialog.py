@@ -22,6 +22,7 @@ from RevitUtils import (
     convertRevitNumToCm,
     get_ui_view as ru_get_ui_doc,
     get_model_guids,
+    get_level_by_point,
 )
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
 from UiUtils import SelectFromList
@@ -152,13 +153,14 @@ class TrackingOpeningsDialog(Windows.Window):
         self.update_end_date()
 
         self._current_sort_key = None
-        self.data_table_col_sizes = [64, 48, 80, 120, 40]
-        self.data_table_col_sizes.append(522 - sum(self.data_table_col_sizes))
+        self.data_table_col_sizes = [64, 48, 80, 120, 120, 40]
+        self.data_table_col_sizes.append(700 - 58 - sum(self.data_table_col_sizes))
         (
             self.sort_discipline_btn,
             self.sort_mark_btn,
             self.sort_changeType_btn,
             self.sort_scheduleLevel_btn,
+            self.sort_realLevel_btn,
             self.sort_floor_btn,
             self.sort_approved_btn,
         ) = self.init_title_data_grid()
@@ -192,6 +194,19 @@ class TrackingOpeningsDialog(Windows.Window):
 
     @openings.setter
     def openings(self, value):
+        for opening in value:
+            current_bbox = opening["currentBBox"]
+            if not current_bbox:
+                opening["currentRealLevel"] = ""
+                continue
+            current_point_xyz = XYZ(
+                get_center(current_bbox, "x"),
+                get_center(current_bbox, "y"),
+                get_center(current_bbox, "z"),
+            )
+            currentLevel = get_level_by_point(current_point_xyz, self.doc, True)
+            opening["currentRealLevel"] = currentLevel.Name if currentLevel else ""
+
         self._openings = value
         self.display_openings = value
         self.number_of_data_TextBlock.Text = str(len(self._openings))
@@ -220,7 +235,9 @@ class TrackingOpeningsDialog(Windows.Window):
         self.sort_mark_btn.Background = Windows.Media.Brushes.White
         self.sort_changeType_btn.Background = Windows.Media.Brushes.White
         self.sort_scheduleLevel_btn.Background = Windows.Media.Brushes.White
+        self.sort_realLevel_btn.Background = Windows.Media.Brushes.White
         self.sort_floor_btn.Background = Windows.Media.Brushes.White
+        self.sort_approved_btn.Background = Windows.Media.Brushes.White
         if value is None:
             return
         sort_color = (
@@ -240,6 +257,9 @@ class TrackingOpeningsDialog(Windows.Window):
             return
         if _value == "currentScheduledLevel":
             self.sort_scheduleLevel_btn.Background = sort_color
+            return
+        if _value == "currentRealLevel":
+            self.sort_realLevel_btn.Background = sort_color
             return
         if _value == "isFloorOpening":
             self.sort_floor_btn.Background = sort_color
@@ -289,13 +309,9 @@ class TrackingOpeningsDialog(Windows.Window):
         self.level_filter_ComboBox.Items.Clear()
         self.level_filter_ComboBox.Items.Add(self.ALL_LEVELS)
         self.level_filter_ComboBox.SelectedIndex = 0
-        current_scheduled_levels = [x["currentScheduledLevel"] for x in self.openings]
-        last_scheduled_levels = [x["lastScheduledLevel"] for x in self.openings]
-        all_scheduled_levels = list(
-            set(current_scheduled_levels + last_scheduled_levels)
-        )
-        all_scheduled_levels = sorted(all_scheduled_levels)
-        for level in all_scheduled_levels:
+        all_real_levels = {x["currentRealLevel"] for x in self.openings}
+        all_real_levels = sorted(all_real_levels)
+        for level in all_real_levels:
             if level is None:
                 continue
             self.level_filter_ComboBox.Items.Add(level)
@@ -374,8 +390,7 @@ class TrackingOpeningsDialog(Windows.Window):
             self.display_openings = [
                 x
                 for x in self.display_openings
-                if x["currentScheduledLevel"] == selected_level
-                # or x["lastScheduledLevel"] == selected_level
+                if x["currentRealLevel"] == selected_level
             ]
         if self.shape_filter_ComboBox.SelectedIndex != 0:
             selected_shape = self.shape_filter_ComboBox.SelectedValue
@@ -523,31 +538,39 @@ class TrackingOpeningsDialog(Windows.Window):
         Windows.Controls.Grid.SetColumn(sort_changeType_btn, 2)
 
         sort_scheduleLevel_btn = Windows.Controls.Button()
-        sort_scheduleLevel_btn.Content = "Level"
+        sort_scheduleLevel_btn.Content = "Schedule Level"
         sort_scheduleLevel_btn.Click += self.sort_scheduleLevel_btn_click
         sort_scheduleLevel_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_scheduleLevel_btn)
         Windows.Controls.Grid.SetColumn(sort_scheduleLevel_btn, 3)
+
+        sort_realLevel_btn = Windows.Controls.Button()
+        sort_realLevel_btn.Content = "Real Level"
+        sort_realLevel_btn.Click += self.sort_realLevel_btn_click
+        sort_realLevel_btn.Background = Windows.Media.Brushes.White
+        grid.Children.Add(sort_realLevel_btn)
+        Windows.Controls.Grid.SetColumn(sort_realLevel_btn, 4)
 
         sort_floor_btn = Windows.Controls.Button()
         sort_floor_btn.Content = "Floor"
         sort_floor_btn.Click += self.sort_floor_btn_click
         sort_floor_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_floor_btn)
-        Windows.Controls.Grid.SetColumn(sort_floor_btn, 4)
+        Windows.Controls.Grid.SetColumn(sort_floor_btn, 5)
 
         sort_approved_btn = Windows.Controls.Button()
         sort_approved_btn.Content = "Approved"
         sort_approved_btn.Click += self.sort_approved_btn_click
         sort_approved_btn.Background = Windows.Media.Brushes.White
         grid.Children.Add(sort_approved_btn)
-        Windows.Controls.Grid.SetColumn(sort_approved_btn, 5)
+        Windows.Controls.Grid.SetColumn(sort_approved_btn, 6)
 
         return (
             sort_discipline_btn,
             sort_mark_btn,
             sort_changeType_btn,
             sort_scheduleLevel_btn,
+            sort_realLevel_btn,
             sort_floor_btn,
             sort_approved_btn,
         )
@@ -576,6 +599,9 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def sort_scheduleLevel_btn_click(self, sender, e):
         self.sort_data_by("currentScheduledLevel")
+
+    def sort_realLevel_btn_click(self, sender, e):
+        self.sort_data_by("currentRealLevel")
 
     def sort_floor_btn_click(self, sender, e):
         self.sort_data_by("isFloorOpening")
@@ -979,6 +1005,7 @@ class ListBoxItemOpening(Windows.Controls.ListBoxItem):
             "mark",
             "changeType",
             "currentScheduledLevel",
+            "currentRealLevel",
             "isFloorOpening",
             "approved",
         ]
