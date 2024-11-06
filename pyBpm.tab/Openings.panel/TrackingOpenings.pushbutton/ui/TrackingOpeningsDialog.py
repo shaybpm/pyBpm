@@ -195,17 +195,15 @@ class TrackingOpeningsDialog(Windows.Window):
     @openings.setter
     def openings(self, value):
         for opening in value:
-            current_bbox = opening["currentBBox"]
-            if not current_bbox:
-                opening["currentRealLevel"] = ""
-                continue
-            current_point_xyz = XYZ(
-                get_center(current_bbox, "x"),
-                get_center(current_bbox, "y"),
-                get_center(current_bbox, "z"),
-            )
-            currentLevel = get_level_by_point(current_point_xyz, self.doc, True)
-            opening["currentRealLevel"] = currentLevel.Name if currentLevel else ""
+            bbox = Utils.get_bbox(self.doc, opening, True, True)
+            if bbox:
+                center_point = XYZ(
+                    (bbox.Min.X + bbox.Max.X) / 2,
+                    (bbox.Min.Y + bbox.Max.Y) / 2,
+                    (bbox.Min.Z + bbox.Max.Z) / 2,
+                )
+                currentLevel = get_level_by_point(center_point, self.doc, True)
+                opening["currentRealLevel"] = currentLevel.Name if currentLevel else ""
 
         self._openings = value
         self.display_openings = value
