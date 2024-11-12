@@ -232,7 +232,7 @@ def set_ref_level_and_mid_elevation(opening):
 
 def is_positioned_correctly(opening):
     """
-    Sets the parameter 'isRotated' to True if the opening is positioned correctly, else sets it to False.
+    Sets the parameter 'isRotated' to 0 if the opening is positioned correctly, else sets it to 1.
 
     If the opening belongs to an older version of the family with the parameter 'Insertion Configuration' (as a string),
     it sets this parameter to 'OK' or 'NOT-OK' accordingly. If both parameters ('isRotated' and 'Insertion Configuration') are missing, the function will return a warning.
@@ -265,7 +265,7 @@ def is_positioned_correctly(opening):
     def set_target_param(bool_value):
         """Sets the target parameter to the given boolean value, and returns the results message."""
         if target_param_name == "isRotated":
-            target_param.Set(1 if bool_value else 0)
+            target_param.Set(0 if bool_value else 1)
             return "{} parameter set to {}.".format(target_param_name, bool_value)
         else:
             target_param.Set("OK" if bool_value else "NOT-OK")
