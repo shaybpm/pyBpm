@@ -12,6 +12,18 @@ PYBPM_FILTER_NAME_OPENING = "PYBPM-FILTER-NAME_OPENING"
 PYBPM_FILTER_NAME_NOT_OPENING = "PYBPM-FILTER-NAME_NOT-OPENING"
 
 
+def is_opening_rectangular(opening):
+    from RevitUtils import getElementName
+
+    opening_symbol = opening.Symbol
+    opening_symbol_name = getElementName(opening_symbol)
+    opening_symbol_family_name = opening_symbol.FamilyName
+    return (
+        "REC" in opening_symbol_name.upper()
+        or "REC" in opening_symbol_family_name.upper()
+    )
+
+
 def create_opening_filter(doc):
     import clr
 

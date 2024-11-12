@@ -15,7 +15,7 @@ from Autodesk.Revit.DB import (
 
 import pyUtils
 import RevitUtils
-from RevitUtilsOpenings import shapes, get_all_openings
+from RevitUtilsOpenings import shapes, get_all_openings, is_opening_rectangular
 from PyRevitUtils import TempElementStorage
 from Config import get_opening_set_temp_file_id
 
@@ -49,29 +49,40 @@ def is_floor(opening):
         return False
 
 
-def set_mep_not_required_param(doc, opening):
-    """Get the schedule level parameter and check if it is match to the opening instance in the model. If it is, set the MEP - Not Required parameter to true, else set it to false."""
+def set_inspect_param(doc, opening):
+    """Get the schedule level parameter and check if it is match to the opening instance in the model. If it is, set the Inspect parameter to true, else set it to false.
+
+    In order to support old versions of opening families, we will set the MEP - Not Required parameter, and alert only both parameters are not found.
+    """
     results = {
-        "function": "set_mep_not_required_param",
+        "function": "set_inspect_param",
         "status": "OK",
         "message": "",
         "opening_id": opening.Id,
     }
+
+    param__inspect = opening.LookupParameter("Inspect")
     param__mep_not_required = opening.LookupParameter("MEP - Not Required")
-    if not param__mep_not_required:
+
+    if not param__mep_not_required and not param__inspect:
         results["status"] = "WARNING"
-        results["message"] = "No MEP - Not Required parameter found."
+        results["message"] = "No Inspect or MEP - Not Required parameter found."
         return results
-    if param__mep_not_required.IsReadOnly:
+
+    target_param = param__inspect if param__inspect else param__mep_not_required
+    target_param_name = "Inspect" if param__inspect else "MEP - Not Required"
+
+    if target_param.IsReadOnly:
         results["status"] = "WARNING"
-        results["message"] = "MEP - Not Required parameter is read only."
+        results["message"] = "{} parameter is read only.".format(target_param_name)
         return results
+
     param__schedule_level = opening.get_Parameter(
         BuiltInParameter.INSTANCE_SCHEDULE_ONLY_LEVEL_PARAM
     )
     id__schedule_level = param__schedule_level.AsElementId()
     if id__schedule_level == ElementId.InvalidElementId:
-        param__mep_not_required.Set(0)
+        target_param.Set(0)
         results["status"] = "WARNING"
         results["message"] = "Schedule Level is not set."
         return results
@@ -97,7 +108,7 @@ def set_mep_not_required_param(doc, opening):
             all_levels_filtered if len(all_levels_filtered) > 0 else [min_level]
         )
     if len(all_levels) == 0:
-        param__mep_not_required.Set(0)
+        target_param.Set(0)
         results["status"] = "WARNING"
         results["message"] = "No levels found."
         return results
@@ -109,12 +120,12 @@ def set_mep_not_required_param(doc, opening):
             target_level = level
 
     if target_level.Id == id__schedule_level:
-        param__mep_not_required.Set(1)
-        results["message"] = "MEP - Not Required parameter set to true."
+        target_param.Set(1)
+        results["message"] = "{} parameter set to true.".format(target_param_name)
         return results
     else:
-        param__mep_not_required.Set(0)
-        results["message"] = "MEP - Not Required parameter set to false."
+        target_param.Set(0)
+        results["message"] = "{} parameter set to false.".format(target_param_name)
         return results
 
 
@@ -220,8 +231,13 @@ def set_ref_level_and_mid_elevation(opening):
 
 
 def is_positioned_correctly(opening):
-    """Sets the parameter 'Insertion Configuration' to 'OK' if the opening is positioned correctly, else sets it to 'NOT-OK'.
-    This function needs to run only if the opening is not a floor opening or a round face opening.
+    """
+    Sets the parameter 'isRotated' to True if the opening is positioned correctly, else sets it to False.
+
+    If the opening belongs to an older version of the family with the parameter 'Insertion Configuration' (as a string),
+    it sets this parameter to 'OK' or 'NOT-OK' accordingly. If both parameters ('isRotated' and 'Insertion Configuration') are missing, the function will return a warning.
+
+    This function should only run if the opening is neither a floor opening nor a round face opening.
     """
     results = {
         "function": "is_positioned_correctly",
@@ -229,32 +245,38 @@ def is_positioned_correctly(opening):
         "message": "",
         "opening_id": opening.Id,
     }
+    if not is_opening_rectangular(opening):
+        results["message"] = "Opening is not rectangular. Skipping."
+        return results
 
+    param__is_rotated = opening.LookupParameter("isRotated")
     param__insertion_configuration = opening.LookupParameter("Insertion Configuration")
-    if not param__insertion_configuration:
+
+    target_param = (
+        param__is_rotated if param__is_rotated else param__insertion_configuration
+    )
+    target_param_name = "isRotated" if param__is_rotated else "Insertion Configuration"
+
+    if target_param.IsReadOnly:
         results["status"] = "WARNING"
-        results["message"] = "No Insertion Configuration parameter found."
-        return results
-    if param__insertion_configuration.IsReadOnly:
-        results["status"] = "WARNING"
-        results["message"] = "Insertion Configuration parameter is read only."
+        results["message"] = "{} parameter is read only.".format(target_param_name)
         return results
 
-    opening_symbol = opening.Symbol
-    opening_symbol_name = RevitUtils.getElementName(opening_symbol)
-    opening_symbol_family_name = opening_symbol.FamilyName
-    if (
-        "ROUND" in opening_symbol_name.upper()
-        or "CIRC" in opening_symbol_name.upper()
-        or "ROUND" in opening_symbol_family_name.upper()
-        or "CIRC" in opening_symbol_family_name.upper()
-    ):
-        param__insertion_configuration.Set("OK")
-        results["message"] = "Round Face Opening. Insertion Configuration set to OK."
-        return results
+    def set_target_param(bool_value):
+        """Sets the target parameter to the given boolean value, and returns the results message."""
+        if target_param_name == "isRotated":
+            target_param.Set(1 if bool_value else 0)
+            return "{} parameter set to {}.".format(target_param_name, bool_value)
+        else:
+            target_param.Set("OK" if bool_value else "NOT-OK")
+            return "{} parameter set to {}.".format(
+                target_param_name, "OK" if bool_value else "NOT-OK"
+            )
+
     if is_floor(opening):
-        param__insertion_configuration.Set("OK")
-        results["message"] = "Floor Opening. Insertion Configuration set to OK."
+        # param__insertion_configuration.Set("OK")
+        res_message = set_target_param(True)
+        results["message"] = "Floor Opening. " + res_message
         return results
 
     param__h = opening.LookupParameter("h")
@@ -291,16 +313,18 @@ def is_positioned_correctly(opening):
     )
     bb_num = bbox.Max.Z - bbox.Min.Z
     if pyUtils.is_close(h_num, bb_num, 0.001):
-        param__insertion_configuration.Set("OK")
-        results["message"] = (
-            "The position is correct. Insertion Configuration set to OK."
-        )
+        # param__insertion_configuration.Set("OK")
+        res_message = set_target_param(True)
+        results["message"] = "The position is correct. " + res_message
         return results
     else:
-        param__insertion_configuration.Set("NOT-OK")
+        # param__insertion_configuration.Set("NOT-OK")
+        res_message = set_target_param(False)
         results["status"] = "WARNING"
         results["message"] = (
-            "The position is not correct. Insertion Configuration set to NOT-OK. You can fix it by selecting the opening and press spacebar."
+            "The position is not correct. {} You can fix it by selecting the opening and press spacebar.".format(
+                res_message
+            )
         )
         return results
 
@@ -387,7 +411,7 @@ def execute_all_functions(doc, opening):
         "opening_id": opening.Id,
         "all_results": [],
     }
-    results0 = set_mep_not_required_param(doc, opening)
+    results0 = set_inspect_param(doc, opening)
     results1 = set_comments(opening)
     results2 = set_elevation_params(doc, opening)
     results3 = set_ref_level_and_mid_elevation(opening)
