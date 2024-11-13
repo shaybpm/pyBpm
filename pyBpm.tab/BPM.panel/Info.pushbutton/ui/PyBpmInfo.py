@@ -38,6 +38,15 @@ class PyBpmInfo(Windows.Window):
                 + ".\n"
                 + "תוכל לעדכן על ידי לחיצה על כפתור Update."
             )
+            + "\n"
+            + "\n"
+            + "מה חדש בגרסה זו:"
+            + "\n"
+            + "- כפתור ה-Info."
+            + "\n"
+            + "- משפחות פתחים ותגים חדשות."
+            + "\n"
+            + "- אפשרות להחליף למשפחות החדשות בקלות."
         )
         self.engText = (
             "BPM offers pyBpm, an add-in for Revit that was built specifically to help companies working with us in BIM planning and management processes. The add-in allows you to streamline work processes, improve the quality of the products and save time."
@@ -52,8 +61,16 @@ class PyBpmInfo(Windows.Window):
                 + ".\n"
                 + "You can update by clicking the Update button."
             )
+            + "\n"
+            + "\n"
+            + "What's new in this version:"
+            + "\n"
+            + "- The Info button."
+            + "\n"
+            + "- New Opening and Tag Families."
+            + "\n"
+            + "- Easily switch to the new families."
         )
-
         self.LanguageComboBox.SelectionChanged += self.LanguageComboBox_SelectionChanged
         self.AddText()
 
