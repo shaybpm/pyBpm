@@ -3,11 +3,41 @@ import os
 
 from Autodesk.Revit.DB import FilteredElementCollector, Family
 
-from pyrevit import script
+from pyrevit import script, forms
 
 # ------------------------------------------------------------
 output = script.get_output()
 output.close_others()
+
+
+def get_discipline_from_user():
+    """Get the discipline from the user.
+
+    Returns:
+        Tuple[str, str]: The discipline code and the discipline name.
+    """
+    discipline_dict = {
+        "A - אדריכלות": "A",
+        "S - קונסטרוקציה": "S",
+        "P - אינסטלציה": "P",
+        "SP - ספרינקלרים": "SP",
+        "C - תקשורת": "C",
+        "H - מיזוג אוויר": "H",
+        "E - חשמל": "E",
+        "G - גזים רפואיים": "G",
+        "F - דלק": "F",
+    }
+
+    selected_discipline_display = forms.SelectFromList.show(
+        discipline_dict.keys(),
+        title="Select Discipline",
+        multiselect=False,
+        button_name="Select",
+    )
+    if selected_discipline_display is None:
+        return None, None
+    selected_discipline_code = discipline_dict[selected_discipline_display]
+    return selected_discipline_code, selected_discipline_display
 
 
 def get_family_path(family_name):
