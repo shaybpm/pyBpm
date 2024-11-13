@@ -84,6 +84,8 @@ def change_openings_approved_status(doc, password, newStatusArr):
 
 class ProjectStructuralModels:
     def __init__(self, doc):
+        if not doc.IsModelInCloud:
+            return
         self.doc = doc
         self.structural_models = self.get_structural_models()
 
