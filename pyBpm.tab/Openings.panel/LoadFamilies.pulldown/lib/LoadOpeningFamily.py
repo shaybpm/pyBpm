@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
 
-from Autodesk.Revit.DB import FilteredElementCollector, Family, Transaction, ElementId
+from Autodesk.Revit.DB import (
+    FilteredElementCollector,
+    Family,
+    Transaction,
+    LocationPoint,
+)
 
 from pyrevit import script, forms
 from RevitUtils import (
@@ -84,11 +89,14 @@ def overwrite_family(family):
     family_symbol = family_symbols[0]
     all_instances = get_family_symbol_instances(family_symbol)
 
-    instances_param_dict = {}
+    instances_info_list = []
     for instance in all_instances:
-        instance_id_str = instance.Id.ToString()
-        if instance_id_str not in instances_param_dict:
-            instances_param_dict[instance_id_str] = {}
+        instances_info = {
+            "params": {},
+            "reference": instance.HostFace,
+            "location": instance.Location.Point,
+            "referenceDirection": instance.FacingOrientation,
+        }
         for param in instance.Parameters:
             if param.IsReadOnly:
                 continue
@@ -98,48 +106,39 @@ def overwrite_family(family):
             if storage_type_str == "None":
                 continue
             if storage_type_str == "String":
-                instances_param_dict[instance_id_str][param.Definition.Name] = {
+                instances_info["params"][param.Definition.Name] = {
                     "value": param.AsString(),
                     "type": storage_type_str,
                 }
             elif storage_type_str == "Double":
-                instances_param_dict[instance_id_str][param.Definition.Name] = {
+                instances_info["params"][param.Definition.Name] = {
                     "value": param.AsDouble(),
                     "type": storage_type_str,
                 }
             elif storage_type_str == "Integer":
-                instances_param_dict[instance_id_str][param.Definition.Name] = {
+                instances_info["params"][param.Definition.Name] = {
                     "value": param.AsInteger(),
                     "type": storage_type_str,
                 }
             elif storage_type_str == "ElementId":
-                instances_param_dict[instance_id_str][param.Definition.Name] = {
+                instances_info["params"][param.Definition.Name] = {
                     "value": param.AsElementId(),
                     "type": storage_type_str,
                 }
             else:
-                instances_param_dict[instance_id_str][param.Definition.Name] = {
+                instances_info["params"][param.Definition.Name] = {
                     "value": param.AsValueString(),
                     "type": storage_type_str,
                 }
+        instances_info_list.append(instances_info)
 
-    # Change family name and symbol name
     family_name = family.Name
-    temp_family_name = family_name + "_temp"
-    symbol_name = getElementName(family_symbol)
-    temp_symbol_name = symbol_name + "_temp"
+
+    # Delete the old family
     t1 = Transaction(doc, "BPM | Overwrite Family")
     t1.Start()
-    family.Name = temp_family_name
-    setElementName(family_symbol, temp_symbol_name)
+    doc.Delete(family.Id)
     t1.Commit()
-
-    def roll_back_rename():
-        t_roll_back_rename = Transaction(doc, "BPM | Overwrite Family")
-        t_roll_back_rename.Start()
-        family.Name = family_name
-        setElementName(family_symbol, symbol_name)
-        t_roll_back_rename.Commit()
 
     # Load the new family
     t2 = Transaction(doc, "BPM | Overwrite Family")
@@ -148,45 +147,44 @@ def overwrite_family(family):
         success_load_new = doc.LoadFamily(get_family_path(family_name))
     except Exception as e:
         t2.RollBack()
-        roll_back_rename()
         return html_res + get_failed_html_message(str(e))
     t2.Commit()
 
     if not success_load_new:
-        roll_back_rename()
         return html_res + get_failed_html_message("Failed to load the new family.")
 
     # Get the new family
     new_family = get_family_by_name(doc, family_name)
     if new_family is None:
-        roll_back_rename()
         return html_res + get_failed_html_message("Failed to get the new family.")
     new_family_symbols = get_family_symbols(new_family)
     if new_family_symbols is None:
-        roll_back_rename()
         return html_res + get_failed_html_message(
             "Failed to get the new family symbols."
         )
     if len(new_family_symbols) != 1:
-        roll_back_rename()
         return html_res + get_failed_html_message(
             "New family should contain exactly one symbol. Found: "
             + str(len(new_family_symbols))
         )
     new_family_symbol = new_family_symbols[0]
-    print(getElementName(new_family_symbol))
+    if not new_family_symbol.IsActive:
+        t3 = Transaction(doc, "BPM | Overwrite Family")
+        t3.Start()
+        new_family_symbol.Activate()
+        t3.Commit()
 
-    # For each instance, change the symbol to the new symbol, and set the parameters
-    t3 = Transaction(doc, "BPM | Overwrite Family")
-    t3.Start()
-    for instance_id_str, param_dict in instances_param_dict.items():
-        instance = doc.GetElement(ElementId(int(instance_id_str)))
-        if instance is None:
-            raise Exception("Failed to get instance by id: " + instance_id_str)
-
-        instance.ChangeTypeId(new_family_symbol.Id)
-        for param_name, param_value in param_dict.items():
-            param = instance.LookupParameter(param_name)
+    t4 = Transaction(doc, "BPM | Overwrite Family")
+    t4.Start()
+    for instances_info in instances_info_list:
+        new_instance = doc.Create.NewFamilyInstance(
+            instances_info["reference"],
+            instances_info["location"],
+            instances_info["referenceDirection"],
+            new_family_symbol,
+        )
+        for param_name, param_value in instances_info["params"].items():
+            param = new_instance.LookupParameter(param_name)
             if param is None:
                 continue
             if param.IsReadOnly:
@@ -194,12 +192,6 @@ def overwrite_family(family):
             if param.StorageType.ToString() != param_value["type"]:
                 continue
             param.Set(param_value["value"])
-    t3.Commit()
-
-    # Delete the old family
-    t4 = Transaction(doc, "BPM | Overwrite Family")
-    t4.Start()
-    doc.Delete(family.Id)
     t4.Commit()
 
     return html_res + (
