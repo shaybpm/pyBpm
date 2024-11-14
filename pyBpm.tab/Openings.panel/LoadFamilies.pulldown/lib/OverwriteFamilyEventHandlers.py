@@ -102,6 +102,18 @@ def load_new_family(uiapp):
         # t2 is inside the activate_family_symbol function
         activate_family_symbol(new_family_symbol)
 
+        # set the description parameter of the new family symbol
+        new_family_symbol_description = ex_event_file.get_key_value(
+            "current_family_symbol_description"
+        )
+        if new_family_symbol_description:
+            t3 = Transaction(doc, "BPM | Set Family Symbol Description")
+            t3.Start()
+            new_family_symbol.LookupParameter("Description").Set(
+                new_family_symbol_description
+            )
+            t3.Commit()
+
         t_group.Assimilate()
 
         # add the id of the new family and the new family symbol to the external event data file

@@ -75,6 +75,17 @@ class OverwriteFamilyDialog(Windows.Window):
         self.ex_event_file.set_key_value(
             "current_family_symbol_id", family_symbol.Id.ToString()
         )
+
+        family_symbol_description_param = family_symbol.LookupParameter("Description")
+        family_symbol_description_value = ""
+        if family_symbol_description_param is not None:
+            family_symbol_description_value = (
+                family_symbol_description_param.AsString() or ""
+            )
+        self.ex_event_file.set_key_value(
+            "current_family_symbol_description", family_symbol_description_value
+        )
+
         all_instances = get_family_symbol_instances(family_symbol)
 
         self.instances_param_dict = {}

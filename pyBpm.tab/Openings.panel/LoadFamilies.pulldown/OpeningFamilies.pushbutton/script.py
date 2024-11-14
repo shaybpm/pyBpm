@@ -57,7 +57,6 @@ def run():
         # )
         # if not to_continue:
         #     return
-        # TODO: Get the selected discipline from the user or from the old family
         OverwriteFamily.run(doc, family_names)
         return
 
