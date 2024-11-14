@@ -5,13 +5,19 @@ from pyrevit.script import get_instance_data_file, get_bundle_name
 
 
 class ExternalEventDataFile:
-    def __init__(self, doc):
+    def __init__(self, doc, instead_bundle_name=None, instead_model_guid=None):
         model_guid = (
-            doc.GetCloudModelPath().GetModelGUID().ToString()
-            if doc.IsModelInCloud
-            else doc.Title
+            (
+                doc.GetCloudModelPath().GetModelGUID().ToString()
+                if doc.IsModelInCloud
+                else doc.Title
+            )
+            if instead_model_guid is None
+            else instead_model_guid
         )
-        bundle_name = get_bundle_name()
+        bundle_name = (
+            get_bundle_name() if instead_bundle_name is None else instead_bundle_name
+        )
         self.file_path = get_instance_data_file("{}_{}".format(bundle_name, model_guid))
 
     def get_data(self):
@@ -19,7 +25,7 @@ class ExternalEventDataFile:
             return {}
         with open(self.file_path, "r") as file:
             data = json.load(file)
-        return data
+            return data
 
     def get_key_value(self, key):
         data = self.get_data()

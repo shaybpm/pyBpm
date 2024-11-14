@@ -619,3 +619,23 @@ def get_family_symbol_instances(family_symbol):
     element_filter = ElementClassFilter(FamilyInstance)
     family_instance_ids = family_symbol.GetDependentElements(element_filter)
     return [doc.GetElement(x) for x in family_instance_ids]
+
+
+def activate_family_symbol(family_symbol):
+    from Autodesk.Revit.DB import Transaction
+
+    if not family_symbol.IsActive:
+        t = Transaction(family_symbol.Document, "BPM | Activate Family Symbol")
+        t.Start()
+        family_symbol.Activate()
+        t.Commit()
+
+
+def get_family_by_name(doc, family_name):
+    from Autodesk.Revit.DB import Family, FilteredElementCollector
+
+    families = FilteredElementCollector(doc).OfClass(Family)
+    for family in families:
+        if family.Name == family_name:
+            return family
+    return None
