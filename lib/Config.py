@@ -12,6 +12,10 @@ server_url = (
     else "https://pybpm.azurewebsites.net/"
 )
 
+extension_json_url = (
+    "https://raw.githubusercontent.com/shaybpm/pyBpm/main/extension.json"
+)
+
 root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
 
 

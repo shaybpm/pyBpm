@@ -1,13 +1,46 @@
 # -*- coding: utf-8 -*-
 import os
 
-from Autodesk.Revit.DB import FilteredElementCollector, Family
+from Autodesk.Revit.DB import FilteredElementCollector, Family, Transaction
 
-from pyrevit import script
+from pyrevit import script, forms
+from RevitUtils import (
+    get_family_by_name,
+)
 
 # ------------------------------------------------------------
 output = script.get_output()
 output.close_others()
+
+
+def get_discipline_from_user():
+    """Get the discipline from the user.
+
+    Returns:
+        Tuple[str, str]: The discipline code and the discipline name.
+    """
+    discipline_dict = {
+        "A - אדריכלות": "A",
+        "S - קונסטרוקציה": "S",
+        "P - אינסטלציה": "P",
+        "SP - ספרינקלרים": "SP",
+        "C - תקשורת": "C",
+        "H - מיזוג אוויר": "H",
+        "E - חשמל": "E",
+        "G - גזים רפואיים": "G",
+        "F - דלק": "F",
+    }
+
+    selected_discipline_display = forms.SelectFromList.show(
+        discipline_dict.keys(),
+        title="Select Discipline",
+        multiselect=False,
+        button_name="Select",
+    )
+    if selected_discipline_display is None:
+        return None, None
+    selected_discipline_code = discipline_dict[selected_discipline_display]
+    return selected_discipline_code, selected_discipline_display
 
 
 def get_family_path(family_name):
@@ -16,7 +49,17 @@ def get_family_path(family_name):
 
 
 def run(doc, family_names):
-    output.print_html("<h1>Load Opening Families</h1>")
+    """Load the families into the project.
+
+    Args:
+        doc (Autodesk.Revit.DB.Document): _description_
+        family_names (str): The names of the families to load.
+
+    Returns:
+        List[Autodesk.Revit.DB.Family]: The loaded families.
+    """
+
+    output.print_html("<h1>Load Families</h1>")
 
     some_family_already_exist = False
 
@@ -32,7 +75,10 @@ def run(doc, family_names):
 
         # Load the family if it's not loaded
         if not family_already_loaded:
+            t = Transaction(doc, "BPM | Load Opening Families")
+            t.Start()
             family_loaded = doc.LoadFamily(get_family_path(family_name))
+            t.Commit()
             if family_loaded:
                 output.print_html(
                     '<div style="color:green">Loaded family: ' + family_name + "</div>"
@@ -51,8 +97,7 @@ def run(doc, family_names):
 
     families_to_return = []
     for family_name in family_names:
-        families = FilteredElementCollector(doc).OfClass(Family)
-        for family in families:
-            if family.Name == family_name:
-                families_to_return.append(family)
+        family = get_family_by_name(doc, family_name)
+        if family:
+            families_to_return.append(family)
     return families_to_return

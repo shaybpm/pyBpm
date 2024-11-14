@@ -10,14 +10,16 @@ __author__ = "Eyal Sinay"
 # ------------IMPORTS------------
 # -------------------------------
 
-from Autodesk.Revit.DB import Transaction
+from Autodesk.Revit.DB import Transaction, TransactionGroup
 
 import os, sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import LoadOpeningFamily  # type: ignore
+import OverwriteFamily  # type: ignore
 
 from pyrevit import forms
+from RevitUtils import get_family_symbols
 
 # -------------------------------
 # -------------MAIN--------------
@@ -26,47 +28,49 @@ from pyrevit import forms
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 
+shiftclick = __shiftclick__  # type: ignore
+
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
 
-
-def get_family_symbols(family):
-    symbols = family.GetFamilySymbolIds()
-    return [doc.GetElement(symbol) for symbol in symbols]
+family_names = ["M_Rectangular Face Opening Solid", "M_Round Face Opening Solid"]
 
 
 def run():
-    descriptions = {
-        "A - אדריכלות": "A",
-        "S - קונסטרוקציה": "S",
-        "P - אינסטלציה": "P",
-        "SP - ספרינקלרים": "SP",
-        "C - תקשורת": "C",
-        "H - מיזוג אוויר": "H",
-        "E - חשמל": "E",
-        "G - גזים רפואיים": "G",
-        "F - דלק": "F",
-    }
-
-    descriptions_selected = forms.SelectFromList.show(
-        descriptions.keys(),
-        title="Select Discipline",
-        multiselect=False,
-        button_name="Select",
-    )
-    if descriptions_selected is None:
+    if shiftclick:
+        # to_continue = forms.alert(
+        #     "\n".join(
+        #         [
+        #             "⚠️ Important Warning!",
+        #             "This operation will overwrite existing families in the model.",
+        #             "Please ensure that the model is saved or synchronized before proceeding.",
+        #             "After the script completes, review the model carefully.",
+        #             "If any issues are found, you can undo the changes or reload the last saved version.",
+        #             "",
+        #             "Are you sure you want to continue?",
+        #         ]
+        #     ),
+        #     title="Overwrite Families",
+        #     yes=True,
+        #     no=True,
+        # )
+        # if not to_continue:
+        #     return
+        # TODO: Get the selected discipline from the user or from the old family
+        OverwriteFamily.run(doc, family_names)
         return
-    descriptions_selected = descriptions[descriptions_selected]
 
+    descriptions_selected, _ = LoadOpeningFamily.get_discipline_from_user()
+    if not descriptions_selected:
+        return
+
+    new_families = LoadOpeningFamily.run(doc, family_names)
     t = Transaction(doc, "BPM | Load Opening Families")
     t.Start()
-    new_families = LoadOpeningFamily.run(
-        doc, ["M_Rectangular Face Opening Solid", "M_Round Face Opening Solid"]
-    )
     for family in new_families:
-        family_sybols = get_family_symbols(family)
-        for symbol in family_sybols:
+        family_symbols = get_family_symbols(family)
+        for symbol in family_symbols:
             symbol.LookupParameter("Description").Set(descriptions_selected)
     t.Commit()
 

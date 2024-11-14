@@ -11,6 +11,12 @@ def getElementName(element):
     return Element.Name.__get__(element)
 
 
+def setElementName(element, name):
+    from Autodesk.Revit.DB import Element
+
+    Element.Name.__set__(element, name)
+
+
 def convertRevitNumToCm(doc, num):
     from Autodesk.Revit.DB import UnitUtils
 
@@ -598,3 +604,38 @@ def get_level_by_point(point, doc, only_above=False):
         ):
             target_level = level
     return target_level
+
+
+def get_family_symbols(family):
+    doc = family.Document
+    symbol_ids = family.GetFamilySymbolIds()
+    return [doc.GetElement(symbol_id) for symbol_id in symbol_ids]
+
+
+def get_family_symbol_instances(family_symbol):
+    from Autodesk.Revit.DB import ElementClassFilter, FamilyInstance
+
+    doc = family_symbol.Document
+    element_filter = ElementClassFilter(FamilyInstance)
+    family_instance_ids = family_symbol.GetDependentElements(element_filter)
+    return [doc.GetElement(x) for x in family_instance_ids]
+
+
+def activate_family_symbol(family_symbol):
+    from Autodesk.Revit.DB import Transaction
+
+    if not family_symbol.IsActive:
+        t = Transaction(family_symbol.Document, "BPM | Activate Family Symbol")
+        t.Start()
+        family_symbol.Activate()
+        t.Commit()
+
+
+def get_family_by_name(doc, family_name):
+    from Autodesk.Revit.DB import Family, FilteredElementCollector
+
+    families = FilteredElementCollector(doc).OfClass(Family)
+    for family in families:
+        if family.Name == family_name:
+            return family
+    return None

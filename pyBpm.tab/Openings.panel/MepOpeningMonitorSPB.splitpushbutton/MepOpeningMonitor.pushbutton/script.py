@@ -289,6 +289,8 @@ def is_structural_model_exists():
         link_doc = link.GetLinkDocument()
         if not link_doc:
             continue
+        if not link_doc.IsModelInCloud:
+            continue
         link_doc_guid = link_doc.GetCloudModelPath().GetModelGUID().ToString()
         if link_doc_guid in project_structural_models.structural_models:
             return True
