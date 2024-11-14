@@ -34,6 +34,8 @@ class OverwriteFamilyDialog(Windows.Window):
         self.family = family
         self._step = 0
 
+        self.Title = "Overwrite Family: {}".format(family.Name)
+
         self.messages = [
             "Rename the current family and symbol, so we can late load the new family.",
             "Load the new family.",
