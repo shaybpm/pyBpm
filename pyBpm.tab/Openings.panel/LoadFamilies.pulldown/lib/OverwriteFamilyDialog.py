@@ -22,7 +22,7 @@ from OverwriteFamilyEventHandlers import (
     change_family_symbol_event,
     restore_parameters_event,
     delete_old_family_event,
-    run_opening_set_event,
+    # run_opening_set_event,
 )
 
 xaml_file = os.path.join(os.path.dirname(__file__), "OverwriteFamilyDialogUi.xaml")
@@ -42,8 +42,7 @@ class OverwriteFamilyDialog(Windows.Window):
             "Change the family symbol for all instances.",
             "Restore the parameters.",
             "Delete the old family.",
-            'Run the "Opening Set" script to update the openings.',
-            "Finished!",
+            'Finished!\nPlease close this dialog and run the "Opening Set" command.',
         ]
         self.button_contents = [
             "Rename Current Family",
@@ -51,7 +50,6 @@ class OverwriteFamilyDialog(Windows.Window):
             "Change Family Symbol",
             "Restore Parameters",
             "Delete Old Family",
-            "Run Opening Set",
             "Close",
         ]
 
@@ -160,8 +158,6 @@ class OverwriteFamilyDialog(Windows.Window):
             restore_parameters_event.Raise()
         elif self.step == 4:
             delete_old_family_event.Raise()
-        elif self.step == 5:
-            run_opening_set_event.Raise()
         else:
             self.Close()
             return

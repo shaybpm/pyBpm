@@ -224,6 +224,10 @@ delete_old_family_event = get_simple_external_event(delete_old_family)
 
 
 def run_opening_set(uiapp):
+    # NOTE:
+    # For some reason, this causes when the user closes Revit they get a note saying that Revit was closed incorrectly.
+    # For now, we'll just ask the user to run "Opening Set" themselves.
+
     sys.path.append(
         os.path.join(
             root_path, "pyBpm.tab", "Openings.panel", "OpeningSet.pushbutton", "lib"
