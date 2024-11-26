@@ -28,6 +28,7 @@ from RevitUtils import (
     get_solid_from_element,
     get_level_bounding_boxes,
     get_min_max_points_from_bbox,
+    is_vectors_orthogonal,
 )
 from RevitUtilsOpenings import get_opening_element_filter
 from ServerUtils import ProjectStructuralModels
@@ -162,16 +163,27 @@ def find_concrete_intersect(
                 BuiltInCategory.OST_StructuralColumns,
                 BuiltInCategory.OST_StairsLandings,
             ]:
-                z_direction = result.mep_element.Location.Curve.Direction.Z
-                term = -0.5 <= z_direction <= 0.5
+                mep_direction = result.mep_element.Location.Curve.Direction
+                mep_z_direction = mep_direction.Z
+                mep_is_horizontal = -0.5 <= mep_z_direction <= 0.5
                 if (
                     category == BuiltInCategory.OST_Floors
                     or category == BuiltInCategory.OST_StairsLandings
                 ):
-                    if term:
+                    if mep_is_horizontal:
                         continue
+                elif (
+                    category == BuiltInCategory.OST_Walls
+                    or category == BuiltInCategory.OST_StructuralFraming
+                ):
+                    if not mep_is_horizontal:
+                        continue
+                    if hasattr(element.Location, "Curve"):
+                        wall_direction = element.Location.Curve.Direction
+                        if not is_vectors_orthogonal(mep_direction, wall_direction, tol=0.7):
+                            continue
                 else:
-                    if not term:
+                    if not mep_is_horizontal:
                         continue
 
             bbox_element = element.get_BoundingBox(None)
@@ -216,10 +228,6 @@ def find_concrete_intersect(
             if not level_id:
                 continue
 
-            # check if the intersect is inside the element
-            # - if its a floor, the delta z of the bbox need to be at last as the height of the floor
-            # - if its a wall or a beam, the delta x or delta y of the bbox need to be at last as the thickness of the wall
-
             if category == BuiltInCategory.OST_Floors:
                 floor_thickness_param = element.get_Parameter(
                     BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM
@@ -233,7 +241,6 @@ def find_concrete_intersect(
                         if intersect_delta_z < floor_thickness:
                             continue
             else:
-                # TODO: Avoid elements that are parallel to the MEP element
                 pass
 
             intersect_outline = getOutlineByBoundingBox(

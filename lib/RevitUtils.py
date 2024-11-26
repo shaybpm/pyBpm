@@ -639,3 +639,35 @@ def get_family_by_name(doc, family_name):
         if family.Name == family_name:
             return family
     return None
+
+
+def is_vectors_orthogonal(vec1, vec2, tol=0.001):
+    """Check if two vectors are orthogonal (perpendicular).
+
+    Args:
+        vec1 (XYZ): Vector 1.
+        vec2 (XYZ): Vector 2.
+        tol (float): The tolerance for the check. Must be between 0 and 1. Default is 0.001.
+
+    Returns:
+        bool: True if the vectors are orthogonal, False otherwise.
+    """
+    from Autodesk.Revit.DB import XYZ
+
+    # Validate tolerance
+    if not (0 <= tol <= 1):
+        raise ValueError("The tolerance (tol) must be between 0 and 1.")
+
+    # Check for zero vectors
+    if vec1.IsZeroLength() or vec2.IsZeroLength():
+        raise ValueError("Cannot determine orthogonality for zero-length vectors.")
+
+    # Normalize vectors
+    vec1 = vec1.Normalize()
+    vec2 = vec2.Normalize()
+
+    # Calculate dot product
+    dot_product = abs(vec1.DotProduct(vec2))
+
+    # Check orthogonality (dot product close to zero)
+    return dot_product < tol
