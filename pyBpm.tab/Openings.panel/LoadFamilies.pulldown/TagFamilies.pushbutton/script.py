@@ -10,7 +10,7 @@ __author__ = "Eyal Sinay"
 # ------------IMPORTS------------
 # -------------------------------
 
-from Autodesk.Revit.DB import Transaction
+from Autodesk.Revit.DB import TransactionGroup
 
 import os, sys
 
@@ -39,7 +39,7 @@ families = (
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
-t = Transaction(doc, "BPM | Load Opening Tag Families")
-t.Start()
+t_group = TransactionGroup(doc, "BPM | Load Opening Families")
+t_group.Start()
 LoadOpeningFamily.run(doc, families)
-t.Commit()
+t_group.Assimilate()

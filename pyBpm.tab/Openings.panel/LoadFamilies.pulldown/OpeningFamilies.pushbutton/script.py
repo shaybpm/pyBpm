@@ -64,6 +64,9 @@ def run():
     if not descriptions_selected:
         return
 
+    t_group = TransactionGroup(doc, "BPM | Load Opening Families")
+    t_group.Start()
+    
     new_families = LoadOpeningFamily.run(doc, family_names)
     t = Transaction(doc, "BPM | Load Opening Families")
     t.Start()
@@ -72,6 +75,8 @@ def run():
         for symbol in family_symbols:
             symbol.LookupParameter("Description").Set(descriptions_selected)
     t.Commit()
+    
+    t_group.Assimilate()
 
 
 run()
