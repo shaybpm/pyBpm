@@ -16,6 +16,7 @@ from Autodesk.Revit.DB import (
     BooleanOperationsUtils,
     BooleanOperationsType,
     BuiltInParameter,
+    Line,
 )
 
 from pyrevit import script, forms
@@ -156,13 +157,18 @@ def find_concrete_intersect(
             if category == BuiltInCategory.OST_Walls and not is_wall_concrete(element):
                 continue
 
-            if hasattr(result.mep_element.Location, "Curve") and category in [
-                BuiltInCategory.OST_Walls,
-                BuiltInCategory.OST_Floors,
-                BuiltInCategory.OST_StructuralFraming,
-                BuiltInCategory.OST_StructuralColumns,
-                BuiltInCategory.OST_StairsLandings,
-            ]:
+            if (
+                hasattr(result.mep_element.Location, "Curve")
+                and isinstance(result.mep_element.Location.Curve, Line)
+                and category
+                in [
+                    BuiltInCategory.OST_Walls,
+                    BuiltInCategory.OST_Floors,
+                    BuiltInCategory.OST_StructuralFraming,
+                    BuiltInCategory.OST_StructuralColumns,
+                    BuiltInCategory.OST_StairsLandings,
+                ]
+            ):
                 mep_direction = result.mep_element.Location.Curve.Direction
                 mep_z_direction = mep_direction.Z
                 mep_is_horizontal = -0.5 <= mep_z_direction <= 0.5
@@ -178,9 +184,13 @@ def find_concrete_intersect(
                 ):
                     if not mep_is_horizontal:
                         continue
-                    if hasattr(element.Location, "Curve"):
+                    if hasattr(element.Location, "Curve") and isinstance(
+                        element.Location.Curve, Line
+                    ):
                         wall_direction = element.Location.Curve.Direction
-                        if not is_vectors_orthogonal(mep_direction, wall_direction, tol=0.7):
+                        if not is_vectors_orthogonal(
+                            mep_direction, wall_direction, tol=0.7
+                        ):
                             continue
                 else:
                     if not mep_is_horizontal:
