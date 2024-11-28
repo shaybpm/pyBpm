@@ -39,7 +39,8 @@ def alert(msg):
 def get_bbox(doc, opening, current=True, prompt_alert=True):
     transform = get_transform_by_model_guid(doc, opening["modelGuid"])
     if not transform:
-        alert("לא נמצא הלינק של הפתח הנבחר")
+        if prompt_alert:
+            alert("לא נמצא הלינק של הפתח הנבחר")
         return
 
     bbox_key_name = "currentBBox" if current else "lastBBox"

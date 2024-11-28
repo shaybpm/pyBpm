@@ -204,6 +204,8 @@ class TrackingOpeningsDialog(Windows.Window):
                 )
                 currentLevel = get_level_by_point(center_point, self.doc, True)
                 opening["currentRealLevel"] = currentLevel.Name if currentLevel else ""
+            else:
+                opening["currentRealLevel"] = ""
 
         self._openings = value
         self.display_openings = value
