@@ -195,7 +195,7 @@ class TrackingOpeningsDialog(Windows.Window):
     @openings.setter
     def openings(self, value):
         for opening in value:
-            bbox = Utils.get_bbox(self.doc, opening, True, True)
+            bbox = Utils.get_bbox(self.doc, opening, current=True, prompt_alert=False)
             if bbox:
                 center_point = XYZ(
                     (bbox.Min.X + bbox.Max.X) / 2,
