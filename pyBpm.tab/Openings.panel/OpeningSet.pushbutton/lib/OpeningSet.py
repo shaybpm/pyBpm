@@ -340,7 +340,7 @@ def opening_number_generator(doc):
 
     number = 1
     loop_count = 0
-    max_loop_count = 3000
+    max_loop_count = 4000
     while number in all_existing_numbers:
         if loop_count > max_loop_count:
             raise Exception("Opening number generator loop count exceeded.")
