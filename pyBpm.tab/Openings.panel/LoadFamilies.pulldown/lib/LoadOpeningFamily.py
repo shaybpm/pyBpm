@@ -20,15 +20,15 @@ def get_discipline_from_user():
         Tuple[str, str]: The discipline code and the discipline name.
     """
     discipline_dict = {
-        "A - אדריכלות": "A",
-        "S - קונסטרוקציה": "S",
-        "P - אינסטלציה": "P",
-        "SP - ספרינקלרים": "SP",
-        "C - תקשורת": "C",
-        "H - מיזוג אוויר": "H",
-        "E - חשמל": "E",
-        "G - גזים רפואיים": "G",
-        "F - דלק": "F",
+        "A - Architecture": "A",
+        "S - Structural": "S",
+        "P - Plumbing": "P",
+        "SP - Sprinklers": "SP",
+        "C - Communications": "C",
+        "H - HVAC": "H",
+        "E - Electrical": "E",
+        "G - Medical Gases": "G",
+        "F - Fuel": "F",
     }
 
     selected_discipline_display = forms.SelectFromList.show(
