@@ -9,7 +9,7 @@ from Autodesk.Revit.DB import (
     WorksetKind,
 )
 
-import ExcelUtils
+import csv
 from HtmlUtils import HtmlUtils
 
 from pyrevit import forms, script
@@ -23,14 +23,14 @@ doc = uidoc.Document
 html_utils = HtmlUtils()
 
 
-def get_discipline_list_dict(excel_path):
+def get_discipline_list_dict_from_excel(excel_path):
+    import ExcelUtils
     excel_app = ExcelUtils.get_excel_app_class()
     workbook = excel_app.Workbooks.Open(excel_path)
     worksheet_name = "ANNEXE BEP 02"
     # The titles is a ro with one value in column A.
     # The firs title is in row 6.
     # discipline_list_dict dict will be with the title as a key and the value is the first value in column A in the next row.
-    START_FROM_ROW = 6
     worksheet = workbook.Worksheets[worksheet_name]
     if not worksheet:
         raise ValueError(
@@ -38,6 +38,7 @@ def get_discipline_list_dict(excel_path):
         )
 
     discipline_list_dict = {}
+    START_FROM_ROW = 6
     for row in range(START_FROM_ROW, worksheet.UsedRange.Rows.Count + 1):
         cell_a = worksheet.Range["A" + str(row)]
         cell_b = worksheet.Range["B" + str(row)]
@@ -50,8 +51,24 @@ def get_discipline_list_dict(excel_path):
     excel_app.Quit()
     return discipline_list_dict
 
+def get_discipline_list_dict_from_csv(csv_path):
+    discipline_list_dict = {}
+    START_FROM_ROW = 5
+    with open(csv_path, "r") as file:
+        csv_reader = csv.reader(file)
+        rows = list(csv_reader)
+        for i in range(START_FROM_ROW, len(rows)):
+            if i + 1 >= len(rows):
+                break
+            row = rows[i]
+            value_a = row[0]
+            value_b = row[1]
+            if value_a and not value_b:
+                discipline_list_dict[value_a] = rows[i + 1][0]
+    return discipline_list_dict
 
-def get_workset_names(path, discipline):
+def get_workset_names_from_excel(path, discipline):
+    import ExcelUtils
     excel_app = ExcelUtils.get_excel_app_class()
     workbook = excel_app.Workbooks.Open(path)
     worksheet_name = "ANNEXE BEP 02"
@@ -67,6 +84,15 @@ def get_workset_names(path, discipline):
             workset_names.append(worksheet.Range["F" + str(row)].Value2)
     workbook.Close()
     excel_app.Quit()
+    return [x for x in workset_names if x is not None]
+
+def get_workset_names_from_csv(path, discipline):
+    workset_names = []
+    with open(path, "r") as file:
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            if row[0] == discipline:
+                workset_names.append(row[5])
     return [x for x in workset_names if x is not None]
 
 
@@ -150,20 +176,27 @@ def rename_existing_workset(rename_dict_list):
     t.Commit()
 
 
-def main(excel_path, discipline):
+def main(file_path, file_format, discipline):
+    if file_format not in ["xlsx", "csv"]:
+        raise ValueError("File format must be xlsx or csv")
+    
     if not doc.IsWorkshared:
         forms.alert("Document is not workshared")
         return
 
-    html_utils.add_html("<h1>Workset From Excel</h1>")
+    html_utils.add_html("<h1>Create Worksets</h1>")
     t_group = TransactionGroup(doc, "BPM | Set BPM Worksets")
     t_group.Start()
 
     html_utils.add_html(
-        "<h3>Excel Path: {} | Discipline: {}</h3>".format(excel_path, discipline)
+        "<h3>File Path: {} | Discipline: {}</h3>".format(file_path, discipline)
     )
 
-    user_workset_names = get_workset_names(excel_path, discipline)
+    user_workset_names = (
+        get_workset_names_from_excel(file_path, discipline)
+        if file_format == "xlsx"
+        else get_workset_names_from_csv(file_path, discipline)
+    )
 
     rename_dict_list, user_workset_names = get_rename_dict_list(user_workset_names)
     rename_existing_workset(rename_dict_list)
