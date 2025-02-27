@@ -39,8 +39,7 @@ doc = uidoc.Document
 transaction_name = "BPM | Get Bpm Section"
 
 
-def alert(msg):
-    TaskDialog.Show(transaction_name, msg)
+from pyrevit.forms import alert
 
 
 multiple_sections = __shiftclick__  # type: ignore
@@ -50,11 +49,14 @@ comp_doc = None
 ex_suction_names = []
 comp_link = RevitUtils.get_comp_link(doc)
 if not comp_link:
-    alert("The Compilation model link is not loaded.")
+    alert("The Compilation model link is not loaded.", exitscript=True)
 else:
     comp_doc = comp_link.GetLinkDocument()
     if not comp_doc:
-        alert("Something went wrong with the Compilation model link.")
+        alert(
+            "Something went wrong with the Compilation model link.\nmaybe it's not loaded?",
+            exitscript=True,
+        )
     else:
         ex_suction_names = [
             x.Name
