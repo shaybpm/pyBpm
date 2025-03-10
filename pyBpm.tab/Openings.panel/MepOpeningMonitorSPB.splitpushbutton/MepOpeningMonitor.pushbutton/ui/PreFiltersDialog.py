@@ -9,7 +9,7 @@ except:
     pass
 
 from System import Windows
-import wpf
+from pyrevit.framework import wpf
 import os
 
 from Autodesk.Revit.DB import ElementId

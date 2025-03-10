@@ -10,7 +10,7 @@ except:
 
 from System import Windows
 from System.Collections.Generic import List
-import wpf
+from pyrevit.framework import wpf
 import os
 
 from pyrevit import forms

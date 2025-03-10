@@ -9,7 +9,7 @@ except:
     pass
 
 from System import Windows
-import wpf
+from pyrevit.framework import wpf
 import os
 
 from RevitUtils import get_family_symbols, get_family_symbol_instances

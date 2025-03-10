@@ -11,7 +11,7 @@ except:
 from Autodesk.Revit.DB import Revision
 
 from System import Windows
-import wpf
+from pyrevit.framework import wpf
 import os
 import json
 

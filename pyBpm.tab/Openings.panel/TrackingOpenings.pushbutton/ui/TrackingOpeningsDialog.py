@@ -11,7 +11,7 @@ except:
 from Autodesk.Revit.DB import XYZ
 
 from System import DateTime, TimeZoneInfo, Windows
-import wpf
+from pyrevit.framework import wpf
 import os
 import json
 
