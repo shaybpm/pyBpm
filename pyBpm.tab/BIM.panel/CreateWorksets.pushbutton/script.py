@@ -56,6 +56,7 @@ def run_for_2024_and_below():
         discipline_list_dict = get_discipline_list_dict_from_excel(excel_path)
     except Exception as e:
         print_error_message(e)
+        return
 
     discipline = get_discipline(discipline_list_dict)
     if not discipline:
@@ -79,6 +80,7 @@ def run_for_2025_and_above():
         discipline_list_dict = get_discipline_list_dict_from_csv(csv_path)
     except Exception as e:
         print_error_message(e)
+        return
 
     discipline = get_discipline(discipline_list_dict)
     if not discipline:

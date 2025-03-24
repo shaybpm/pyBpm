@@ -23,15 +23,23 @@ doc = uidoc.Document
 html_utils = HtmlUtils()
 
 
+def get_worksheet(workbook):
+    worksheet_name_options = ["ANNEXE BEP", "ANNEXE BEP 02"]
+    for worksheet_name in worksheet_name_options:
+        worksheet = workbook.Worksheets[worksheet_name]
+        if worksheet:
+            return worksheet, worksheet_name
+    return None, None
+
+
 def get_discipline_list_dict_from_excel(excel_path):
     import ExcelUtils
     excel_app = ExcelUtils.get_excel_app_class()
     workbook = excel_app.Workbooks.Open(excel_path)
-    worksheet_name = "ANNEXE BEP 02"
     # The titles is a ro with one value in column A.
     # The firs title is in row 6.
     # discipline_list_dict dict will be with the title as a key and the value is the first value in column A in the next row.
-    worksheet = workbook.Worksheets[worksheet_name]
+    worksheet, worksheet_name = get_worksheet(workbook)
     if not worksheet:
         raise ValueError(
             "Worksheet {} not found in the Excel file.".format(worksheet_name)
@@ -42,6 +50,8 @@ def get_discipline_list_dict_from_excel(excel_path):
     for row in range(START_FROM_ROW, worksheet.UsedRange.Rows.Count + 1):
         cell_a = worksheet.Range["A" + str(row)]
         cell_b = worksheet.Range["B" + str(row)]
+        if not cell_a.Value2 and not cell_b.Value2:
+            break
         if cell_a.Value2 and not cell_b.Value2:
             discipline_list_dict[cell_a.Value2] = worksheet.Range[
                 "A" + str(row + 1)
@@ -71,8 +81,7 @@ def get_workset_names_from_excel(path, discipline):
     import ExcelUtils
     excel_app = ExcelUtils.get_excel_app_class()
     workbook = excel_app.Workbooks.Open(path)
-    worksheet_name = "ANNEXE BEP 02"
-    worksheet = workbook.Worksheets[worksheet_name]
+    worksheet, worksheet_name = get_worksheet(workbook)
     if not worksheet:
         raise ValueError(
             "Worksheet {} not found in the Excel file.".format(worksheet_name)
