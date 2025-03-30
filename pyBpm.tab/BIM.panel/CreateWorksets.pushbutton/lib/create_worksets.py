@@ -26,9 +26,12 @@ html_utils = HtmlUtils()
 def get_worksheet(workbook):
     worksheet_name_options = ["ANNEXE BEP", "ANNEXE BEP 02"]
     for worksheet_name in worksheet_name_options:
-        worksheet = workbook.Worksheets[worksheet_name]
-        if worksheet:
-            return worksheet, worksheet_name
+        try:
+            worksheet = workbook.Worksheets[worksheet_name]
+            if worksheet:
+                return worksheet, worksheet_name
+        except Exception:
+            pass
     return None, None
 
 
