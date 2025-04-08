@@ -10,6 +10,7 @@ opening_names = shapes["rectangular"] + shapes["circular"]
 
 PYBPM_FILTER_NAME_OPENING = "PYBPM-FILTER-NAME_OPENING"
 PYBPM_FILTER_NAME_NOT_OPENING = "PYBPM-FILTER-NAME_NOT-OPENING"
+PYBPM_FILTER_NAME_SPECIFIC_OPENINGS = "PYBPM-FILTER-NAME_SPECIFIC-OPENINGS"
 
 
 def is_opening_rectangular(opening):
@@ -71,9 +72,9 @@ def get_opening_filter(doc):
     from Autodesk.Revit.DB import FilteredElementCollector, ParameterFilterElement
 
     filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
-    for filter in filters:
-        if filter.Name == PYBPM_FILTER_NAME_OPENING:
-            return filter
+    for _filter in filters:
+        if _filter.Name == PYBPM_FILTER_NAME_OPENING:
+            return _filter
     return create_opening_filter(doc)
 
 
@@ -124,10 +125,106 @@ def get_not_opening_filter(doc):
     from Autodesk.Revit.DB import FilteredElementCollector, ParameterFilterElement
 
     filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
-    for filter in filters:
-        if filter.Name == PYBPM_FILTER_NAME_NOT_OPENING:
-            return filter
+    for _filter in filters:
+        if _filter.Name == PYBPM_FILTER_NAME_NOT_OPENING:
+            return _filter
     return create_not_opening_filter(doc)
+
+
+def create_or_modify_specific_openings_filter(doc, openings_data):
+    """The openings_data is a dictionary with the following structure:
+    {
+        "discipline": str,
+        "mark": str,
+    }
+    """
+    import clr
+
+    clr.AddReferenceByPartialName("System")
+    from System.Collections.Generic import List
+
+    from Autodesk.Revit.DB import (
+        FilteredElementCollector,
+        Transaction,
+        BuiltInCategory,
+        BuiltInParameter,
+        ParameterFilterElement,
+        ElementId,
+        ParameterFilterRuleFactory,
+        ElementFilter,
+        LogicalOrFilter,
+        LogicalAndFilter,
+        Category,
+        ElementParameterFilter,
+    )
+
+    built_in_categories = [BuiltInCategory.OST_GenericModel]
+    category_ids = [Category.GetCategory(doc, x).Id for x in built_in_categories]
+    category_ids_iCollection = List[ElementId](category_ids)
+
+    e_p_f_family_type_name_rules = List[ElementFilter]([])
+    for opening_name in opening_names:
+        rule = ParameterFilterRuleFactory.CreateContainsRule(
+            ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME),
+            opening_name,
+        )
+        e_p_f_family_type_name_rules.Add(ElementParameterFilter(rule))
+
+    e_p_f_family_type_name_logical_or = LogicalOrFilter(e_p_f_family_type_name_rules)
+
+    e_p_f_opening_data_rules = List[ElementFilter]([])
+    for opening_data in openings_data:
+        discipline = opening_data["discipline"]
+        mark = opening_data["mark"]
+        if not discipline or not mark:
+            continue
+        e_p_f_this_opening_data_rules = List[ElementFilter]([])
+
+        rule = ParameterFilterRuleFactory.CreateEqualsRule(
+            ElementId(BuiltInParameter.ALL_MODEL_DESCRIPTION),
+            discipline,
+        )
+        e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
+
+        rule = ParameterFilterRuleFactory.CreateEqualsRule(
+            ElementId(BuiltInParameter.ALL_MODEL_MARK),
+            mark,
+        )
+        e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
+
+        e_p_f_this_opening_data_logical_and = LogicalAndFilter(
+            e_p_f_this_opening_data_rules
+        )
+        e_p_f_opening_data_rules.Add(e_p_f_this_opening_data_logical_and)
+
+    e_p_f_opening_data_logical_or = LogicalOrFilter(e_p_f_opening_data_rules)
+    element_filter = LogicalAndFilter(
+        e_p_f_family_type_name_logical_or, e_p_f_opening_data_logical_or
+    )
+
+    # search for the filter in the model
+    filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
+    for _filter in filters:
+        if _filter.Name == PYBPM_FILTER_NAME_SPECIFIC_OPENINGS:
+            # if found, modify it
+            t = Transaction(doc, "pyBpm | Modify Specific Openings Filter")
+            t.Start()
+            _filter.SetCategories(category_ids_iCollection)
+            _filter.SetElementFilter(element_filter)
+            t.Commit()
+            return _filter
+
+    t = Transaction(doc, "pyBpm | Create Specific Openings Filter")
+    t.Start()
+    new_parameter_filter = ParameterFilterElement.Create(
+        doc,
+        PYBPM_FILTER_NAME_SPECIFIC_OPENINGS,
+        category_ids_iCollection,
+        element_filter,
+    )
+    t.Commit()
+
+    return new_parameter_filter
 
 
 def get_opening_element_filter(doc):

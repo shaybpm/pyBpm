@@ -10,6 +10,7 @@ from RevitUtils import (
     get_bpm_3d_view,
     get_tags_of_element_in_view,
 )
+from RevitUtilsOpenings import create_or_modify_specific_openings_filter
 from ExEventHandlers import get_simple_external_event
 
 from ExternalEventDataFile import ExternalEventDataFile
@@ -100,3 +101,25 @@ def create_revision_clouds_cb(uiapp):
 
 
 create_revision_clouds_event = get_simple_external_event(create_revision_clouds_cb)
+
+
+def filters_in_views_cb(uiapp):
+    uidoc = uiapp.ActiveUIDocument
+    doc = uidoc.Document
+
+    ex_event_file = ExternalEventDataFile(doc)
+
+    current_selected_opening = ex_event_file.get_key_value("current_selected_opening")
+    if not current_selected_opening:
+        Utils.alert("יש לבחור פתחים")
+        return
+
+    t_group = TransactionGroup(doc, "pyBpm | Filters In Views")
+    t_group.Start()
+    
+    specific_openings_filter = create_or_modify_specific_openings_filter(doc, current_selected_opening)
+
+    t_group.Assimilate()
+
+
+filters_in_views_event = get_simple_external_event(filters_in_views_cb)

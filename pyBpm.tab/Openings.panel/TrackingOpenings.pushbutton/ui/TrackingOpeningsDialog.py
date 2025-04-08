@@ -31,6 +31,7 @@ import Utils
 from EventHandlers import (
     show_opening_3d_event,
     create_revision_clouds_event,
+    filters_in_views_event,
 )
 from ReusableExternalEvents import (
     turn_on_isolate_mode_event,
@@ -281,6 +282,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.isolate_btn.IsEnabled = True
         self.change_approved_status_btn.IsEnabled = True
         self.export_to_excel_btn.IsEnabled = True
+        self.filters_in_views_btn.IsEnabled = True
 
         if len(self.openings) == 0:
             self.export_to_excel_btn.IsEnabled = False
@@ -290,6 +292,7 @@ class TrackingOpeningsDialog(Windows.Window):
             self.show_previous_location_3D_btn.IsEnabled = False
             self.create_cloud_btn.IsEnabled = False
             self.change_approved_status_btn.IsEnabled = False
+            self.filters_in_views_btn.IsEnabled = False
 
         if len(self.current_selected_opening) == 0:
             self.show_opening_btn.IsEnabled = False
@@ -298,6 +301,7 @@ class TrackingOpeningsDialog(Windows.Window):
             self.show_previous_location_3D_btn.IsEnabled = False
             self.create_cloud_btn.IsEnabled = False
             self.change_approved_status_btn.IsEnabled = False
+            self.filters_in_views_btn.IsEnabled = False
 
         if len(self.current_selected_opening) > 1:
             self.show_opening_btn.IsEnabled = False
@@ -954,6 +958,16 @@ class TrackingOpeningsDialog(Windows.Window):
             self.changeType_filter_ComboBox.SelectedValue = changeType_filter
             self.approved_filter_ComboBox.SelectedValue = approved_filter
             self.filter_openings()
+
+    def filters_in_views_btn_click(self, sender, e):
+        ex_event_file = ExternalEventDataFile(self.doc)
+        ex_event_file.set_key_value(
+            "current_selected_opening", self.current_selected_opening
+        )
+        try:
+            filters_in_views_event.Raise()
+        except Exception as ex:
+            print(ex)
 
     def export_to_excel_btn_click(self, sender, e):
         if not self.openings:

@@ -1,0 +1,34 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="פילטור במבטים"
+    Height="400"
+    Width="400"
+    WindowStartupLocation="CenterScreen"
+    MinWidth="280"
+    MinHeight="380"
+    Topmost="True">
+
+
+    <Grid FlowDirection="RightToLeft" Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="40"/>
+        </Grid.RowDefinitions>
+        
+        <Border Grid.Row="0" BorderThickness="2" BorderBrush="Gray">
+            <StackPanel Margin="8">
+
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="0 8 0 0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Click="create_clouds_btn_click" Content="צור עננים" Margin="0 0 4 0" />
+            <Button Grid.Column="1" Click="cancel_btn_click" Content="ביטול" Margin="4 0 0 0" />
+        </Grid>
+
+    </Grid>
+</Window>
