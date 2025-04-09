@@ -27,6 +27,7 @@ from RevitUtils import (
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
 from UiUtils import SelectFromList
 
+from FiltersInViewsDialog import FiltersInViewsDialog
 import Utils
 from EventHandlers import (
     show_opening_3d_event,
@@ -958,11 +959,16 @@ class TrackingOpeningsDialog(Windows.Window):
             self.filter_openings()
 
     def filters_in_views_btn_click(self, sender, e):
-        ex_event_file = ExternalEventDataFile(self.doc)
-        ex_event_file.set_key_value(
-            "current_selected_opening", self.current_selected_opening
-        )
         try:
+            self.Hide()
+            filters_in_views_settings = FiltersInViewsDialog(self.doc).show_dialog()
+            self.Show()
+            if filters_in_views_settings is None:
+                return
+            ex_event_file = ExternalEventDataFile(self.doc)
+            ex_event_file.set_key_value(
+                "filters_in_views_settings", filters_in_views_settings
+            )
             filters_in_views_event.Raise()
         except Exception as ex:
             print(ex)

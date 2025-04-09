@@ -227,6 +227,17 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
     return new_parameter_filter
 
 
+def get_specific_openings_filter(doc):
+    """ If not found, return None. """
+    from Autodesk.Revit.DB import FilteredElementCollector, ParameterFilterElement
+
+    filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
+    for _filter in filters:
+        if _filter.Name == PYBPM_FILTER_NAME_SPECIFIC_OPENINGS:
+            return _filter
+    return None
+
+
 def get_opening_element_filter(doc):
     """Returns a element filter for all the openings in the model."""
     import clr

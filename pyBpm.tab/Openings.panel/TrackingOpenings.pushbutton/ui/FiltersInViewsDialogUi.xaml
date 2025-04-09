@@ -4,29 +4,87 @@
     Height="400"
     Width="400"
     WindowStartupLocation="CenterScreen"
-    MinWidth="280"
-    MinHeight="380"
+    MinWidth="400"
+    MinHeight="400"
     Topmost="True">
 
 
     <Grid FlowDirection="RightToLeft" Margin="8">
         <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="40" />
         </Grid.RowDefinitions>
-        
-        <Border Grid.Row="0" BorderThickness="2" BorderBrush="Gray">
-            <StackPanel Margin="8">
 
-            </StackPanel>
+        <Grid Grid.Row="0" Margin="0 0 0 8">
+            <TextBlock TextWrapping="Wrap" Margin="0 0 0 8" FontSize="14" FontWeight="Bold">
+                <Run
+                    Text="אפשרות זו תחיל פילטר במבטים הנבחרים שיסנן את כל הפתחים הלא מאושרים בפרויקט." />
+            </TextBlock>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0 0 0 8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0" x:Name="view_name_textbox" Margin="0 4 0 0"
+                TextChanged="view_name_textbox_TextChanged" />
+            <ComboBox Grid.Column="1" x:Name="view_type_combobox" Margin="4 0 4 0"
+                SelectionChanged="view_type_combobox_SelectionChanged" />
+        </Grid>
+
+        <Border Grid.Row="2" BorderThickness="2" BorderBrush="Gray">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+
+                <!-- Titles -->
+                <Grid Grid.Row="0" Margin="0 0 0 8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Margin="8 0 8 0"
+                        FontSize="14"
+                        FontWeight="Bold">
+                        <Run Text="מבט" />
+                    </TextBlock>
+                    <TextBlock Grid.Column="1"
+                        Margin="8 0 8 0" FontSize="14"
+                        FontWeight="Bold">
+                        <Run Text="החל" />
+                    </TextBlock>
+                </Grid>
+
+                <!-- Table -->
+                <ListBox Grid.Row="1" x:Name="views_listbox" SelectionMode="Extended"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+            </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="0 8 0 0">
+        <Border Grid.Row="3" Margin="0 8 0 0" BorderThickness="0 0 0 1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Click="check_all_click" Content="סמן הכל" Margin="0 0 4 0" />
+                <Button Grid.Column="1" Click="uncheck_all_click" Content="בטל הכל" Margin="4 0 0 0" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="4" Margin="0 8 0 0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
+                <ColumnDefinition />
+                <ColumnDefinition />
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Click="create_clouds_btn_click" Content="צור עננים" Margin="0 0 4 0" />
+            <Button Grid.Column="0" Click="ok_btn_click" Content="אישור" Margin="0 0 4 0" />
             <Button Grid.Column="1" Click="cancel_btn_click" Content="ביטול" Margin="4 0 0 0" />
         </Grid>
 

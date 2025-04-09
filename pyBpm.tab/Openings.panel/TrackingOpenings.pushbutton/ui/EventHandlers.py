@@ -109,15 +109,19 @@ def filters_in_views_cb(uiapp):
 
     ex_event_file = ExternalEventDataFile(doc)
 
-    current_selected_opening = ex_event_file.get_key_value("current_selected_opening")
-    if not current_selected_opening:
-        Utils.alert("יש לבחור פתחים")
+    filters_in_views_settings = ex_event_file.get_key_value("filters_in_views_settings")
+    if not filters_in_views_settings:
+        Utils.alert("not filters_in_views_settings")
         return
+    
+    return
 
     t_group = TransactionGroup(doc, "pyBpm | Filters In Views")
     t_group.Start()
-    
-    specific_openings_filter = create_or_modify_specific_openings_filter(doc, current_selected_opening)
+
+    specific_openings_filter = create_or_modify_specific_openings_filter(
+        doc, filters_in_views_settings["openings"]
+    )
 
     t_group.Assimilate()
 
