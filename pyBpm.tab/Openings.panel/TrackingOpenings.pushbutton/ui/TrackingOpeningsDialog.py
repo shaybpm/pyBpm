@@ -292,7 +292,6 @@ class TrackingOpeningsDialog(Windows.Window):
             self.show_previous_location_3D_btn.IsEnabled = False
             self.create_cloud_btn.IsEnabled = False
             self.change_approved_status_btn.IsEnabled = False
-            self.filters_in_views_btn.IsEnabled = False
 
         if len(self.current_selected_opening) == 0:
             self.show_opening_btn.IsEnabled = False
@@ -301,7 +300,6 @@ class TrackingOpeningsDialog(Windows.Window):
             self.show_previous_location_3D_btn.IsEnabled = False
             self.create_cloud_btn.IsEnabled = False
             self.change_approved_status_btn.IsEnabled = False
-            self.filters_in_views_btn.IsEnabled = False
 
         if len(self.current_selected_opening) > 1:
             self.show_opening_btn.IsEnabled = False

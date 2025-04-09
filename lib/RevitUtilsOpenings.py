@@ -132,7 +132,7 @@ def get_not_opening_filter(doc):
 
 
 def create_or_modify_specific_openings_filter(doc, openings_data):
-    """The openings_data is a dictionary with the following structure:
+    """The openings_data is a list of dictionaries with the following structure:
     {
         "discipline": str,
         "mark": str,
