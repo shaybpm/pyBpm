@@ -154,7 +154,7 @@ def filters_in_views_cb(uiapp):
         apply = view_app["apply"]
         if apply == False and not view.IsFilterApplied(specific_openings_filter.Id):
             continue
-        view.SetFilterVisibility(specific_openings_filter.Id, apply)
+        view.SetFilterVisibility(specific_openings_filter.Id, not apply)
     t2.Commit()
 
     t_group.Assimilate()

@@ -42,7 +42,7 @@
         </Grid>
 
         <Border Grid.Row="2" BorderThickness="2" BorderBrush="Gray">
-            <Grid>
+            <Grid FlowDirection="LeftToRight">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition />
@@ -58,12 +58,12 @@
                     <TextBlock Grid.Column="0" Margin="8 0 8 0"
                         FontSize="14"
                         FontWeight="Bold">
-                        <Run Text="מבט" />
+                        <Run Text="View" />
                     </TextBlock>
                     <TextBlock Grid.Column="1"
                         Margin="8 0 8 0" FontSize="14"
                         FontWeight="Bold">
-                        <Run Text="החל" />
+                        <Run Text="Apply" />
                     </TextBlock>
                 </Grid>
 

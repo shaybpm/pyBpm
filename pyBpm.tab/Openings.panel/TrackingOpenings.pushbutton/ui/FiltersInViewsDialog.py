@@ -90,7 +90,7 @@ class FiltersInViewsDialog(Windows.Window):
         return (
             self.specific_openings_filter is not None
             and view.IsFilterApplied(self.specific_openings_filter.Id)
-            and view.GetFilterVisibility(self.specific_openings_filter.Id)
+            and not view.GetFilterVisibility(self.specific_openings_filter.Id)
         )
 
     def view_name_textbox_TextChanged(self, sender, e):
@@ -188,6 +188,12 @@ class ViewListBoxItem(Windows.Controls.ListBoxItem):
         self.check_uncheck_func = check_uncheck_func
 
         self.render()
+        
+    def get_text(self):
+        text = self.view.Name
+        if self.view.IsTemplate:
+            text += " (Template)"
+        return text
 
     def render(self):
         self.main_grid = Windows.Controls.Grid()
@@ -200,7 +206,7 @@ class ViewListBoxItem(Windows.Controls.ListBoxItem):
         self.main_grid.ColumnDefinitions.Add(col1)
         # col 0 - name
         self.name_text_block = Windows.Controls.TextBlock()
-        self.name_text_block.Text = self.view.Name
+        self.name_text_block.Text = self.get_text()
         # col 1 - apply checkbox
         self.apply_checkbox = Windows.Controls.CheckBox()
         self.apply_checkbox.IsChecked = self.init_apply

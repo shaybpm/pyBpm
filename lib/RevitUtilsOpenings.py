@@ -10,7 +10,7 @@ opening_names = shapes["rectangular"] + shapes["circular"]
 
 PYBPM_FILTER_NAME_OPENING = "PYBPM-FILTER-NAME_OPENING"
 PYBPM_FILTER_NAME_NOT_OPENING = "PYBPM-FILTER-NAME_NOT-OPENING"
-PYBPM_FILTER_NAME_SPECIFIC_OPENINGS = "PYBPM-FILTER-NAME_SPECIFIC-OPENINGS"
+PYBPM_FILTER_SPECIFIC_OPENINGS = "PYBPM-FILTER-SPECIFIC-OPENINGS"
 
 
 def is_opening_rectangular(opening):
@@ -205,7 +205,7 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
     # search for the filter in the model
     filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
     for _filter in filters:
-        if _filter.Name == PYBPM_FILTER_NAME_SPECIFIC_OPENINGS:
+        if _filter.Name == PYBPM_FILTER_SPECIFIC_OPENINGS:
             # if found, modify it
             t = Transaction(doc, "pyBpm | Modify Specific Openings Filter")
             t.Start()
@@ -218,7 +218,7 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
     t.Start()
     new_parameter_filter = ParameterFilterElement.Create(
         doc,
-        PYBPM_FILTER_NAME_SPECIFIC_OPENINGS,
+        PYBPM_FILTER_SPECIFIC_OPENINGS,
         category_ids_iCollection,
         element_filter,
     )
@@ -233,7 +233,7 @@ def get_specific_openings_filter(doc):
 
     filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
     for _filter in filters:
-        if _filter.Name == PYBPM_FILTER_NAME_SPECIFIC_OPENINGS:
+        if _filter.Name == PYBPM_FILTER_SPECIFIC_OPENINGS:
             return _filter
     return None
 
