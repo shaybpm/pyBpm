@@ -10,6 +10,7 @@ opening_names = shapes["rectangular"] + shapes["circular"]
 
 PYBPM_FILTER_NAME_OPENING = "PYBPM-FILTER-NAME_OPENING"
 PYBPM_FILTER_NAME_NOT_OPENING = "PYBPM-FILTER-NAME_NOT-OPENING"
+PYBPM_FILTER_SPECIFIC_OPENINGS = "PYBPM-FILTER-SPECIFIC-OPENINGS"
 
 
 def is_opening_rectangular(opening):
@@ -71,9 +72,9 @@ def get_opening_filter(doc):
     from Autodesk.Revit.DB import FilteredElementCollector, ParameterFilterElement
 
     filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
-    for filter in filters:
-        if filter.Name == PYBPM_FILTER_NAME_OPENING:
-            return filter
+    for _filter in filters:
+        if _filter.Name == PYBPM_FILTER_NAME_OPENING:
+            return _filter
     return create_opening_filter(doc)
 
 
@@ -124,10 +125,215 @@ def get_not_opening_filter(doc):
     from Autodesk.Revit.DB import FilteredElementCollector, ParameterFilterElement
 
     filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
-    for filter in filters:
-        if filter.Name == PYBPM_FILTER_NAME_NOT_OPENING:
-            return filter
+    for _filter in filters:
+        if _filter.Name == PYBPM_FILTER_NAME_NOT_OPENING:
+            return _filter
     return create_not_opening_filter(doc)
+
+
+def create_or_modify_specific_openings_filter(doc, openings_data):
+    """The openings_data is a list of dictionaries with the following structure:
+    {
+        "discipline": str,
+        "mark": str,
+    }
+    """
+    import clr
+
+    clr.AddReferenceByPartialName("System")
+    from System.Collections.Generic import List
+
+    from Autodesk.Revit.DB import (
+        Transaction,
+        BuiltInCategory,
+        BuiltInParameter,
+        ParameterFilterElement,
+        ElementId,
+        ParameterFilterRuleFactory,
+        ElementFilter,
+        LogicalOrFilter,
+        LogicalAndFilter,
+        Category,
+        ElementParameterFilter,
+    )
+
+    built_in_categories = [BuiltInCategory.OST_GenericModel]
+    category_ids = [Category.GetCategory(doc, x).Id for x in built_in_categories]
+    category_ids_iCollection = List[ElementId](category_ids)
+
+    e_p_f_family_type_name_rules = List[ElementFilter]([])
+    for opening_name in opening_names:
+        rule = ParameterFilterRuleFactory.CreateContainsRule(
+            ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME),
+            opening_name,
+        )
+        e_p_f_family_type_name_rules.Add(ElementParameterFilter(rule))
+
+    e_p_f_family_type_name_logical_or = LogicalOrFilter(e_p_f_family_type_name_rules)
+
+    e_p_f_opening_data_rules = List[ElementFilter]([])
+    for opening_data in openings_data:
+        discipline = opening_data["discipline"]
+        mark = opening_data["mark"]
+        if not discipline or not mark:
+            continue
+        e_p_f_this_opening_data_rules = List[ElementFilter]([])
+
+        rule = ParameterFilterRuleFactory.CreateEqualsRule(
+            ElementId(BuiltInParameter.ALL_MODEL_DESCRIPTION),
+            discipline,
+        )
+        e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
+
+        rule = ParameterFilterRuleFactory.CreateEqualsRule(
+            ElementId(BuiltInParameter.ALL_MODEL_MARK),
+            mark,
+        )
+        e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
+
+        e_p_f_this_opening_data_logical_and = LogicalAndFilter(
+            e_p_f_this_opening_data_rules
+        )
+        e_p_f_opening_data_rules.Add(e_p_f_this_opening_data_logical_and)
+
+    e_p_f_opening_data_logical_or = LogicalOrFilter(e_p_f_opening_data_rules)
+    element_filter = LogicalAndFilter(
+        e_p_f_family_type_name_logical_or, e_p_f_opening_data_logical_or
+    )
+
+    _filter = get_specific_openings_filter(doc)
+    if _filter:
+        # if found, modify it
+        t = Transaction(doc, "pyBpm | Modify Specific Openings Filter")
+        t.Start()
+        _filter.SetCategories(category_ids_iCollection)
+        _filter.SetElementFilter(element_filter)
+        t.Commit()
+        return _filter
+
+    t = Transaction(doc, "pyBpm | Create Specific Openings Filter")
+    t.Start()
+    new_parameter_filter = ParameterFilterElement.Create(
+        doc,
+        PYBPM_FILTER_SPECIFIC_OPENINGS,
+        category_ids_iCollection,
+        element_filter,
+    )
+    t.Commit()
+
+    return new_parameter_filter
+
+
+def get_current_openings_data_from_specific_openings_filter(specific_openings_filter):
+    """Returns a list of dictionaries with the following structure:
+    {
+        "discipline": str,
+        "mark": str,
+    }
+    """
+    from Autodesk.Revit.DB import (
+        LogicalOrFilter,
+        LogicalAndFilter,
+        BuiltInParameter,
+        ElementParameterFilter,
+        FilterStringRule,
+    )
+
+    e_p_f_logical_and = specific_openings_filter.GetElementFilter()
+    if not isinstance(e_p_f_logical_and, LogicalAndFilter):
+        return None
+    e_p_f_logical_and_filters = e_p_f_logical_and.GetFilters()
+    if not e_p_f_logical_and_filters or not len(e_p_f_logical_and_filters) == 2:
+        return None
+    opening_data = []
+    for e_p_f_logical_or in e_p_f_logical_and_filters:
+        if not isinstance(e_p_f_logical_or, LogicalOrFilter):
+            continue
+        for e_p_f_logical_and in e_p_f_logical_or.GetFilters():
+            if not isinstance(e_p_f_logical_and, LogicalAndFilter):
+                continue
+            opening_data_dict = {}
+            for e_p_f in e_p_f_logical_and.GetFilters():
+                if not isinstance(e_p_f, ElementParameterFilter):
+                    continue
+                for filter_string_rule in e_p_f.GetRules():
+                    if not isinstance(filter_string_rule, FilterStringRule):
+                        continue
+                    rule_str = filter_string_rule.RuleString
+                    # if its digit, it's a mark
+                    if rule_str.isdigit():
+                        opening_data_dict["mark"] = rule_str
+                    # if its not digit, it's a discipline
+                    else:
+                        opening_data_dict["discipline"] = rule_str
+            if (
+                opening_data_dict
+                and "mark" in opening_data_dict
+                and "discipline" in opening_data_dict
+            ):
+                opening_data.append(opening_data_dict)
+    return opening_data
+
+
+def add_one_opening_to_specific_openings_filter(
+    doc, opening_data, create_if_not_exists=False
+):
+    _filter = get_specific_openings_filter(doc)
+    if not _filter and not create_if_not_exists:
+        return None
+    if not _filter:
+        _filter = create_or_modify_specific_openings_filter(doc, [opening_data])
+        return _filter
+
+    openings = get_current_openings_data_from_specific_openings_filter(_filter)
+    if not openings:
+        openings = []
+
+    # check if already exists
+    for opening in openings:
+        if (
+            opening["discipline"] == opening_data["discipline"]
+            and opening["mark"] == opening_data["mark"]
+        ):
+            return _filter
+
+    # add new opening
+    openings.append(opening_data)
+    _filter = create_or_modify_specific_openings_filter(doc, openings)
+    return _filter
+
+
+def remove_one_opening_from_specific_openings_filter(doc, opening_data):
+    _filter = get_specific_openings_filter(doc)
+    if not _filter:
+        return None
+
+    openings = get_current_openings_data_from_specific_openings_filter(_filter)
+    if not openings:
+        return None
+
+    new_openings = []
+    for opening in openings:
+        if (
+            opening["discipline"] == opening_data["discipline"]
+            and opening["mark"] == opening_data["mark"]
+        ):
+            continue
+        new_openings.append(opening)
+
+    _filter = create_or_modify_specific_openings_filter(doc, new_openings)
+    return _filter
+
+
+def get_specific_openings_filter(doc):
+    """If not found, return None."""
+    from Autodesk.Revit.DB import FilteredElementCollector, ParameterFilterElement
+
+    filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
+    for _filter in filters:
+        if _filter.Name == PYBPM_FILTER_SPECIFIC_OPENINGS:
+            return _filter
+    return None
 
 
 def get_opening_element_filter(doc):

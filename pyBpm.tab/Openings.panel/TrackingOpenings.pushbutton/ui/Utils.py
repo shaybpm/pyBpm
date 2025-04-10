@@ -25,7 +25,9 @@ from UiUtils import Alert
 
 from RevitUtils import turn_of_categories, get_ogs_by_color, get_transform_by_model_guid
 
-from RevitUtilsOpenings import get_opening_filter
+from RevitUtilsOpenings import (
+    get_opening_filter,
+)
 
 from CreateCloudsDialog import CreateCloudsDialog
 

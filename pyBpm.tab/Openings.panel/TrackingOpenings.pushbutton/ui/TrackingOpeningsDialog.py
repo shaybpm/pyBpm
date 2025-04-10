@@ -27,10 +27,13 @@ from RevitUtils import (
 from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
 from UiUtils import SelectFromList
 
+from FiltersInViewsDialog import FiltersInViewsDialog
 import Utils
+from SpecificOpeningFilterChanger import SpecificOpeningFilterChanger
 from EventHandlers import (
     show_opening_3d_event,
     create_revision_clouds_event,
+    filters_in_views_event,
 )
 from ReusableExternalEvents import (
     turn_on_isolate_mode_event,
@@ -281,6 +284,7 @@ class TrackingOpeningsDialog(Windows.Window):
         self.isolate_btn.IsEnabled = True
         self.change_approved_status_btn.IsEnabled = True
         self.export_to_excel_btn.IsEnabled = True
+        self.filters_in_views_btn.IsEnabled = True
 
         if len(self.openings) == 0:
             self.export_to_excel_btn.IsEnabled = False
@@ -910,6 +914,10 @@ class TrackingOpeningsDialog(Windows.Window):
         if new_approved_status is None:
             return
 
+        specific_opening_filter_changer = SpecificOpeningFilterChanger(
+            self.current_selected_opening, new_approved_status
+        )
+
         new_status_list = Utils.get_new_opening_approved_status(
             self.current_selected_opening, new_approved_status
         )
@@ -954,6 +962,27 @@ class TrackingOpeningsDialog(Windows.Window):
             self.changeType_filter_ComboBox.SelectedValue = changeType_filter
             self.approved_filter_ComboBox.SelectedValue = approved_filter
             self.filter_openings()
+
+            specific_opening_filter_changer.change_filter(self.doc)
+
+    def filters_in_views_btn_click(self, sender, e):
+        try:
+            filters_in_views_dialog = FiltersInViewsDialog(self.doc)
+            if not filters_in_views_dialog.db_project_openings:
+                self.alert("אין פתחים שאינם מאושרים בפרויקט")
+                return
+            self.Hide()
+            filters_in_views_settings = filters_in_views_dialog.show_dialog()
+            self.Show()
+            if filters_in_views_settings is None:
+                return
+            ex_event_file = ExternalEventDataFile(self.doc)
+            ex_event_file.set_key_value(
+                "filters_in_views_settings", filters_in_views_settings
+            )
+            filters_in_views_event.Raise()
+        except Exception as ex:
+            print(ex)
 
     def export_to_excel_btn_click(self, sender, e):
         if not self.openings:

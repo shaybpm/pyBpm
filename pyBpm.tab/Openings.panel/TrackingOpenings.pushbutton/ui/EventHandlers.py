@@ -3,12 +3,20 @@
 from Autodesk.Revit.DB import (
     TransactionGroup,
     ViewType,
+    FilteredElementCollector,
+    View,
+    Transaction,
 )
 import Utils
 from RevitUtils import (
     get_ui_view,
     get_bpm_3d_view,
     get_tags_of_element_in_view,
+)
+from RevitUtilsOpenings import (
+    create_or_modify_specific_openings_filter,
+    add_one_opening_to_specific_openings_filter,
+    remove_one_opening_from_specific_openings_filter,
 )
 from ExEventHandlers import get_simple_external_event
 
@@ -100,3 +108,100 @@ def create_revision_clouds_cb(uiapp):
 
 
 create_revision_clouds_event = get_simple_external_event(create_revision_clouds_cb)
+
+
+def filters_in_views_cb(uiapp):
+    uidoc = uiapp.ActiveUIDocument
+    doc = uidoc.Document
+
+    ex_event_file = ExternalEventDataFile(doc)
+
+    filters_in_views_settings = ex_event_file.get_key_value("filters_in_views_settings")
+    if not filters_in_views_settings:
+        Utils.alert("not filters_in_views_settings")
+        return
+
+    openings = filters_in_views_settings["openings"]
+    if not openings:
+        Utils.alert("not openings")
+        return
+
+    views_app = filters_in_views_settings["views"]
+    if not views_app:
+        Utils.alert("not views_app")
+        return
+
+    views = FilteredElementCollector(doc).OfClass(View).ToElements()
+
+    def get_view_by_id_int(id_int):
+        for view in views:
+            if view.Id.IntegerValue == id_int:
+                return view
+        return None
+
+    t_group = TransactionGroup(doc, "pyBpm | Filters In Views")
+    t_group.Start()
+
+    specific_openings_filter = create_or_modify_specific_openings_filter(doc, openings)
+    if not specific_openings_filter:
+        t_group.RollBack()
+        Utils.alert("not specific_openings_filter")
+        return
+
+    t2 = Transaction(doc, "pyBpm | Filters In Views")
+    t2.Start()
+    for view_app in views_app:
+        view_id = view_app["view_id"]
+        view = get_view_by_id_int(view_id)
+        if not view:
+            continue
+        apply = view_app["apply"]
+        if apply == False and not view.IsFilterApplied(specific_openings_filter.Id):
+            continue
+        view.SetFilterVisibility(specific_openings_filter.Id, not apply)
+    t2.Commit()
+
+    t_group.Assimilate()
+
+
+filters_in_views_event = get_simple_external_event(filters_in_views_cb)
+
+
+def change_specific_openings_filter_cb(uiapp):
+    uidoc = uiapp.ActiveUIDocument
+    doc = uidoc.Document
+
+    ex_event_file = ExternalEventDataFile(doc)
+
+    change_specific_openings_filter_data = ex_event_file.get_key_value(
+        "change_specific_openings_filter_data"
+    )
+    if not change_specific_openings_filter_data:
+        Utils.alert("not change_specific_openings_filter_data")
+        return
+    openings = change_specific_openings_filter_data["openings"]
+    if not openings:
+        return
+    new_approved_status = change_specific_openings_filter_data["new_approved_status"]
+    if not new_approved_status:
+        return
+
+    try:
+        t_group = TransactionGroup(doc, "pyBpm | Change Filter")
+        t_group.Start()
+        change_func = (
+            add_one_opening_to_specific_openings_filter
+            if new_approved_status == "not approved"
+            else remove_one_opening_from_specific_openings_filter
+        )
+        for opening in openings:
+            change_func(doc, opening)
+        t_group.Assimilate()
+    except Exception as ex:
+        print(ex)
+        t_group.RollBack()
+
+
+change_specific_openings_filter_event = get_simple_external_event(
+    change_specific_openings_filter_cb
+)
