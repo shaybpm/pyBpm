@@ -13,7 +13,11 @@ from RevitUtils import (
     get_bpm_3d_view,
     get_tags_of_element_in_view,
 )
-from RevitUtilsOpenings import create_or_modify_specific_openings_filter
+from RevitUtilsOpenings import (
+    create_or_modify_specific_openings_filter,
+    add_one_opening_to_specific_openings_filter,
+    remove_one_opening_from_specific_openings_filter,
+)
 from ExEventHandlers import get_simple_external_event
 
 from ExternalEventDataFile import ExternalEventDataFile
@@ -161,3 +165,43 @@ def filters_in_views_cb(uiapp):
 
 
 filters_in_views_event = get_simple_external_event(filters_in_views_cb)
+
+
+def change_specific_openings_filter_cb(uiapp):
+    uidoc = uiapp.ActiveUIDocument
+    doc = uidoc.Document
+
+    ex_event_file = ExternalEventDataFile(doc)
+
+    change_specific_openings_filter_data = ex_event_file.get_key_value(
+        "change_specific_openings_filter_data"
+    )
+    if not change_specific_openings_filter_data:
+        Utils.alert("not change_specific_openings_filter_data")
+        return
+    openings = change_specific_openings_filter_data["openings"]
+    if not openings:
+        return
+    new_approved_status = change_specific_openings_filter_data["new_approved_status"]
+    if not new_approved_status:
+        return
+
+    try:
+        t_group = TransactionGroup(doc, "pyBpm | Change Filter")
+        t_group.Start()
+        change_func = (
+            add_one_opening_to_specific_openings_filter
+            if new_approved_status == "not approved"
+            else remove_one_opening_from_specific_openings_filter
+        )
+        for opening in openings:
+            change_func(doc, opening)
+        t_group.Assimilate()
+    except Exception as ex:
+        print(ex)
+        t_group.RollBack()
+
+
+change_specific_openings_filter_event = get_simple_external_event(
+    change_specific_openings_filter_cb
+)

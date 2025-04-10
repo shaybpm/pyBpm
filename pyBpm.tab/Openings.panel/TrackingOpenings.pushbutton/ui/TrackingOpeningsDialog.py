@@ -29,6 +29,7 @@ from UiUtils import SelectFromList
 
 from FiltersInViewsDialog import FiltersInViewsDialog
 import Utils
+from SpecificOpeningFilterChanger import SpecificOpeningFilterChanger
 from EventHandlers import (
     show_opening_3d_event,
     create_revision_clouds_event,
@@ -913,6 +914,10 @@ class TrackingOpeningsDialog(Windows.Window):
         if new_approved_status is None:
             return
 
+        specific_opening_filter_changer = SpecificOpeningFilterChanger(
+            self.current_selected_opening, new_approved_status
+        )
+
         new_status_list = Utils.get_new_opening_approved_status(
             self.current_selected_opening, new_approved_status
         )
@@ -957,6 +962,8 @@ class TrackingOpeningsDialog(Windows.Window):
             self.changeType_filter_ComboBox.SelectedValue = changeType_filter
             self.approved_filter_ComboBox.SelectedValue = approved_filter
             self.filter_openings()
+
+            specific_opening_filter_changer.change_filter(self.doc)
 
     def filters_in_views_btn_click(self, sender, e):
         try:
