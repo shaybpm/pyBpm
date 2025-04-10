@@ -12,7 +12,6 @@ from System import Windows
 from ServerUtils import get_project_openings_filter001
 from RevitUtilsOpenings import get_specific_openings_filter
 from Autodesk.Revit.DB import FilteredElementCollector, View, ViewType, ElementId
-
 from pyrevit.framework import wpf
 import os
 
@@ -36,6 +35,11 @@ class FiltersInViewsDialog(Windows.Window):
         self.update_views_app_when_check_uncheck_item = True
 
         self.db_project_openings = get_project_openings_filter001(doc)
+        self.filter_description_textblock.Text = (
+            "יש {} פתחים לא מאושרים בפרויקט".format(
+                len(self.db_project_openings) if self.db_project_openings else 0
+            )
+        )
 
         self.initial_view_type_combo_box()
         self.render()
@@ -149,9 +153,10 @@ class FiltersInViewsDialog(Windows.Window):
         self.check_or_uncheck_all(False)
 
     def get_openings_result(self):
-        openings_res = []
-        # TODO
-        return openings_res
+        return [
+            {"discipline": x["discipline"], "mark": x["mark"]}
+            for x in self.db_project_openings
+        ]
 
     def get_views_result(self):
         views_res = []

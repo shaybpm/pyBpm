@@ -960,8 +960,12 @@ class TrackingOpeningsDialog(Windows.Window):
 
     def filters_in_views_btn_click(self, sender, e):
         try:
+            filters_in_views_dialog = FiltersInViewsDialog(self.doc)
+            if not filters_in_views_dialog.db_project_openings:
+                self.alert("אין פתחים שאינם מאושרים בפרויקט")
+                return
             self.Hide()
-            filters_in_views_settings = FiltersInViewsDialog(self.doc).show_dialog()
+            filters_in_views_settings = filters_in_views_dialog.show_dialog()
             self.Show()
             if filters_in_views_settings is None:
                 return

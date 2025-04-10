@@ -19,10 +19,15 @@
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="0 0 0 8">
-            <TextBlock TextWrapping="Wrap" Margin="0 0 0 8" FontSize="14" FontWeight="Bold">
-                <Run
-                    Text="אפשרות זו תחיל פילטר במבטים הנבחרים שיסנן את כל הפתחים הלא מאושרים בפרויקט." />
-            </TextBlock>
+            <StackPanel>
+                <TextBlock TextWrapping="Wrap" Margin="0 0 0 8" FontSize="14" FontWeight="Bold">
+                    <Run
+                        Text="אפשרות זו תחיל פילטר במבטים הנבחרים שיסנן את כל הפתחים הלא מאושרים בפרויקט." />
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="0 0 0 8" FontSize="12">
+                    <Run x:Name="filter_description_textblock" Text="" />
+                </TextBlock>
+            </StackPanel>
         </Grid>
 
         <Grid Grid.Row="1" Margin="0 0 0 8">
