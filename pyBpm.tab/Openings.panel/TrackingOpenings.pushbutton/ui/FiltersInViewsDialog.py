@@ -9,8 +9,9 @@ except:
     pass
 
 from System import Windows
+from ServerUtils import get_project_openings_filter001
 from RevitUtilsOpenings import get_specific_openings_filter
-from Autodesk.Revit.DB import FilteredElementCollector, View, ViewType
+from Autodesk.Revit.DB import FilteredElementCollector, View, ViewType, ElementId
 
 from pyrevit.framework import wpf
 import os
@@ -23,28 +24,44 @@ class FiltersInViewsDialog(Windows.Window):
         wpf.LoadComponent(self, xaml_file)
         self.doc = doc
         self.values_to_return = None
-        self.specific_openings_filter = get_specific_openings_filter(doc)
-        self.revit_views = FilteredElementCollector(self.doc).OfClass(View).ToElements()
-        self.views_app = [
-            {"view": view, "apply": self.is_apply_init(view)}
-            for view in self.revit_views
+        self.view_types = [
+            ViewType.FloorPlan,
+            ViewType.CeilingPlan,
+            ViewType.Section,
+            ViewType.Elevation,
+            ViewType.ThreeD,
         ]
+        self.specific_openings_filter = get_specific_openings_filter(doc)
+        self.views_app = self.get_views_app()
         self.update_views_app_when_check_uncheck_item = True
+
+        self.db_project_openings = get_project_openings_filter001(doc)
 
         self.initial_view_type_combo_box()
         self.render()
 
+    def get_views_app(self):
+        views_app = []
+        for view in FilteredElementCollector(self.doc).OfClass(View).ToElements():
+            if view.ViewType not in self.view_types:
+                continue
+            if (
+                not view.IsTemplate
+                and view.ViewTemplateId != ElementId.InvalidElementId
+            ):
+                continue
+            apply = self.is_apply_init(view)
+            views_app.append({"view": view, "apply": apply})
+        return views_app
+
     def initial_view_type_combo_box(self):
-        for view_type in [
-            "-",
-            ViewType.FloorPlan.ToString(),
-            ViewType.CeilingPlan.ToString(),
-            ViewType.Section.ToString(),
-            ViewType.Elevation.ToString(),
-            ViewType.ThreeD.ToString(),
-        ]:
+        dash = "-"
+        options = [dash]
+        for view_type in self.view_types:
+            options.append(view_type.ToString())
+        for view_type in options:
             self.view_type_combobox.Items.Add(view_type)
-        self.view_type_combobox.SelectedItem = "-"
+        self.view_type_combobox.SelectedItem = dash
 
     def render(self):
         self.views_listbox.Items.Clear()
@@ -94,7 +111,7 @@ class FiltersInViewsDialog(Windows.Window):
             if view_app["view"].Id == view_id:
                 return view_app
         return None
-    
+
     def update_views_app(self):
         new_views_app = []
         for i in self.views_listbox.Items:
@@ -121,7 +138,7 @@ class FiltersInViewsDialog(Windows.Window):
                 if i.view.Id == item.view.Id:
                     continue
                 i.apply_checkbox.IsChecked = check
-        
+
         if self.update_views_app_when_check_uncheck_item:
             self.update_views_app()
 

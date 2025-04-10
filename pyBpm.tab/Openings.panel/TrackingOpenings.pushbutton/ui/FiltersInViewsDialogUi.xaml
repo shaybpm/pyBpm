@@ -68,7 +68,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="3" Margin="0 8 0 0" BorderThickness="0 0 0 1">
+        <Border Grid.Row="3" Padding="0 4 0 8" BorderThickness="0 0 0 1" BorderBrush="Gray">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />

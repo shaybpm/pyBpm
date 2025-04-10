@@ -82,6 +82,18 @@ def change_openings_approved_status(doc, password, newStatusArr):
     return patch(server_url + "api/openings/tracking/opening-approved", data)
 
 
+def get_project_openings_filter001(doc):
+    model_info = get_model_info(doc)
+    url = "{}api/openings/tracking/all/{}?filter001=true".format(
+        server_url, model_info["projectGuid"]
+    )
+    try:
+        data = get(url)
+        return data
+    except Exception:
+        return None
+
+
 class ProjectStructuralModels:
     def __init__(self, doc):
         if not doc.IsModelInCloud:
