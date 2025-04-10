@@ -3,6 +3,9 @@
 from Autodesk.Revit.DB import (
     TransactionGroup,
     ViewType,
+    FilteredElementCollector,
+    View,
+    Transaction,
 )
 import Utils
 from RevitUtils import (
@@ -113,15 +116,46 @@ def filters_in_views_cb(uiapp):
     if not filters_in_views_settings:
         Utils.alert("not filters_in_views_settings")
         return
-    
-    return
+
+    openings = filters_in_views_settings["openings"]
+    if not openings:
+        Utils.alert("not openings")
+        return
+
+    views_app = filters_in_views_settings["views"]
+    if not views_app:
+        Utils.alert("not views_app")
+        return
+
+    views = FilteredElementCollector(doc).OfClass(View).ToElements()
+
+    def get_view_by_id_int(id_int):
+        for view in views:
+            if view.Id.IntegerValue == id_int:
+                return view
+        return None
 
     t_group = TransactionGroup(doc, "pyBpm | Filters In Views")
     t_group.Start()
 
-    specific_openings_filter = create_or_modify_specific_openings_filter(
-        doc, filters_in_views_settings["openings"]
-    )
+    specific_openings_filter = create_or_modify_specific_openings_filter(doc, openings)
+    if not specific_openings_filter:
+        t_group.RollBack()
+        Utils.alert("not specific_openings_filter")
+        return
+
+    t2 = Transaction(doc, "pyBpm | Filters In Views")
+    t2.Start()
+    for view_app in views_app:
+        view_id = view_app["view_id"]
+        view = get_view_by_id_int(view_id)
+        if not view:
+            continue
+        apply = view_app["apply"]
+        if apply == False and not view.IsFilterApplied(specific_openings_filter.Id):
+            continue
+        view.SetFilterVisibility(specific_openings_filter.Id, apply)
+    t2.Commit()
 
     t_group.Assimilate()
 
