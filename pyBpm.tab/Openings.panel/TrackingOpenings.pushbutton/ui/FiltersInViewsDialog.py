@@ -29,6 +29,7 @@ class FiltersInViewsDialog(Windows.Window):
             ViewType.Section,
             ViewType.Elevation,
             ViewType.ThreeD,
+            ViewType.EngineeringPlan,
         ]
         self.specific_openings_filter = get_specific_openings_filter(doc)
         self.views_app = self.get_views_app()
@@ -188,7 +189,7 @@ class ViewListBoxItem(Windows.Controls.ListBoxItem):
         self.check_uncheck_func = check_uncheck_func
 
         self.render()
-        
+
     def get_text(self):
         text = self.view.Name
         if self.view.IsTemplate:
