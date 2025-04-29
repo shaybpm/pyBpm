@@ -122,7 +122,6 @@ def get_project_container_guids(doc):
         return None, None
     model_info = get_model_info(doc)
     project_guid = model_info["projectGuid"]
-    model_guid = model_info["modelGuid"]
     
     model_containers_dict = {
         # {"ProjectGuid": "ModelGuid"}
