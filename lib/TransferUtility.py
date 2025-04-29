@@ -121,8 +121,8 @@ def get_project_container_guids(doc):
     if not doc.IsModelInCloud:
         return None, None
     model_info = get_model_info(doc)
-    project_guid = model_info["ProjectGuid"]
-    model_guid = model_info["ModelGuid"]
+    project_guid = model_info["projectGuid"]
+    model_guid = model_info["modelGuid"]
     
     model_containers_dict = {
         # {"ProjectGuid": "ModelGuid"}
