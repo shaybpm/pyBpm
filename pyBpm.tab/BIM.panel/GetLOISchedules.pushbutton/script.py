@@ -47,6 +47,9 @@ def cb_function(this_doc, link_doc):
         forms.alert("No schedules found in the linked model.")
         return
     
+    schedule_ids_in_linked_doc = List[ElementId](
+        [x.Id for x in schedules_in_container_doc]
+    )
     # Remove Existing Schedules
     schedules_in_this_doc = FilteredElementCollector(this_doc).OfClass(ViewSchedule).ToElements()
     t = Transaction(this_doc, "BPM_TEST | Remove Existing Schedules")
@@ -60,9 +63,6 @@ def cb_function(this_doc, link_doc):
             this_doc.Delete(schedule_in_this_doc[0].Id)
     t.Commit()
     
-    schedule_ids_in_linked_doc = List[ElementId](
-        [x.Id for x in schedules_in_container_doc]
-    )
     t = Transaction(doc, "BPM | Copy schedules")
     t.Start()
     copied_ids = ElementTransformUtils.CopyElements(
