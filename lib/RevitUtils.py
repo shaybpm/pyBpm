@@ -671,3 +671,13 @@ def is_vectors_orthogonal(vec1, vec2, tol=0.001):
 
     # Check orthogonality (dot product close to zero)
     return dot_product < tol
+
+
+def get_doc_by_model_guid_and_uidoc(uidoc, model_guid):
+    for doc in uidoc.Application.Application.Documents:
+        if not doc.IsModelInCloud:
+            continue
+        if doc.GetCloudModelPath().GetModelGUID().ToString() == model_guid:
+            return doc
+
+    return None
