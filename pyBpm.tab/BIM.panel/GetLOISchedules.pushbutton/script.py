@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""description"""
-__title__ = "title"
+"""Copy/Update The LOI Schedules from the template model."""
+__title__ = "Get LOI Schedule "
 __author__ = "BPM"
 
 # -------------------------------
