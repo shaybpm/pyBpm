@@ -93,7 +93,6 @@ def run():
         cb_function,
         transaction_group_name="pyBpm | Get schedules",
         back_to_init_state=False,
-        uidoc=uidoc,
     )
 
 
