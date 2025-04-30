@@ -94,7 +94,10 @@ def run():
     if not doc.IsModelInCloud:
         forms.alert("This script only works with cloud models.")
         return
-    [project_guid, model_container_guid] = get_project_container_guids(doc)
+    project_guid, model_container_guid = get_project_container_guids(doc)
+    if not project_guid or not model_container_guid:
+        forms.alert("No project container found.")
+        return
     execute_function_on_cloud_doc(
         uidoc,
         "US",
