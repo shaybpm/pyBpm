@@ -71,7 +71,7 @@ def cb_function(this_doc, link_doc):
     success = handle_active_view_want_to_be_deleted(doc, schedules_in_this_doc)
     if not success:
         forms.alert(
-            "The active view is not allowed to be deleted. Please delete it manually."
+            "עליך להחליף את המבט הנוכחי למבט שאינו\nLOI Schedule"
         )
         return
 
