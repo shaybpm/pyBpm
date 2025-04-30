@@ -8,9 +8,16 @@ __author__ = "BPM"
 # -------------------------------
 
 import clr
+
 clr.AddReferenceByPartialName("System")
 from System.Collections.Generic import List
-from Autodesk.Revit.DB import FilteredElementCollector, ViewSchedule, Transaction, ElementId, ElementTransformUtils
+from Autodesk.Revit.DB import (
+    FilteredElementCollector,
+    ViewSchedule,
+    Transaction,
+    ElementId,
+    ElementTransformUtils,
+)
 
 from pyrevit import forms
 
@@ -42,34 +49,37 @@ def cb_function(this_doc, link_doc):
     schedules_in_container_doc = (
         FilteredElementCollector(link_doc).OfClass(ViewSchedule).ToElements()
     )
-    schedules_in_container_doc = [x for x in schedules_in_container_doc if filter_schedules(x)]
+    schedules_in_container_doc = [
+        x for x in schedules_in_container_doc if filter_schedules(x)
+    ]
     if not schedules_in_container_doc:
         forms.alert("No schedules found in the linked model.")
         return
-    
-    schedule_ids_in_linked_doc = List[ElementId](
+
+    # Remove Existing Schedules
+    schedules_in_this_doc = (
+        FilteredElementCollector(this_doc).OfClass(ViewSchedule).ToElements()
+    )
+    schedules_in_container_doc_names = [x.Name for x in schedules_in_container_doc]
+    schedules_in_this_doc = [
+        x for x in schedules_in_this_doc if x.Name in schedules_in_container_doc_names
+    ]
+    if schedules_in_this_doc:
+        t = Transaction(this_doc, "BPM_TEST | Remove Existing Schedules")
+        t.Start()
+        this_doc.Delete(List[ElementId]([x.Id for x in schedules_in_this_doc]))
+        t.Commit()
+
+    schedules_in_container_doc_ids = List[ElementId](
         [x.Id for x in schedules_in_container_doc]
     )
-    # Remove Existing Schedules
-    schedules_in_this_doc = FilteredElementCollector(this_doc).OfClass(ViewSchedule).ToElements()
-    t = Transaction(this_doc, "BPM_TEST | Remove Existing Schedules")
-    t.Start()
-    for schedule_in_container in schedules_in_container_doc:
-        # find by name
-        schedule_in_this_doc = [
-            x for x in schedules_in_this_doc if x.Name == schedule_in_container.Name
-        ]
-        if schedule_in_this_doc:
-            this_doc.Delete(schedule_in_this_doc[0].Id)
-    t.Commit()
-    
     t = Transaction(doc, "BPM | Copy schedules")
     t.Start()
     copied_ids = ElementTransformUtils.CopyElements(
-        link_doc, schedule_ids_in_linked_doc, doc, None, None
+        link_doc, schedules_in_container_doc_ids, this_doc, None, None
     )
     t.Commit()
-    
+
     # Set the 'Include Linked Files' to False:
     t = Transaction(doc, "BPM_TEST | Not Include Linked Files")
     t.Start()
