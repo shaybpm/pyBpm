@@ -44,8 +44,10 @@ def filter_schedules(schedule):
     param_int_val = parm.AsInteger()
     return param_int_val == 1
 
+
 def handle_active_view_want_to_be_deleted(doc, view_want_to_be_deleted_ids):
-    pass
+    return True
+
 
 def cb_function(this_doc, link_doc):
     schedules_in_container_doc = (
@@ -72,7 +74,7 @@ def cb_function(this_doc, link_doc):
             "The active view is not allowed to be deleted. Please delete it manually."
         )
         return
-    
+
     if schedules_in_this_doc:
         t = Transaction(this_doc, "BPM_TEST | Remove Existing Schedules")
         t.Start()
