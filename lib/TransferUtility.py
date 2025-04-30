@@ -117,19 +117,21 @@ def execute_function_on_cloud_doc(
     t_group.Assimilate()
     return True
 
+
 def get_project_container_guids(doc):
     if not doc.IsModelInCloud:
         return None, None
     model_info = get_model_info(doc)
     project_guid = model_info["projectGuid"]
-    
+
     model_containers_dict = {
         # {"ProjectGuid": "ModelGuid"}
         "57008003-fd42-407e-b2b9-e6516dfb9891": "9ed764e2-0ec7-4a64-b0a5-2edf4b1e48d4",
+        "a6e508f0-b3be-4b30-b60e-9d49a4f6d5da": "ccbb6a82-9517-4f37-923c-110f8e115793",
     }
-    
+
     model_container_guid = model_containers_dict.get(project_guid, None)
     if not model_container_guid:
         return None, None
-    
+
     return project_guid, model_container_guid

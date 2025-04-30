@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Copy/Update The LOI Schedules from the template model."""
-__title__ = "Get LOI Schedule "
+"""Copy or update the LOI schedules from the template model."""
+__title__ = "Get LOI\nSchedules"
 __author__ = "BPM"
 
 # -------------------------------
@@ -44,6 +44,8 @@ def filter_schedules(schedule):
     param_int_val = parm.AsInteger()
     return param_int_val == 1
 
+def handle_active_view_want_to_be_deleted(doc, view_want_to_be_deleted_ids):
+    pass
 
 def cb_function(this_doc, link_doc):
     schedules_in_container_doc = (
@@ -105,7 +107,7 @@ def run():
         model_container_guid,
         cb_function,
         transaction_group_name="pyBpm | Get schedules",
-        back_to_init_state=False,
+        back_to_init_state=True,
     )
 
 
