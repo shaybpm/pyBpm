@@ -66,6 +66,13 @@ def cb_function(this_doc, link_doc):
     schedules_in_this_doc = [
         x for x in schedules_in_this_doc if x.Name in schedules_in_container_doc_names
     ]
+    success = handle_active_view_want_to_be_deleted(doc, schedules_in_this_doc)
+    if not success:
+        forms.alert(
+            "The active view is not allowed to be deleted. Please delete it manually."
+        )
+        return
+    
     if schedules_in_this_doc:
         t = Transaction(this_doc, "BPM_TEST | Remove Existing Schedules")
         t.Start()
@@ -88,7 +95,8 @@ def cb_function(this_doc, link_doc):
     for schedule_id in copied_ids:
         schedule_view = doc.GetElement(schedule_id)
         if isinstance(schedule_view, ViewSchedule):
-            schedule_view.Definition.IncludeLinkedFiles = False
+            if schedule_view.Definition.CanIncludeLinkedFiles():
+                schedule_view.Definition.IncludeLinkedFiles = False
     t.Commit()
 
 
