@@ -17,6 +17,8 @@ from Autodesk.Revit.DB import (
     Transaction,
     ElementId,
     ElementTransformUtils,
+    StartingViewSettings,
+    View
 )
 
 from pyrevit import forms
@@ -45,8 +47,40 @@ def filter_schedules(schedule):
     return param_int_val == 1
 
 
-def handle_active_view_want_to_be_deleted(doc, view_want_to_be_deleted_ids):
-    return True
+def handle_active_view_want_to_be_deleted(view_want_to_be_deleted_ids):
+    active_view = doc.ActiveView
+    if active_view.Id not in view_want_to_be_deleted_ids:
+        return True
+
+    # Get all open views in the current document
+    ui_views = uidoc.GetOpenUIViews()
+    for ui_view in ui_views:
+        view_id = ui_view.ViewId
+        if view_id in view_want_to_be_deleted_ids:
+            continue
+        view = doc.GetElement(view_id)
+        if view is None:
+            continue
+        if not isinstance(view, View):
+            continue
+        if view.IsTemplate:
+            continue
+        uidoc.ActiveView = view
+        return True
+
+    # Try to get the start view of the project
+    starting_view_settings = StartingViewSettings.GetStartingViewSettings(doc)
+    starting_view_id = starting_view_settings.ViewId
+    if (
+        starting_view_id != ElementId.InvalidElementId
+        and starting_view_id not in view_want_to_be_deleted_ids
+    ):
+        starting_view = doc.GetElement(starting_view_id)
+        if starting_view is not None:
+            uidoc.ActiveView = starting_view
+            return True
+
+    return False
 
 
 def cb_function(this_doc, link_doc):
@@ -68,11 +102,9 @@ def cb_function(this_doc, link_doc):
     schedules_in_this_doc = [
         x for x in schedules_in_this_doc if x.Name in schedules_in_container_doc_names
     ]
-    success = handle_active_view_want_to_be_deleted(doc, schedules_in_this_doc)
+    success = handle_active_view_want_to_be_deleted([x.Id for x in schedules_in_this_doc])
     if not success:
-        forms.alert(
-            "עליך להחליף את המבט הנוכחי למבט שאינו\nLOI Schedule"
-        )
+        forms.alert("עליך להחליף את המבט הנוכחי למבט שאינו\nLOI Schedule")
         return
 
     if schedules_in_this_doc:
