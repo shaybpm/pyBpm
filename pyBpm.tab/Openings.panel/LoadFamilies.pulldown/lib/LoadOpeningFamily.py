@@ -20,7 +20,7 @@ def get_discipline_from_user():
         Tuple[str, str]: The discipline code and the discipline name.
     """
     discipline_dict = {
-        "A - Architecture": "A",
+        "A - Architectural": "A",
         "S - Structural": "S",
         "P - Plumbing": "P",
         "SP - Sprinklers": "SP",
