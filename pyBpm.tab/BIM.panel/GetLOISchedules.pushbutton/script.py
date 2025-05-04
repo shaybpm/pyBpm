@@ -18,12 +18,16 @@ from Autodesk.Revit.DB import (
     ElementId,
     ElementTransformUtils,
     StartingViewSettings,
-    View
+    View,
 )
 
 from pyrevit import forms
 
 from TransferUtility import execute_function_on_cloud_doc, get_project_container_guids
+
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
+from GetLOISchedulesResults import GetLOISchedulesResults # type: ignore
 
 # -------------------------------
 # -------------MAIN--------------
@@ -31,11 +35,43 @@ from TransferUtility import execute_function_on_cloud_doc, get_project_container
 
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
-# selection = [doc.GetElement(x) for x in uidoc.Selection.GetElementIds()]
 
 # --------------------------------
 # -------------SCRIPT-------------
 # --------------------------------
+
+
+def get_user_schedules(schedules):
+    opt_dict = {}
+    zz_list = []
+    for schedule in schedules:
+        schedule_name = schedule.Name
+        if "/" not in schedule_name:
+            continue
+        schedule_chars = schedule_name.split("/")[0]
+        if len(schedule_chars) == 0:
+            continue
+        if schedule_chars.upper() == "ZZ":
+            zz_list.append(schedule)
+            continue
+        if schedule_chars not in opt_dict:
+            opt_dict[schedule_chars] = []
+        opt_dict[schedule_chars].append(schedule)
+
+    options = list(opt_dict.keys())
+    options.sort()
+    only_zz_schedules_str = "Only ZZ Schedules"
+    options.append(only_zz_schedules_str)
+    selected_key = forms.SelectFromList.show(
+        options, title="Select your discipline"
+    )
+    if not selected_key:
+        return None
+    if selected_key == only_zz_schedules_str:
+        return zz_list
+    selected_schedules = opt_dict[selected_key]
+    selected_schedules.extend(zz_list)
+    return selected_schedules
 
 
 def filter_schedules(schedule):
@@ -44,7 +80,12 @@ def filter_schedules(schedule):
     if not parm:
         return False
     param_int_val = parm.AsInteger()
-    return param_int_val == 1
+    if param_int_val != 1:
+        return False
+    schedule_name = schedule.Name
+    if "/" not in schedule_name:
+        return False
+    return True
 
 
 def handle_active_view_want_to_be_deleted(view_want_to_be_deleted_ids):
@@ -93,6 +134,9 @@ def cb_function(this_doc, link_doc):
     if not schedules_in_container_doc:
         forms.alert("No schedules found in the linked model.")
         return
+    schedules_in_container_doc = get_user_schedules(schedules_in_container_doc)
+    if not schedules_in_container_doc:
+        return
 
     # Remove Existing Schedules
     schedules_in_this_doc = (
@@ -102,7 +146,9 @@ def cb_function(this_doc, link_doc):
     schedules_in_this_doc = [
         x for x in schedules_in_this_doc if x.Name in schedules_in_container_doc_names
     ]
-    success = handle_active_view_want_to_be_deleted([x.Id for x in schedules_in_this_doc])
+    success = handle_active_view_want_to_be_deleted(
+        [x.Id for x in schedules_in_this_doc]
+    )
     if not success:
         forms.alert("עליך להחליף את המבט הנוכחי למבט שאינו\nLOI Schedule")
         return
@@ -132,6 +178,16 @@ def cb_function(this_doc, link_doc):
             if schedule_view.Definition.CanIncludeLinkedFiles():
                 schedule_view.Definition.IncludeLinkedFiles = False
     t.Commit()
+    
+    copied = []
+    for schedule_id in copied_ids:
+        schedule_view = doc.GetElement(schedule_id)
+        if isinstance(schedule_view, ViewSchedule):
+            copied.append(schedule_view)
+    get_LOI_schedules_results = GetLOISchedulesResults(
+        uidoc, copied
+    )
+    get_LOI_schedules_results.Show()
 
 
 def run():
