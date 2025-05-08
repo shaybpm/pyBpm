@@ -23,6 +23,7 @@ from Autodesk.Revit.DB import (
 
 from pyrevit import forms
 
+from RevitUtils import get_comp_link
 from TransferUtility import execute_function_on_cloud_doc, get_project_container_guids
 
 import sys, os
@@ -194,10 +195,21 @@ def run():
     if not doc.IsModelInCloud:
         forms.alert("This script only works with cloud models.")
         return
+    
     project_guid, model_container_guid = get_project_container_guids(doc)
     if not project_guid or not model_container_guid:
-        forms.alert("No project container found.")
+        message = "No project container found and no compilation link found."
+        comp_link = get_comp_link(doc)
+        if not comp_link:
+            forms.alert(message)
+            return
+        comp_link_doc = comp_link.GetLinkDocument()
+        if not comp_link_doc:
+            forms.alert(message)
+            return
+        cb_function(doc, comp_link_doc)
         return
+    
     execute_function_on_cloud_doc(
         uidoc,
         "US",
