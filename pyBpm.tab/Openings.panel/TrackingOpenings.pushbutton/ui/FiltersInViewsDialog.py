@@ -10,6 +10,7 @@ except:
 
 from System import Windows
 from ServerUtils import get_project_openings_filter001
+from LocalUserInputs import LocalUserInputs
 from RevitUtilsOpenings import get_specific_openings_filter
 from Autodesk.Revit.DB import FilteredElementCollector, View, ViewType, ElementId
 from pyrevit.framework import wpf
@@ -22,6 +23,21 @@ class FiltersInViewsDialog(Windows.Window):
     def __init__(self, doc):
         wpf.LoadComponent(self, xaml_file)
         self.doc = doc
+
+        self.user_inputs = LocalUserInputs(
+            "filters_in_views_dialog_inputs",
+            defaults={
+                "hide_openings_radiobutton_is_checked": True,
+                "color_openings_radiobutton_is_checked": False,
+            },
+        )
+
+        self.color = {
+            "red": 255,
+            "green": 0,
+            "blue": 0,
+        }
+
         self.values_to_return = None
         self.view_types = [
             ViewType.FloorPlan,
@@ -43,6 +59,7 @@ class FiltersInViewsDialog(Windows.Window):
         )
 
         self.initial_view_type_combo_box()
+        self.initial_operation_radiobuttons()
         self.render()
 
     def get_views_app(self):
@@ -58,6 +75,14 @@ class FiltersInViewsDialog(Windows.Window):
             apply = self.is_apply_init(view)
             views_app.append({"view": view, "apply": apply})
         return views_app
+
+    def initial_operation_radiobuttons(self):
+        self.hide_openings_radiobutton.IsChecked = self.user_inputs.data.get(
+            "hide_openings_radiobutton_is_checked", True
+        )
+        self.color_openings_radiobutton.IsChecked = self.user_inputs.data.get(
+            "color_openings_radiobutton_is_checked", False
+        )
 
     def initial_view_type_combo_box(self):
         dash = "-"
@@ -88,10 +113,28 @@ class FiltersInViewsDialog(Windows.Window):
             )
 
     def is_apply_init(self, view):
+        if self.specific_openings_filter is None:
+            return False
+        if not view.IsFilterApplied(self.specific_openings_filter.Id):
+            return False
+
+        if self.user_inputs.data.get("hide_openings_radiobutton_is_checked", True):
+            return not view.GetFilterVisibility(self.specific_openings_filter.Id)
+
+        ogs = view.GetFilterOverrides(self.specific_openings_filter.Id)
+        if ogs is None:
+            return False
+        if not view.GetFilterVisibility(self.specific_openings_filter.Id):
+            return False
+        cut_foreground_pattern_color = ogs.CutForegroundPatternColor
+        if cut_foreground_pattern_color is None:
+            return False
+        if not cut_foreground_pattern_color.IsValid:
+            return False
         return (
-            self.specific_openings_filter is not None
-            and view.IsFilterApplied(self.specific_openings_filter.Id)
-            and not view.GetFilterVisibility(self.specific_openings_filter.Id)
+            cut_foreground_pattern_color.Red == self.color["red"]
+            and cut_foreground_pattern_color.Green == self.color["green"]
+            and cut_foreground_pattern_color.Blue == self.color["blue"]
         )
 
     def view_name_textbox_TextChanged(self, sender, e):
@@ -170,10 +213,23 @@ class FiltersInViewsDialog(Windows.Window):
             )
         return views_res
 
+    def save_user_inputs(self):
+        self.user_inputs.data["hide_openings_radiobutton_is_checked"] = (
+            self.hide_openings_radiobutton.IsChecked
+        )
+        self.user_inputs.data["color_openings_radiobutton_is_checked"] = (
+            self.color_openings_radiobutton.IsChecked
+        )
+        self.user_inputs.save_inputs()
+
     def ok_btn_click(self, sender, e):
+        self.save_user_inputs()
         self.values_to_return = {
             "openings": self.get_openings_result(),
             "views": self.get_views_result(),
+            "hide_openings": self.hide_openings_radiobutton.IsChecked,
+            "color_openings": self.color_openings_radiobutton.IsChecked,
+            "color": self.color,
         }
         self.Close()
 

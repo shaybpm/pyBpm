@@ -6,12 +6,15 @@ from Autodesk.Revit.DB import (
     FilteredElementCollector,
     View,
     Transaction,
+    Color,
+    OverrideGraphicSettings
 )
 import Utils
 from RevitUtils import (
     get_ui_view,
     get_bpm_3d_view,
     get_tags_of_element_in_view,
+    get_ogs_by_color,
 )
 from RevitUtilsOpenings import (
     create_or_modify_specific_openings_filter,
@@ -158,7 +161,24 @@ def filters_in_views_cb(uiapp):
         apply = view_app["apply"]
         if apply == False and not view.IsFilterApplied(specific_openings_filter.Id):
             continue
-        view.SetFilterVisibility(specific_openings_filter.Id, not apply)
+        if filters_in_views_settings["hide_openings"]:
+            view.SetFilterVisibility(specific_openings_filter.Id, not apply)
+        elif filters_in_views_settings["color_openings"]:
+            view.SetFilterVisibility(specific_openings_filter.Id, True)
+            if apply:
+                ogs = get_ogs_by_color(
+                    doc,
+                    Color(
+                        filters_in_views_settings["color"]["red"],
+                        filters_in_views_settings["color"]["green"],
+                        filters_in_views_settings["color"]["blue"],
+                    ),
+                )
+                view.SetFilterOverrides(specific_openings_filter.Id, ogs)
+            else:
+                view.SetFilterOverrides(specific_openings_filter.Id, OverrideGraphicSettings())
+        else:
+            raise Exception("Unknown operation")
     t2.Commit()
 
     t_group.Assimilate()
