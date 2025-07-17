@@ -15,10 +15,18 @@ import os
 xaml_file = os.path.join(os.path.dirname(__file__), "ApproveBySheetsDialogUi.xaml")
 
 
+class ApproveBySheetsDialogResult:
+    def __init__(self, openings, new_approved_status):
+        # openings should be a list of dicts with: uniqueId, discipline, and mark
+        # new_approved_status should be a list of dicts with: uniqueId and approved
+        self.openings = openings
+        self.new_approved_status = new_approved_status
+
 class ApproveBySheetsDialog(Windows.Window):
     def __init__(self, data):
         wpf.LoadComponent(self, xaml_file)
-        self.doc = data
+        self.data = data
+        self.result = None # type: ApproveBySheetsDialogResult | None
 
     def ok_btn_click(self, sender, e):
         # Logic for OK button click
