@@ -592,6 +592,20 @@ class TrackingOpeningsDialog(Windows.Window):
         else:
             self.current_sort_key = key
 
+    def sort_the_data(self):
+        if not self.current_sort_key:
+            return
+        self.display_openings = sorted(
+            self.display_openings,
+            key=lambda k: (
+                int(k[self.current_sort_key])
+                if type(k[self.current_sort_key]) is str
+                and k[self.current_sort_key].isdigit()
+                else k[self.current_sort_key]
+            ),
+            reverse=self.current_sort_key.endswith("_REVERSE"),
+        )
+
     def sort_discipline_btn_click(self, sender, e):
         self.sort_data_by("discipline")
 
@@ -941,6 +955,7 @@ class TrackingOpeningsDialog(Windows.Window):
                     print(ex)
                 return
 
+        copy_of_current_selected_opening = list(self.current_selected_opening)
         if server_response:
             response_unique_ids = [x["uniqueId"] for x in server_response]
             new_openings = list(self.openings)
@@ -962,6 +977,14 @@ class TrackingOpeningsDialog(Windows.Window):
             self.changeType_filter_ComboBox.SelectedValue = changeType_filter
             self.approved_filter_ComboBox.SelectedValue = approved_filter
             self.filter_openings()
+            self.sort_the_data()
+            
+            # Reselect the current selected openings in the listbox
+            selected_uids = set(opening.get("uniqueId") for opening in copy_of_current_selected_opening)
+            self.data_listbox.SelectedItems.Clear()
+            for item in self.data_listbox.Items:
+                if item.opening.get("uniqueId") in selected_uids:
+                    self.data_listbox.SelectedItems.Add(item)
 
             specific_opening_filter_changer.change_filter(self.doc)
 
