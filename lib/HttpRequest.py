@@ -18,6 +18,7 @@ def download_string(url):
 
 def get(url):
     web_client = Net.WebClient()
+    web_client.Encoding = Encoding.UTF8
     res = web_client.DownloadString(Uri(url))
     return json.loads(res)
 

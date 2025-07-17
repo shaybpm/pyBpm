@@ -217,13 +217,14 @@ def get_comp_opening_sheets_data(doc):
             "data": None,
         }
     comp_doc_model_guid = get_model_info(comp_doc)["modelGuid"]
-    url = "{}api/openings/sheet-revisions/comp-model-guid/{}".format(
+    url = "{}api/openings/sheet-revisions/comp-model-guid/{}?approvalStatus=true".format(
         server_url, comp_doc_model_guid
     )
     try:
         data = get(url)
         if not data:
             return {"status": "ERROR", "message": "No data found.", "data": None}
+        data["modelTitle"] = comp_doc.Title
         return {"status": "OK", "message": "", "data": data}
     except Exception as e:
         return {"status": "ERROR", "message": str(e), "data": None}

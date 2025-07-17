@@ -22,11 +22,75 @@ class ApproveBySheetsDialogResult:
         self.openings = openings
         self.new_approved_status = new_approved_status
 
+
 class ApproveBySheetsDialog(Windows.Window):
     def __init__(self, data):
         wpf.LoadComponent(self, xaml_file)
         self.data = data
-        self.result = None # type: ApproveBySheetsDialogResult | None
+        self.result = None  # type: ApproveBySheetsDialogResult | None
+
+        self.modelTitleTextBlock.Text = "שם מודל הקומפילציה: " + self.data.get(
+            "modelTitle", "Unknown Model"
+        )
+
+        self.openings = None  # type: list | None
+
+        self.initialize_sheet_tree_view_container_StackPanel()
+
+    def initialize_sheet_tree_view_container_StackPanel(self):
+        for sheet in sorted(
+            self.data.get("sheets", []),
+            key=lambda x: int(x.get("number", "9999")),
+        ):
+            sheet_tree_view_item = Windows.Controls.TreeViewItem()
+            sheet_tree_view_item.Header = sheet.get("title", "-- No Title --")
+            for revision in sheet.get("revisions", []):
+                revision_tree_view_item = Windows.Controls.TreeViewItem()
+                revision_data = revision.get("revisionData", {})
+                revision_tree_view_item.Header = (
+                    revision_data.get("name", "-- No Revision Name --")
+                    + ", "
+                    + revision_data.get("date", "-- No Date --")
+                )
+                revision_tree_view_item.Tag = revision_data.get("uniqueId", "NO_UID")
+                revision_tree_view_item.MouseDoubleClick += (
+                    self.double_click_rev_tree_view_item
+                )
+                sheet_tree_view_item.Items.Add(revision_tree_view_item)
+            self.tree_view.Items.Add(sheet_tree_view_item)
+
+    def get_openings_by_revision_uid(self, revision_uid):
+        if not revision_uid or revision_uid == "NO_UID":
+            return []
+        for sheet in self.data.get("sheets", []):
+            for revision in sheet.get("revisions", []):
+                if revision.get("revisionData", {}).get("uniqueId") == revision_uid:
+                    return revision.get("openings", [])
+
+    def double_click_rev_tree_view_item(self, sender, e):
+        openings = self.get_openings_by_revision_uid(sender.Tag)
+        if not openings:
+            Windows.MessageBox.Show(
+                "לא נמצאו פתחים במהדורה זו.",
+                "אין פתחים",
+                Windows.MessageBoxButton.OK,
+                Windows.MessageBoxImage.Information,
+            )
+            return
+        self.go_to_next_step(openings)
+
+    def go_to_next_step(self, openings):
+        self.openings = openings
+        self.ok_btn.IsEnabled = True
+        self.tree_view.Visibility = Windows.Visibility.Collapsed
+        self.opening_listbox.Visibility = Windows.Visibility.Visible
+        self.titleTextBlock.Text = "ערוך סטטוס אישורים"
+        self.explainTextBlock.Text = "ניתן לבחור מספר שורות ביחד עם לחיצה על Ctrl או Shift, ולערוך את הסטטוס של כל הפתחים שנבחרו."
+
+        self.opening_listbox.Items.Clear()
+        for opening in openings:
+            item = ListBoxItem(opening)
+            self.opening_listbox.Items.Add(item)
 
     def ok_btn_click(self, sender, e):
         # Logic for OK button click
@@ -37,135 +101,49 @@ class ApproveBySheetsDialog(Windows.Window):
         self.Close()
 
 
-# !
-# TODO: Remove
-# data_example = {
-#     "_id": "687785e415fdb6be8fddedb0",
-#     "projectGuid": "4fca2f38-b570-476f-a757-7527e16fabe6",
-#     "modelGuid": "03fd4053-4c62-4994-b357-07c86a443a6b",
-#     "sheets": [
-#         {
-#             "number": "400",
-#             "uniqueId": "8f05895c-351f-4a55-8cc0-a664f75eca95-001552e1",
-#             "title": "Sheet: 400 - Unnamed",
-#             "name": "Unnamed",
-#             "revisions": [
-#                 {
-#                     "revisionData": {
-#                         "name": "Seq. 11 - פתחים",
-#                         "description": "פתחים",
-#                         "number": "8",
-#                         "sequenceNumber": 11,
-#                         "numberingSequenceId": "1515885",
-#                         "uniqueId": "96f56a0d-55ea-417c-a4d9-c6dbd45f510c-001889c1",
-#                         "date": "16-07-2025",
-#                         "issued": False,
-#                         "issuesBy": "",
-#                         "issuedTo": "",
-#                     },
-#                     "openings": [
-#                         {
-#                             "uniqueId": "08c2fc0d-5eb8-4ab7-a537-505aadb0245f-007c48e0",
-#                             "mark": "2",
-#                             "name": "Round Face Opening",
-#                             "discipline": "A",
-#                             "approved": None,
-#                         },
-#                         {
-#                             "uniqueId": "08c2fc0d-5eb8-4ab7-a537-505aadb0245f-007c4965",
-#                             "mark": "3",
-#                             "name": "Round Face Opening",
-#                             "discipline": "A",
-#                             "approved": None,
-#                         },
-#                         {
-#                             "uniqueId": "b575d908-7732-4ddc-9d1d-d6604d43b521-000e7d16",
-#                             "mark": "3",
-#                             "name": "Rectangular Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not treated",
-#                         },
-#                         {
-#                             "uniqueId": "b575d908-7732-4ddc-9d1d-d6604d43b521-000e7efb",
-#                             "mark": "4",
-#                             "name": "Rectangular Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not approved",
-#                         },
-#                         {
-#                             "uniqueId": "b575d908-7732-4ddc-9d1d-d6604d43b521-000e7fea",
-#                             "mark": "5",
-#                             "name": "Rectangular Face Opening",
-#                             "discipline": "H",
-#                             "approved": "conditionally approved",
-#                         },
-#                         {
-#                             "uniqueId": "b575d908-7732-4ddc-9d1d-d6604d43b521-000e8025",
-#                             "mark": "6",
-#                             "name": "Rectangular Face Opening",
-#                             "discipline": "H",
-#                             "approved": "conditionally approved",
-#                         },
-#                         {
-#                             "uniqueId": "b575d908-7732-4ddc-9d1d-d6604d43b521-000e80b4",
-#                             "mark": "7",
-#                             "name": "Round Face Opening",
-#                             "discipline": "H",
-#                             "approved": "approved",
-#                         },
-#                         {
-#                             "uniqueId": "b575d908-7732-4ddc-9d1d-d6604d43b521-000e80df",
-#                             "mark": "8",
-#                             "name": "Round Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not approved",
-#                         },
-#                         {
-#                             "uniqueId": "223c46ef-a2e5-402c-9b3a-6ac087bd024a-000e8221",
-#                             "mark": "9",
-#                             "name": "Rectangular Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not approved",
-#                         },
-#                         {
-#                             "uniqueId": "223c46ef-a2e5-402c-9b3a-6ac087bd024a-000e8264",
-#                             "mark": "10",
-#                             "name": "Rectangular Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not treated",
-#                         },
-#                         {
-#                             "uniqueId": "223c46ef-a2e5-402c-9b3a-6ac087bd024a-000e82b2",
-#                             "mark": "11",
-#                             "name": "Rectangular Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not treated",
-#                         },
-#                         {
-#                             "uniqueId": "223c46ef-a2e5-402c-9b3a-6ac087bd024a-000e82ed",
-#                             "mark": "12",
-#                             "name": "Round Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not treated",
-#                         },
-#                         {
-#                             "uniqueId": "223c46ef-a2e5-402c-9b3a-6ac087bd024a-000e830f",
-#                             "mark": "13",
-#                             "name": "Round Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not treated",
-#                         },
-#                         {
-#                             "uniqueId": "223c46ef-a2e5-402c-9b3a-6ac087bd024a-000e832f",
-#                             "mark": "14",
-#                             "name": "Round Face Opening",
-#                             "discipline": "H",
-#                             "approved": "not treated",
-#                         },
-#                     ],
-#                 }
-#             ],
-#         }
-#     ],
-#     "__v": 0,
-# }
+class ListBoxItem(Windows.Controls.ListBoxItem):
+    def __init__(self, opening):
+        super(ListBoxItem, self).__init__()
+        self.opening = opening
+
+        grid = Windows.Controls.Grid()
+        grid.ColumnDefinitions.Add(
+            Windows.Controls.ColumnDefinition(
+                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+            )
+        )
+        grid.ColumnDefinitions.Add(
+            Windows.Controls.ColumnDefinition(
+                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+            )
+        )
+        grid.ColumnDefinitions.Add(
+            Windows.Controls.ColumnDefinition(
+                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+            )
+        )
+        grid.ColumnDefinitions.Add(
+            Windows.Controls.ColumnDefinition(
+                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+            )
+        )
+
+        discipline_text = Windows.Controls.TextBlock(
+            Text=opening.get("discipline", "-")
+        )
+        discipline_text.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
+        mark_text = Windows.Controls.TextBlock(Text=opening.get("mark", "-"))
+        mark_text.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
+        current_approved_text = Windows.Controls.TextBlock(
+            Text=opening.get("approved", "-")
+        )
+        current_approved_text.SetValue(Windows.Controls.Grid.ColumnProperty, 2)
+        new_approved_combo = Windows.Controls.ComboBox()
+        new_approved_combo.SetValue(Windows.Controls.Grid.ColumnProperty, 3)
+        
+        grid.Children.Add(discipline_text)
+        grid.Children.Add(mark_text)
+        grid.Children.Add(current_approved_text)
+        grid.Children.Add(new_approved_combo)
+        
+        self.Content = grid

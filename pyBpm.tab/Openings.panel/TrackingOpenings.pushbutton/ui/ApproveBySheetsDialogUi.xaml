@@ -7,16 +7,36 @@
 	WindowStartupLocation="CenterScreen"
 	Width="600"
 	Height="600"
-	FlowDirection="LeftToRight">
+	FlowDirection="RightToLeft">
 	<Grid Margin="4">
 		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
 			<RowDefinition />
-			<RowDefinition Height="28" />
+			<RowDefinition Height="Auto" />
 		</Grid.RowDefinitions>
 
-		<Border Grid.Row="0" Margin="4" BorderBrush="Gray" BorderThickness="2">
+		<Grid Grid.Row="0" Margin="4">
+			<StackPanel>
+				<TextBlock x:Name="modelTitleTextBlock" Margin="0 4 0 4" />
+				<TextBlock x:Name="titleTextBlock"
+					Text="בחר גיליון ומהדורה לאישור פתחים:"
+					FontWeight="Bold" />
+				<TextBlock x:Name="explainTextBlock"
+					Text="הבחירה מתבצעת על ידי לחיצה כפולה על המהדורה." />
+			</StackPanel>
+		</Grid>
 
-
+		<Border Grid.Row="1"
+			Margin="4"
+			BorderBrush="Gray"
+			BorderThickness="2"
+			FlowDirection="LeftToRight">
+			<Grid>
+				<TreeView x:Name="tree_view" FontSize="18">
+				</TreeView>
+				<ListBox x:Name="opening_listbox" SelectionMode="Extended"
+					ScrollViewer.HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed" />
+			</Grid>
 		</Border>
 
 		<Grid Grid.Row="2" Margin="4">
@@ -24,8 +44,8 @@
 				<ColumnDefinition />
 				<ColumnDefinition />
 			</Grid.ColumnDefinitions>
-			<Button Grid.Column="0" Click="ok_btn_click" Content="OK" />
-			<Button Grid.Column="1" Click="cancel_btn_click" Content="Cancel" />
+			<Button Grid.Column="0" x:Name="ok_btn" Click="ok_btn_click" Content="אישור" IsEnabled="False" />
+			<Button Grid.Column="1" x:Name="cancel_btn" Click="cancel_btn_click" Content="ביטול" />
 		</Grid>
 
 	</Grid>
