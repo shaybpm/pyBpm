@@ -217,7 +217,7 @@ def get_comp_opening_sheets_data(doc):
             "data": None,
         }
     comp_doc_model_guid = get_model_info(comp_doc)["modelGuid"]
-    url = "{}api/openings/sheet-revisions/comp-model-guid/{}?approvalStatus=true".format(
+    url = "{}api/openings/sheet-revisions/comp-model-guid/{}?syncWithOpeningData=true".format(
         server_url, comp_doc_model_guid
     )
     try:

@@ -366,16 +366,17 @@ def filter_sheets(view_sheet):
     return True
 
 
-def get_new_opening_approved_status(openings, new_approved_status):
-    new_status_list = []
-    for opening in openings:
-        new_status_list.append(
-            {
-                "uniqueId": opening["uniqueId"],
-                "approved": new_approved_status,
-            }
-        )
-    return new_status_list
+def map_opening_approval_state(openings_with_new_approved_status):
+    return [
+        {"uniqueId": opening["uniqueId"], "approved": opening["new_approved_status"]}
+        for opening in openings_with_new_approved_status
+    ]
+    
+def get_new_approved_status(openings_with_new_approved_status, opening_unique_id):
+    for opening in openings_with_new_approved_status:
+        if opening["uniqueId"] == opening_unique_id:
+            return opening["new_approved_status"]
+    return None
 
 
 def get_head_tag_bbox(tag, view):

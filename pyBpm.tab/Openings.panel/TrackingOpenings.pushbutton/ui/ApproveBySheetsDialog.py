@@ -15,19 +15,11 @@ import os
 xaml_file = os.path.join(os.path.dirname(__file__), "ApproveBySheetsDialogUi.xaml")
 
 
-class ApproveBySheetsDialogResult:
-    def __init__(self, openings, new_approved_status):
-        # openings should be a list of dicts with: uniqueId, discipline, and mark
-        # new_approved_status should be a list of dicts with: uniqueId and approved
-        self.openings = openings
-        self.new_approved_status = new_approved_status
-
-
 class ApproveBySheetsDialog(Windows.Window):
     def __init__(self, data):
         wpf.LoadComponent(self, xaml_file)
         self.data = data
-        self.result = None  # type: ApproveBySheetsDialogResult | None
+        self.result = None  # list of dicts with: `uniqueId`, `discipline`, `mark`, `approved` and the `new_approved_status`.
 
         self.modelTitleTextBlock.Text = "שם מודל הקומפילציה: " + self.data.get(
             "modelTitle", "Unknown Model"
@@ -141,12 +133,39 @@ class ApproveBySheetsDialog(Windows.Window):
         # Update the selected items
         for item in selected_items:
             # turn of the event handler to prevent recursion
+            if not item.isEnabled:
+                continue
             item.selection_changed_is_on = False
             item.combo_selected_index = index
             item.selection_changed_is_on = True
 
     def ok_btn_click(self, sender, e):
-        # Logic for OK button click
+        result = []
+        for item in self.opening_listbox.Items:
+            if not isinstance(item, ListBoxItem):
+                continue
+            opening = item.opening
+            new_approved_status = item.get_approved_status()
+            if not new_approved_status or new_approved_status["name"] == "-":
+                continue
+            if not opening.get("uniqueId"):
+                continue
+            if not opening.get("discipline"):
+                continue
+            if not opening.get("mark"):
+                continue
+
+            result.append(
+                {
+                    "uniqueId": opening["uniqueId"],
+                    "discipline": opening["discipline"],
+                    "mark": opening["mark"],
+                    "approved": opening.get("approved"),
+                    "new_approved_status": new_approved_status["name"],
+                }
+            )
+        self.result = result
+
         self.Close()
 
     def cancel_btn_click(self, sender, e):
@@ -161,6 +180,8 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         self.combo_selection_changed = combo_selection_changed
 
         self.selection_changed_is_on = True
+        
+        self.isEnabled = opening.get("openingDataSynced", False)
 
         self.approval_status_options = [
             {"name": "-", "bg": Windows.Media.Brushes.LightGray},
@@ -168,22 +189,22 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
             {"name": "not approved", "bg": Windows.Media.Brushes.LightPink},
             {"name": "conditionally approved", "bg": Windows.Media.Brushes.LightBlue},
         ]
-        
+
         col_def_0 = Windows.Controls.ColumnDefinition(
             Width=Windows.GridLength(1, Windows.GridUnitType.Star)
         )
         col_def_0.Width = Windows.GridLength(40)
-        
+
         col_def_1 = Windows.Controls.ColumnDefinition(
             Width=Windows.GridLength(1, Windows.GridUnitType.Star)
         )
         col_def_1.Width = Windows.GridLength(40)
-        
+
         col_def_2 = Windows.Controls.ColumnDefinition(
             Width=Windows.GridLength(1, Windows.GridUnitType.Star)
         )
         col_def_2.Width = Windows.GridLength(250)
-        
+
         col_def_3 = Windows.Controls.ColumnDefinition(
             Width=Windows.GridLength(1, Windows.GridUnitType.Star)
         )
@@ -194,21 +215,19 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         grid.ColumnDefinitions.Add(col_def_1)
         grid.ColumnDefinitions.Add(col_def_2)
         grid.ColumnDefinitions.Add(col_def_3)
-        
+
         discipline_text = opening.get("discipline", "-")
-        discipline_textBlock = Windows.Controls.TextBlock(
-            Text=discipline_text
-        )
+        discipline_textBlock = Windows.Controls.TextBlock(Text=discipline_text)
         discipline_textBlock.ToolTip = discipline_text
         discipline_textBlock.Margin = Windows.Thickness(0, 0, 5, 0)
         discipline_textBlock.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
-        
+
         mark_text = opening.get("mark", "-")
         mark_textBlock = Windows.Controls.TextBlock(Text=mark_text)
         mark_textBlock.ToolTip = mark_text
         mark_textBlock.Margin = Windows.Thickness(0, 0, 5, 0)
         mark_textBlock.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
-        
+
         current_approved_text = opening.get("approved", "-")
         current_approved_textBlock = Windows.Controls.TextBlock(
             Text=current_approved_text
@@ -232,6 +251,8 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         new_approved_combo.SelectionChanged += self.handle_combo_selection_change
         new_approved_combo.Margin = Windows.Thickness(0, 0, 5, 0)
         new_approved_combo.SetValue(Windows.Controls.Grid.ColumnProperty, 3)
+        new_approved_combo.Width = 150
+        new_approved_combo.IsEnabled = self.isEnabled
         self._comb = new_approved_combo
 
         grid.Children.Add(discipline_textBlock)
@@ -260,7 +281,7 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         ):
             raise ValueError("Invalid combo selection index")
         return self.approval_status_options[self.combo_selected_index]
-    
+
     def get_approval_status_option_by_name(self, name):
         for option in self.approval_status_options:
             if option["name"] == name:

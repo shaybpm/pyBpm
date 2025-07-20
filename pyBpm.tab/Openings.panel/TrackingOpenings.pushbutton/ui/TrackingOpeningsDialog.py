@@ -913,33 +913,18 @@ class TrackingOpeningsDialog(Windows.Window):
         else:
             return self.set_change_approved_status_password()
 
-    def get_current_approved_status(self, opening_unique_id):
-        # This function retrieves the current approved status of an opening by its unique ID.
-        for opening in self.openings:
-            if opening["uniqueId"] == opening_unique_id:
-                return opening.get("approved")
-        return None
-
-    def change_approved_status(self, openings, new_approved_status):
-        # In this case, opening dict must to include `uniqueId`, `discipline`, and `mark`. all the other fields are not required.
+    def change_approved_status(self, openings_with_new_approved_status):
+        # In this case, opening dict must to include `uniqueId`, `discipline`, `mark`, `approved` and the `new_approved_status`. all the other fields are not required.
         password = self.get_change_approved_status_password()
         if password is None:
             return
 
-        # for each opening, we need to add the `approved` field if it does not exist
-        for opening in openings:
-            if "approved" not in opening:
-                approved_status = self.get_current_approved_status(opening["uniqueId"])
-                if approved_status is not None:
-                    opening["approved"] = approved_status
-
-        specific_opening_filter_changer = SpecificOpeningFilterChanger(
-            [op for op in openings if op.get("approved") is not None],
-            new_approved_status,
+        specific_opening_filter_changers = SpecificOpeningFilterChanger.get_changers_by_openings_with_new_approved_status(
+            openings_with_new_approved_status
         )
 
-        new_status_list = Utils.get_new_opening_approved_status(
-            openings, new_approved_status
+        new_status_list = Utils.map_opening_approval_state(
+            openings_with_new_approved_status
         )
         server_response = None
         try:
@@ -967,7 +952,11 @@ class TrackingOpeningsDialog(Windows.Window):
             new_openings = list(self.openings)
             for opening in new_openings:
                 if opening["uniqueId"] in response_unique_ids:
-                    opening["approved"] = new_approved_status
+                    new_approved_status = Utils.get_new_approved_status(
+                        openings_with_new_approved_status, opening["uniqueId"]
+                    )
+                    if new_approved_status:
+                        opening["approved"] = new_approved_status
 
             level_filter = self.level_filter_ComboBox.SelectedValue
             shape_filter = self.shape_filter_ComboBox.SelectedValue
@@ -993,40 +982,58 @@ class TrackingOpeningsDialog(Windows.Window):
             for item in self.data_listbox.Items:
                 if item.opening.get("uniqueId") in selected_uids:
                     self.data_listbox.SelectedItems.Add(item)
+            self.update_more_data_info()
 
-            specific_opening_filter_changer.change_filter(self.doc)
+            for specific_opening_filter_changer in specific_opening_filter_changers:
+                specific_opening_filter_changer.change_filter(self.doc)
 
     def change_approved_status_btn_click(self, sender, e):
-        if len(self.current_selected_opening) == 0:
-            self.alert("יש לבחור פתחים")
-            return
+        try:
+            if len(self.current_selected_opening) == 0:
+                self.alert("יש לבחור פתחים")
+                return
 
-        new_approved_status_options = [
-            "approved",
-            "not approved",
-            "conditionally approved",
-        ]
-        select_from_list = SelectFromList(new_approved_status_options)
-        new_approved_status = select_from_list.show()
-        if new_approved_status is None:
-            return
+            new_approved_status_options = [
+                "approved",
+                "not approved",
+                "conditionally approved",
+            ]
+            select_from_list = SelectFromList(new_approved_status_options)
+            new_approved_status = select_from_list.show()
+            if new_approved_status is None:
+                return
 
-        self.change_approved_status(self.current_selected_opening, new_approved_status)
+            openings_with_new_approved_status = []
+            for selected_opening in self.current_selected_opening:
+                openings_with_new_approved_status.append(
+                    {
+                        "uniqueId": selected_opening["uniqueId"],
+                        "discipline": selected_opening["discipline"],
+                        "mark": selected_opening["mark"],
+                        "approved": selected_opening["approved"],
+                        "new_approved_status": new_approved_status,
+                    }
+                )
+
+            self.change_approved_status(openings_with_new_approved_status)
+        except Exception as ex:
+            print(ex)
 
     def approve_by_compilation_sheets(self, sender, e):
-        res = get_comp_opening_sheets_data(self.doc)
-        if res["data"] is None:
-            self.alert(res["message"])
-            return
+        try:
+            res = get_comp_opening_sheets_data(self.doc)
+            if res["data"] is None:
+                self.alert(res["message"])
+                return
 
-        dialog = ApproveBySheetsDialog(res["data"])
-        dialog.ShowDialog()
-        if dialog.result is None:
-            return
+            dialog = ApproveBySheetsDialog(res["data"])
+            dialog.ShowDialog()
+            if dialog.result is None:
+                return
 
-        self.change_approved_status(
-            dialog.result.openings, dialog.result.new_approved_status
-        )
+            self.change_approved_status(dialog.result)
+        except Exception as ex:
+            print(ex)
 
     def filters_in_views_btn_click(self, sender, e):
         try:
