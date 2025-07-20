@@ -34,8 +34,25 @@
 			<Grid>
 				<TreeView x:Name="tree_view" FontSize="18">
 				</TreeView>
-				<ListBox x:Name="opening_listbox" SelectionMode="Extended"
-					ScrollViewer.HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed" />
+
+				<Grid x:Name="opening_grid" Visibility="Collapsed">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition />
+					</Grid.RowDefinitions>
+					<StackPanel Grid.Row="0" Margin="4">
+						<TextBlock x:Name="opening_titleTextBlock"
+							Text="סינון פתחים:"
+							FontWeight="Bold" />
+						<TextBox x:Name="opening_filtet_textbox"
+							Width="200"
+							Height="25"
+							HorizontalAlignment="Left"
+							VerticalAlignment="Top" />
+					</StackPanel>
+					<ListBox Grid.Row="1" x:Name="opening_listbox" SelectionMode="Extended"
+						ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+				</Grid>
 			</Grid>
 		</Border>
 
@@ -44,7 +61,8 @@
 				<ColumnDefinition />
 				<ColumnDefinition />
 			</Grid.ColumnDefinitions>
-			<Button Grid.Column="0" x:Name="ok_btn" Click="ok_btn_click" Content="אישור" IsEnabled="False" />
+			<Button Grid.Column="0" x:Name="ok_btn" Click="ok_btn_click" Content="אישור"
+				IsEnabled="False" />
 			<Button Grid.Column="1" x:Name="cancel_btn" Click="cancel_btn_click" Content="ביטול" />
 		</Grid>
 
