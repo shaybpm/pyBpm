@@ -163,55 +163,75 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         self.selection_changed_is_on = True
 
         self.approval_status_options = [
-            "-",
-            "approved",
-            "not approved",
-            "conditionally approved",
+            {"name": "-", "bg": Windows.Media.Brushes.LightGray},
+            {"name": "approved", "bg": Windows.Media.Brushes.LightGreen},
+            {"name": "not approved", "bg": Windows.Media.Brushes.LightPink},
+            {"name": "conditionally approved", "bg": Windows.Media.Brushes.LightBlue},
         ]
+        
+        col_def_0 = Windows.Controls.ColumnDefinition(
+            Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+        )
+        col_def_0.Width = Windows.GridLength(40)
+        
+        col_def_1 = Windows.Controls.ColumnDefinition(
+            Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+        )
+        col_def_1.Width = Windows.GridLength(40)
+        
+        col_def_2 = Windows.Controls.ColumnDefinition(
+            Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+        )
+        col_def_2.Width = Windows.GridLength(250)
+        
+        col_def_3 = Windows.Controls.ColumnDefinition(
+            Width=Windows.GridLength(1, Windows.GridUnitType.Star)
+        )
+        col_def_3.Width = Windows.GridLength(100)
 
         grid = Windows.Controls.Grid()
-        grid.ColumnDefinitions.Add(
-            Windows.Controls.ColumnDefinition(
-                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
-            )
-        )
-        grid.ColumnDefinitions.Add(
-            Windows.Controls.ColumnDefinition(
-                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
-            )
-        )
-        grid.ColumnDefinitions.Add(
-            Windows.Controls.ColumnDefinition(
-                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
-            )
-        )
-        grid.ColumnDefinitions.Add(
-            Windows.Controls.ColumnDefinition(
-                Width=Windows.GridLength(1, Windows.GridUnitType.Star)
-            )
-        )
-
+        grid.ColumnDefinitions.Add(col_def_0)
+        grid.ColumnDefinitions.Add(col_def_1)
+        grid.ColumnDefinitions.Add(col_def_2)
+        grid.ColumnDefinitions.Add(col_def_3)
+        
+        discipline_text = opening.get("discipline", "-")
         discipline_textBlock = Windows.Controls.TextBlock(
-            Text=opening.get("discipline", "-")
+            Text=discipline_text
         )
+        discipline_textBlock.ToolTip = discipline_text
+        discipline_textBlock.Margin = Windows.Thickness(0, 0, 5, 0)
         discipline_textBlock.SetValue(Windows.Controls.Grid.ColumnProperty, 0)
-
-        mark_textBlock = Windows.Controls.TextBlock(Text=opening.get("mark", "-"))
+        
+        mark_text = opening.get("mark", "-")
+        mark_textBlock = Windows.Controls.TextBlock(Text=mark_text)
+        mark_textBlock.ToolTip = mark_text
+        mark_textBlock.Margin = Windows.Thickness(0, 0, 5, 0)
         mark_textBlock.SetValue(Windows.Controls.Grid.ColumnProperty, 1)
-
+        
+        current_approved_text = opening.get("approved", "-")
         current_approved_textBlock = Windows.Controls.TextBlock(
-            Text=opening.get("approved", "-")
+            Text=current_approved_text
         )
+        ap_status_option = self.get_approval_status_option_by_name(
+            current_approved_text
+        )
+        if ap_status_option:
+            current_approved_textBlock.Background = ap_status_option["bg"]
+        current_approved_textBlock.ToolTip = current_approved_text
+        current_approved_textBlock.Margin = Windows.Thickness(0, 0, 5, 0)
         current_approved_textBlock.SetValue(Windows.Controls.Grid.ColumnProperty, 2)
 
         new_approved_combo = Windows.Controls.ComboBox()
-        new_approved_combo.SetValue(Windows.Controls.Grid.ColumnProperty, 3)
-        for option in self.approval_status_options:
+        for option_dict in self.approval_status_options:
+            option_name = option_dict["name"]
             combo_item = Windows.Controls.ComboBoxItem()
-            combo_item.Content = option
+            combo_item.Content = option_name
             new_approved_combo.Items.Add(combo_item)
         new_approved_combo.SelectedIndex = 0
         new_approved_combo.SelectionChanged += self.handle_combo_selection_change
+        new_approved_combo.Margin = Windows.Thickness(0, 0, 5, 0)
+        new_approved_combo.SetValue(Windows.Controls.Grid.ColumnProperty, 3)
         self._comb = new_approved_combo
 
         grid.Children.Add(discipline_textBlock)
@@ -240,3 +260,9 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         ):
             raise ValueError("Invalid combo selection index")
         return self.approval_status_options[self.combo_selected_index]
+    
+    def get_approval_status_option_by_name(self, name):
+        for option in self.approval_status_options:
+            if option["name"] == name:
+                return option
+        return None
