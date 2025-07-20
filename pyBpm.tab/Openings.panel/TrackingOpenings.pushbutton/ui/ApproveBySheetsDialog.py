@@ -203,12 +203,12 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         col_def_2 = Windows.Controls.ColumnDefinition(
             Width=Windows.GridLength(1, Windows.GridUnitType.Star)
         )
-        col_def_2.Width = Windows.GridLength(250)
+        col_def_2.Width = Windows.GridLength(200)
 
         col_def_3 = Windows.Controls.ColumnDefinition(
             Width=Windows.GridLength(1, Windows.GridUnitType.Star)
         )
-        col_def_3.Width = Windows.GridLength(100)
+        col_def_3.Width = Windows.GridLength(200)
 
         grid = Windows.Controls.Grid()
         grid.ColumnDefinitions.Add(col_def_0)
@@ -251,7 +251,6 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         new_approved_combo.SelectionChanged += self.handle_combo_selection_change
         new_approved_combo.Margin = Windows.Thickness(0, 0, 5, 0)
         new_approved_combo.SetValue(Windows.Controls.Grid.ColumnProperty, 3)
-        new_approved_combo.Width = 150
         new_approved_combo.IsEnabled = self.isEnabled
         self._comb = new_approved_combo
 
