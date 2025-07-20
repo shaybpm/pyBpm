@@ -47,11 +47,57 @@ class ApproveBySheetsDialog(Windows.Window):
             for revision in sheet.get("revisions", []):
                 revision_tree_view_item = Windows.Controls.TreeViewItem()
                 revision_data = revision.get("revisionData", {})
-                revision_tree_view_item.Header = (
-                    revision_data.get("name", "-- No Revision Name --")
-                    + ", "
-                    + revision_data.get("date", "-- No Date --")
+
+                revision_tree_view_item_header_grid = Windows.Controls.Grid()
+                revision_tree_view_item_header_grid.ColumnDefinitions.Add(
+                    Windows.Controls.ColumnDefinition(
+                        Width=Windows.GridLength(380)
+                    )
                 )
+                revision_tree_view_item_header_grid.ColumnDefinitions.Add(
+                    Windows.Controls.ColumnDefinition(
+                        Width=Windows.GridLength(1, Windows.GridUnitType.Auto)
+                    )
+                )
+                revision_tree_view_item_header_grid.ColumnDefinitions.Add(
+                    Windows.Controls.ColumnDefinition(
+                        Width=Windows.GridLength(120)
+                    )
+                )
+
+                rev_name_textBlock = Windows.Controls.TextBlock()
+                rev_name_textBlock_text = revision_data.get("name", "-- No Revision Name --")
+                rev_name_textBlock.Text = rev_name_textBlock_text
+                rev_name_textBlock.ToolTip = rev_name_textBlock_text
+                rev_name_textBlock.SetValue(
+                    Windows.Controls.Grid.ColumnProperty, 0
+                )
+                revision_tree_view_item_header_grid.Children.Add(
+                    rev_name_textBlock
+                )
+                
+                separator_border = Windows.Controls.Border()
+                separator_border.SetValue(
+                    Windows.Controls.Grid.ColumnProperty, 1
+                )
+                separator_border.BorderThickness = Windows.Thickness(0, 0, 1, 0)
+                separator_border.BorderBrush = Windows.Media.Brushes.Gray
+                separator_border.Margin = Windows.Thickness(5, 0, 5, 0)
+                revision_tree_view_item_header_grid.Children.Add(separator_border)
+                
+                rev_date_textBlock = Windows.Controls.TextBlock()
+                rev_date_textBlock_text = revision_data.get("date", "-- No Date --")
+                rev_date_textBlock.Text = rev_date_textBlock_text
+                rev_date_textBlock.ToolTip = rev_date_textBlock_text
+                rev_date_textBlock.SetValue(
+                    Windows.Controls.Grid.ColumnProperty, 2
+                )
+                revision_tree_view_item_header_grid.Children.Add(
+                    rev_date_textBlock
+                )
+
+                revision_tree_view_item.Header = revision_tree_view_item_header_grid
+
                 revision_tree_view_item.Tag = revision_data.get("uniqueId", "NO_UID")
                 revision_tree_view_item.MouseDoubleClick += (
                     self.double_click_rev_tree_view_item
@@ -140,10 +186,10 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         current_approved_text.SetValue(Windows.Controls.Grid.ColumnProperty, 2)
         new_approved_combo = Windows.Controls.ComboBox()
         new_approved_combo.SetValue(Windows.Controls.Grid.ColumnProperty, 3)
-        
+
         grid.Children.Add(discipline_text)
         grid.Children.Add(mark_text)
         grid.Children.Add(current_approved_text)
         grid.Children.Add(new_approved_combo)
-        
+
         self.Content = grid
