@@ -12,6 +12,8 @@ PYBPM_FILTER_NAME_OPENING = "PYBPM-FILTER-NAME_OPENING"
 PYBPM_FILTER_NAME_NOT_OPENING = "PYBPM-FILTER-NAME_NOT-OPENING"
 PYBPM_FILTER_SPECIFIC_OPENINGS = "PYBPM-FILTER-SPECIFIC-OPENINGS"
 
+THERE_IS_NO_DESPAIR_IN_THE_WORLD_AT_ALL = "THERE_IS_NO_DESPAIR_IN_THE_WORLD_AT_ALL"
+
 
 def is_opening_rectangular(opening):
     from RevitUtils import getElementName
@@ -131,6 +133,37 @@ def get_not_opening_filter(doc):
     return create_not_opening_filter(doc)
 
 
+def create_opening_filter(discipline, mark):
+    import clr
+
+    clr.AddReferenceByPartialName("System")
+    from System.Collections.Generic import List
+    from Autodesk.Revit.DB import (
+        BuiltInParameter,
+        ElementId,
+        ParameterFilterRuleFactory,
+        ElementFilter,
+        LogicalAndFilter,
+        ElementParameterFilter,
+    )
+
+    e_p_f_this_opening_data_rules = List[ElementFilter]([])
+    rule = ParameterFilterRuleFactory.CreateEqualsRule(
+        ElementId(BuiltInParameter.ALL_MODEL_DESCRIPTION),
+        discipline,
+    )
+    e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
+    rule = ParameterFilterRuleFactory.CreateEqualsRule(
+        ElementId(BuiltInParameter.ALL_MODEL_MARK),
+        mark,
+    )
+    e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
+    e_p_f_this_opening_data_logical_and = LogicalAndFilter(
+        e_p_f_this_opening_data_rules
+    )
+    return e_p_f_this_opening_data_logical_and
+
+
 def create_or_modify_specific_openings_filter(doc, openings_data):
     """The openings_data is a list of dictionaries with the following structure:
     {
@@ -177,24 +210,16 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
         mark = opening_data["mark"]
         if not discipline or not mark:
             continue
-        e_p_f_this_opening_data_rules = List[ElementFilter]([])
-
-        rule = ParameterFilterRuleFactory.CreateEqualsRule(
-            ElementId(BuiltInParameter.ALL_MODEL_DESCRIPTION),
-            discipline,
-        )
-        e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
-
-        rule = ParameterFilterRuleFactory.CreateEqualsRule(
-            ElementId(BuiltInParameter.ALL_MODEL_MARK),
-            mark,
-        )
-        e_p_f_this_opening_data_rules.Add(ElementParameterFilter(rule))
-
-        e_p_f_this_opening_data_logical_and = LogicalAndFilter(
-            e_p_f_this_opening_data_rules
-        )
+        e_p_f_this_opening_data_logical_and = create_opening_filter(discipline, mark)
         e_p_f_opening_data_rules.Add(e_p_f_this_opening_data_logical_and)
+
+    if e_p_f_opening_data_rules.Count == 0:
+        e_p_f_opening_data_rules.Add(
+            create_opening_filter(
+                THERE_IS_NO_DESPAIR_IN_THE_WORLD_AT_ALL,
+                THERE_IS_NO_DESPAIR_IN_THE_WORLD_AT_ALL,
+            )
+        )
 
     e_p_f_opening_data_logical_or = LogicalOrFilter(e_p_f_opening_data_rules)
     element_filter = LogicalAndFilter(
@@ -260,6 +285,11 @@ def get_current_openings_data_from_specific_openings_filter(specific_openings_fi
                     if not isinstance(filter_string_rule, FilterStringRule):
                         continue
                     rule_str = filter_string_rule.RuleString
+                    if (
+                        not rule_str
+                        or rule_str == THERE_IS_NO_DESPAIR_IN_THE_WORLD_AT_ALL
+                    ):
+                        continue
                     # if its digit, it's a mark
                     if rule_str.isdigit():
                         opening_data_dict["mark"] = rule_str

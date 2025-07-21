@@ -189,3 +189,42 @@ def is_model_quality_auto_checks_successful(doc, filter_by_importance="A"):
 
     except Exception:
         return True
+
+
+def get_comp_opening_sheets_data(doc):
+    """Returns:
+    {
+        "status": "OK" | "ERROR",
+        "message": str,
+        "data": dict | None
+    }
+    """
+
+    if not doc.IsModelInCloud:
+        return {"status": "ERROR", "message": "Document is not in cloud.", "data": None}
+    comp_link = get_comp_link(doc)
+    if not comp_link:
+        return {
+            "status": "ERROR",
+            "message": "No compilation link found.",
+            "data": None,
+        }
+    comp_doc = comp_link.GetLinkDocument()
+    if not comp_doc:
+        return {
+            "status": "ERROR",
+            "message": "Compilation document is not loaded.",
+            "data": None,
+        }
+    comp_doc_model_guid = get_model_info(comp_doc)["modelGuid"]
+    url = "{}api/openings/sheet-revisions/comp-model-guid/{}?syncWithOpeningData=true".format(
+        server_url, comp_doc_model_guid
+    )
+    try:
+        data = get(url)
+        if not data:
+            return {"status": "ERROR", "message": "No data found.", "data": None}
+        data["modelTitle"] = comp_doc.Title
+        return {"status": "OK", "message": "", "data": data}
+    except Exception as e:
+        return {"status": "ERROR", "message": str(e), "data": None}

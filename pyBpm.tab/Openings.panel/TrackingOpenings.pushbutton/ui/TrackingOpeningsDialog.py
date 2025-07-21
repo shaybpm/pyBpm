@@ -17,7 +17,11 @@ import json
 
 from pyrevit import forms, script
 
-from ServerUtils import get_openings_changes, change_openings_approved_status
+from ServerUtils import (
+    get_openings_changes,
+    change_openings_approved_status,
+    get_comp_opening_sheets_data,
+)
 from RevitUtils import (
     convertRevitNumToCm,
     get_ui_view as ru_get_ui_doc,
@@ -29,6 +33,7 @@ from UiUtils import SelectFromList
 
 from FiltersInViewsDialog import FiltersInViewsDialog
 import Utils
+from ApproveBySheetsDialog import ApproveBySheetsDialog
 from SpecificOpeningFilterChanger import SpecificOpeningFilterChanger
 from EventHandlers import (
     show_opening_3d_event,
@@ -592,6 +597,20 @@ class TrackingOpeningsDialog(Windows.Window):
         else:
             self.current_sort_key = key
 
+    def sort_the_data(self):
+        if not self.current_sort_key:
+            return
+        self.display_openings = sorted(
+            self.display_openings,
+            key=lambda k: (
+                int(k[self.current_sort_key])
+                if type(k[self.current_sort_key]) is str
+                and k[self.current_sort_key].isdigit()
+                else k[self.current_sort_key]
+            ),
+            reverse=self.current_sort_key.endswith("_REVERSE"),
+        )
+
     def sort_discipline_btn_click(self, sender, e):
         self.sort_data_by("discipline")
 
@@ -894,32 +913,16 @@ class TrackingOpeningsDialog(Windows.Window):
         else:
             return self.set_change_approved_status_password()
 
-    def change_approved_status_btn_click(self, sender, e):
-        if len(self.current_selected_opening) == 0:
-            self.alert("יש לבחור פתחים")
-            return
-
+    def change_approved_status(self, openings_with_new_approved_status):
+        # In this case, opening dict must to include `uniqueId`, `discipline`, `mark`, `approved` and the `new_approved_status`. all the other fields are not required.
         password = self.get_change_approved_status_password()
         if password is None:
             return
 
-        new_approved_status_options = [
-            "approved",
-            "not approved",
-            "conditionally approved",
-        ]
+        specific_opening_filter_changer = SpecificOpeningFilterChanger(openings_with_new_approved_status)
 
-        select_from_list = SelectFromList(new_approved_status_options)
-        new_approved_status = select_from_list.show()
-        if new_approved_status is None:
-            return
-
-        specific_opening_filter_changer = SpecificOpeningFilterChanger(
-            self.current_selected_opening, new_approved_status
-        )
-
-        new_status_list = Utils.get_new_opening_approved_status(
-            self.current_selected_opening, new_approved_status
+        new_status_list = Utils.map_opening_approval_state(
+            openings_with_new_approved_status
         )
         server_response = None
         try:
@@ -941,12 +944,17 @@ class TrackingOpeningsDialog(Windows.Window):
                     print(ex)
                 return
 
+        copy_of_current_selected_opening = list(self.current_selected_opening)
         if server_response:
             response_unique_ids = [x["uniqueId"] for x in server_response]
             new_openings = list(self.openings)
             for opening in new_openings:
                 if opening["uniqueId"] in response_unique_ids:
-                    opening["approved"] = new_approved_status
+                    new_approved_status = Utils.get_new_approved_status(
+                        openings_with_new_approved_status, opening["uniqueId"]
+                    )
+                    if new_approved_status:
+                        opening["approved"] = new_approved_status
 
             level_filter = self.level_filter_ComboBox.SelectedValue
             shape_filter = self.shape_filter_ComboBox.SelectedValue
@@ -962,8 +970,67 @@ class TrackingOpeningsDialog(Windows.Window):
             self.changeType_filter_ComboBox.SelectedValue = changeType_filter
             self.approved_filter_ComboBox.SelectedValue = approved_filter
             self.filter_openings()
+            self.sort_the_data()
+
+            # Reselect the current selected openings in the listbox
+            selected_uids = set(
+                opening.get("uniqueId") for opening in copy_of_current_selected_opening
+            )
+            self.data_listbox.SelectedItems.Clear()
+            for item in self.data_listbox.Items:
+                if item.opening.get("uniqueId") in selected_uids:
+                    self.data_listbox.SelectedItems.Add(item)
+            self.update_more_data_info()
 
             specific_opening_filter_changer.change_filter(self.doc)
+
+    def change_approved_status_btn_click(self, sender, e):
+        try:
+            if len(self.current_selected_opening) == 0:
+                self.alert("יש לבחור פתחים")
+                return
+
+            new_approved_status_options = [
+                "approved",
+                "not approved",
+                "conditionally approved",
+            ]
+            select_from_list = SelectFromList(new_approved_status_options)
+            new_approved_status = select_from_list.show()
+            if new_approved_status is None:
+                return
+
+            openings_with_new_approved_status = []
+            for selected_opening in self.current_selected_opening:
+                openings_with_new_approved_status.append(
+                    {
+                        "uniqueId": selected_opening["uniqueId"],
+                        "discipline": selected_opening["discipline"],
+                        "mark": selected_opening["mark"],
+                        "approved": selected_opening["approved"],
+                        "new_approved_status": new_approved_status,
+                    }
+                )
+
+            self.change_approved_status(openings_with_new_approved_status)
+        except Exception as ex:
+            print(ex)
+
+    def approve_by_compilation_sheets(self, sender, e):
+        try:
+            res = get_comp_opening_sheets_data(self.doc)
+            if res["data"] is None:
+                self.alert(res["message"])
+                return
+
+            dialog = ApproveBySheetsDialog(res["data"])
+            dialog.ShowDialog()
+            if dialog.result is None:
+                return
+
+            self.change_approved_status(dialog.result)
+        except Exception as ex:
+            print(ex)
 
     def filters_in_views_btn_click(self, sender, e):
         try:

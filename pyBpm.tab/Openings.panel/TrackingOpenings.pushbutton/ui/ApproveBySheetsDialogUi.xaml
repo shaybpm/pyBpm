@@ -1,0 +1,72 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	Title="אישור פתחים לפי גיליונות קומפילציה"
+	MinHeight="500"
+	MinWidth="280"
+	ResizeMode="CanResize"
+	WindowStartupLocation="CenterScreen"
+	Width="600"
+	Height="600"
+	FlowDirection="RightToLeft">
+	<Grid Margin="4">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<Grid Grid.Row="0" Margin="4">
+			<StackPanel>
+				<TextBlock x:Name="modelTitleTextBlock" Margin="0 4 0 4" />
+				<TextBlock x:Name="titleTextBlock"
+					Text="בחר גיליון ומהדורה לאישור פתחים:"
+					FontWeight="Bold" />
+				<TextBlock x:Name="explainTextBlock"
+					Text="הבחירה מתבצעת על ידי לחיצה כפולה על המהדורה." />
+			</StackPanel>
+		</Grid>
+
+		<Border Grid.Row="1"
+			Margin="4"
+			BorderBrush="Gray"
+			BorderThickness="2"
+			FlowDirection="LeftToRight">
+			<Grid>
+				<TreeView x:Name="tree_view" FontSize="18">
+				</TreeView>
+
+				<Grid x:Name="opening_grid" Visibility="Collapsed">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition />
+					</Grid.RowDefinitions>
+					<StackPanel Grid.Row="0" Margin="4">
+						<TextBlock x:Name="opening_titleTextBlock"
+							Text="סינון פתחים:"
+							FontWeight="Bold" />
+						<TextBox x:Name="opening_filter_textbox"
+							Width="200"
+							Height="25"
+							HorizontalAlignment="Left"
+							VerticalAlignment="Top"
+							ToolTip="הקלד טקסט לסינון פתחים"
+							TextChanged="opening_filter_textbox_TextChanged" />
+					</StackPanel>
+					<ListBox Grid.Row="1" x:Name="opening_listbox" SelectionMode="Extended"
+						ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+				</Grid>
+			</Grid>
+		</Border>
+
+		<Grid Grid.Row="2" Margin="4">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition />
+				<ColumnDefinition />
+			</Grid.ColumnDefinitions>
+			<Button Grid.Column="0" x:Name="ok_btn" Click="ok_btn_click" Content="אישור"
+				IsEnabled="False" />
+			<Button Grid.Column="1" x:Name="cancel_btn" Click="cancel_btn_click" Content="ביטול" />
+		</Grid>
+
+	</Grid>
+</Window>

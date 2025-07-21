@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
+
 def get_env_mode():
     # TODO: IMPROVE!
-    if "Software_Development\PyRevit\extension\pyBpm.extension" in __file__:
+    if "C:\Users\אייל סיני\BPM LTD 102181204\BPM - Status - General\Software_Development" in __file__:
         return "dev"
     else:
         return "prod"
