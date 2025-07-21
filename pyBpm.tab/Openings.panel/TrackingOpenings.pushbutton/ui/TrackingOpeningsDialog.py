@@ -919,9 +919,7 @@ class TrackingOpeningsDialog(Windows.Window):
         if password is None:
             return
 
-        specific_opening_filter_changers = SpecificOpeningFilterChanger.get_changers_by_openings_with_new_approved_status(
-            openings_with_new_approved_status
-        )
+        specific_opening_filter_changer = SpecificOpeningFilterChanger(openings_with_new_approved_status)
 
         new_status_list = Utils.map_opening_approval_state(
             openings_with_new_approved_status
@@ -984,8 +982,7 @@ class TrackingOpeningsDialog(Windows.Window):
                     self.data_listbox.SelectedItems.Add(item)
             self.update_more_data_info()
 
-            for specific_opening_filter_changer in specific_opening_filter_changers:
-                specific_opening_filter_changer.change_filter(self.doc)
+            specific_opening_filter_changer.change_filter(self.doc)
 
     def change_approved_status_btn_click(self, sender, e):
         try:

@@ -7,7 +7,7 @@ from Autodesk.Revit.DB import (
     View,
     Transaction,
     Color,
-    OverrideGraphicSettings
+    OverrideGraphicSettings,
 )
 import Utils
 from RevitUtils import (
@@ -176,7 +176,9 @@ def filters_in_views_cb(uiapp):
                 )
                 view.SetFilterOverrides(specific_openings_filter.Id, ogs)
             else:
-                view.SetFilterOverrides(specific_openings_filter.Id, OverrideGraphicSettings())
+                view.SetFilterOverrides(
+                    specific_openings_filter.Id, OverrideGraphicSettings()
+                )
         else:
             raise Exception("Unknown operation")
     t2.Commit()
@@ -193,29 +195,31 @@ def change_specific_openings_filter_cb(uiapp):
 
     ex_event_file = ExternalEventDataFile(doc)
 
-    change_specific_openings_filter_data = ex_event_file.get_key_value(
+    openings_with_new_approved_status = ex_event_file.get_key_value(
         "change_specific_openings_filter_data"
     )
-    if not change_specific_openings_filter_data:
-        Utils.alert("not change_specific_openings_filter_data")
+    if not openings_with_new_approved_status:
+        Utils.alert("not openings_with_new_approved_status")
         return
-    openings = change_specific_openings_filter_data["openings"]
-    if not openings:
-        return
-    new_approved_status = change_specific_openings_filter_data["new_approved_status"]
-    if not new_approved_status:
-        return
+
+    openings_by_new_approved_status = {}
+    for opening in openings_with_new_approved_status:
+        new_approved_status = opening["new_approved_status"]
+        if new_approved_status not in openings_by_new_approved_status:
+            openings_by_new_approved_status[new_approved_status] = []
+        openings_by_new_approved_status[new_approved_status].append(opening)
 
     try:
         t_group = TransactionGroup(doc, "pyBpm | Change Filter")
         t_group.Start()
-        change_func = (
-            add_one_opening_to_specific_openings_filter
-            if new_approved_status == "not approved"
-            else remove_one_opening_from_specific_openings_filter
-        )
-        for opening in openings:
-            change_func(doc, opening)
+        for new_approved_status, openings in openings_by_new_approved_status.items():
+            change_func = (
+                add_one_opening_to_specific_openings_filter
+                if new_approved_status == "not approved"
+                else remove_one_opening_from_specific_openings_filter
+            )
+            for opening in openings:
+                change_func(doc, opening)
         t_group.Assimilate()
     except Exception as ex:
         print(ex)
