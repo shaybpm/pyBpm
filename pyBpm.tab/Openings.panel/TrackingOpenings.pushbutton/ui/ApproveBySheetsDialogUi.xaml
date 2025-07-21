@@ -44,11 +44,13 @@
 						<TextBlock x:Name="opening_titleTextBlock"
 							Text="סינון פתחים:"
 							FontWeight="Bold" />
-						<TextBox x:Name="opening_filtet_textbox"
+						<TextBox x:Name="opening_filter_textbox"
 							Width="200"
 							Height="25"
 							HorizontalAlignment="Left"
-							VerticalAlignment="Top" />
+							VerticalAlignment="Top"
+							ToolTip="הקלד טקסט לסינון פתחים"
+							TextChanged="opening_filter_textbox_TextChanged" />
 					</StackPanel>
 					<ListBox Grid.Row="1" x:Name="opening_listbox" SelectionMode="Extended"
 						ScrollViewer.HorizontalScrollBarVisibility="Disabled" />

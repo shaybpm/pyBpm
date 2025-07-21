@@ -12,6 +12,8 @@ from System import Windows
 from pyrevit.framework import wpf
 import os
 
+from pyUtils import safe_int
+
 xaml_file = os.path.join(os.path.dirname(__file__), "ApproveBySheetsDialogUi.xaml")
 
 
@@ -106,15 +108,36 @@ class ApproveBySheetsDialog(Windows.Window):
         self.go_to_next_step(openings)
 
     def go_to_next_step(self, openings):
-        self.openings = openings
+        self.openings = openings  # type: list | None
+        if self.openings:
+            self.openings.sort(
+                key=lambda x: (
+                    x.get("discipline", ""),
+                    safe_int(x.get("mark", ""), 9999),
+                )
+            )
+            for opening in self.openings:
+                opening["combo_selected_index"] = 0
+
         self.ok_btn.IsEnabled = True
         self.tree_view.Visibility = Windows.Visibility.Collapsed
         self.opening_grid.Visibility = Windows.Visibility.Visible
         self.titleTextBlock.Text = "ערוך סטטוס אישורים"
         self.explainTextBlock.Text = "ניתן לבחור מספר שורות ביחד עם לחיצה על Ctrl או Shift, ולערוך את הסטטוס של כל הפתחים שנבחרו."
 
+        self.rerender_opening_listbox()
+
+    def rerender_opening_listbox(self):
         self.opening_listbox.Items.Clear()
-        for opening in openings:
+        for opening in self.openings:
+            if (
+                self.opening_filter_textbox.Text != ""
+                and self.opening_filter_textbox.Text.upper()
+                not in opening.get("mark", "").upper()
+                and self.opening_filter_textbox.Text.upper()
+                not in opening.get("discipline", "").upper()
+            ):
+                continue
             item = ListBoxItem(opening, self.combo_selection_changed)
             self.opening_listbox.Items.Add(item)
 
@@ -139,14 +162,16 @@ class ApproveBySheetsDialog(Windows.Window):
             item.combo_selected_index = index
             item.selection_changed_is_on = True
 
+    def opening_filter_textbox_TextChanged(self, sender, e):
+        self.rerender_opening_listbox()
+
     def ok_btn_click(self, sender, e):
         result = []
-        for item in self.opening_listbox.Items:
-            if not isinstance(item, ListBoxItem):
-                continue
-            opening = item.opening
-            new_approved_status = item.get_approved_status()
-            if not new_approved_status or new_approved_status["name"] == "-":
+        for opening in self.openings:
+            new_approved_status_name = ListBoxItem.get_approved_status_name(
+                opening["combo_selected_index"]
+            )
+            if not new_approved_status_name or new_approved_status_name == "-":
                 continue
             if not opening.get("uniqueId"):
                 continue
@@ -161,7 +186,7 @@ class ApproveBySheetsDialog(Windows.Window):
                     "discipline": opening["discipline"],
                     "mark": opening["mark"],
                     "approved": opening.get("approved"),
-                    "new_approved_status": new_approved_status["name"],
+                    "new_approved_status": new_approved_status_name,
                 }
             )
         self.result = result
@@ -180,15 +205,8 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         self.combo_selection_changed = combo_selection_changed
 
         self.selection_changed_is_on = True
-        
-        self.isEnabled = opening.get("openingDataSynced", False)
 
-        self.approval_status_options = [
-            {"name": "-", "bg": Windows.Media.Brushes.LightGray},
-            {"name": "approved", "bg": Windows.Media.Brushes.LightGreen},
-            {"name": "not approved", "bg": Windows.Media.Brushes.LightPink},
-            {"name": "conditionally approved", "bg": Windows.Media.Brushes.LightBlue},
-        ]
+        self.isEnabled = opening.get("openingDataSynced", False)
 
         col_def_0 = Windows.Controls.ColumnDefinition(
             Width=Windows.GridLength(1, Windows.GridUnitType.Star)
@@ -242,12 +260,12 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         current_approved_textBlock.SetValue(Windows.Controls.Grid.ColumnProperty, 2)
 
         new_approved_combo = Windows.Controls.ComboBox()
-        for option_dict in self.approval_status_options:
+        for option_dict in ListBoxItem.approval_status_options:
             option_name = option_dict["name"]
             combo_item = Windows.Controls.ComboBoxItem()
             combo_item.Content = option_name
             new_approved_combo.Items.Add(combo_item)
-        new_approved_combo.SelectedIndex = 0
+        new_approved_combo.SelectedIndex = opening["combo_selected_index"]
         new_approved_combo.SelectionChanged += self.handle_combo_selection_change
         new_approved_combo.Margin = Windows.Thickness(0, 0, 5, 0)
         new_approved_combo.SetValue(Windows.Controls.Grid.ColumnProperty, 3)
@@ -270,19 +288,31 @@ class ListBoxItem(Windows.Controls.ListBoxItem):
         self._comb.SelectedIndex = value
 
     def handle_combo_selection_change(self, sender, e):
+        self.opening["combo_selected_index"] = sender.SelectedIndex
         if not self.selection_changed_is_on:
             return
         self.combo_selection_changed(self.opening, self.combo_selected_index)
 
-    def get_approved_status(self):
-        if self.combo_selected_index < 0 or self.combo_selected_index >= len(
-            self.approval_status_options
-        ):
-            raise ValueError("Invalid combo selection index")
-        return self.approval_status_options[self.combo_selected_index]
-
     def get_approval_status_option_by_name(self, name):
-        for option in self.approval_status_options:
+        for option in ListBoxItem.approval_status_options:
             if option["name"] == name:
                 return option
         return None
+
+    # Static property
+    approval_status_options = [
+        {"name": "-", "bg": Windows.Media.Brushes.LightGray},
+        {"name": "approved", "bg": Windows.Media.Brushes.LightGreen},
+        {"name": "not approved", "bg": Windows.Media.Brushes.LightPink},
+        {"name": "conditionally approved", "bg": Windows.Media.Brushes.LightBlue},
+    ]
+
+    @staticmethod
+    def get_approved_status_name(combo_selected_index):
+        if combo_selected_index < 0 or combo_selected_index >= len(
+            ListBoxItem.approval_status_options
+        ):
+            raise ValueError(
+                "Invalid combo_selected_index: {}".format(combo_selected_index)
+            )
+        return ListBoxItem.approval_status_options[combo_selected_index]["name"]
