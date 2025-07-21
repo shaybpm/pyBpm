@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 def get_env_mode():
+    # return "prod" # uncomment this line to force production mode
     # TODO: IMPROVE!
     if "C:\Users\אייל סיני\BPM LTD 102181204\BPM - Status - General\Software_Development" in __file__:
         return "dev"
