@@ -681,3 +681,18 @@ def get_doc_by_model_guid_and_uidoc(uidoc, model_guid):
             return doc
 
     return None
+
+
+def get_model_guid_title_map(doc):
+    map_dict = {}
+    all_links = get_all_link_instances(doc)
+    for link in all_links:
+        link_doc = link.GetLinkDocument()
+        if not link_doc:
+            continue
+        model_info = get_model_info(link_doc)
+        if model_info["modelGuid"] not in map_dict:
+            map_dict[model_info["modelGuid"]] = link_doc.Title
+    doc_model_info = get_model_info(doc)
+    map_dict[doc_model_info["modelGuid"]] = doc.Title
+    return map_dict

@@ -228,3 +228,20 @@ def get_comp_opening_sheets_data(doc):
         return {"status": "OK", "message": "", "data": data}
     except Exception as e:
         return {"status": "ERROR", "message": str(e), "data": None}
+
+
+def get_bonds(doc):
+    """Returns a list of bonds for the given document."""
+    if not doc.IsModelInCloud:
+        return []
+
+    model_info = get_model_info(doc)
+    url = "{}api/misc/bonds/project/{}/bonds".format(
+        server_url, model_info["modelGuid"]
+    )
+    try:
+        data = get(url)
+        return data
+    except Exception as e:
+        print("Error fetching bonds: {}".format(e))
+        return []
