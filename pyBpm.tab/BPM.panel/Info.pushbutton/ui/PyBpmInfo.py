@@ -61,11 +61,7 @@ class PyBpmInfo(Windows.Window):
             + "\n"
             + "What's new in this version:"
             + "\n"
-            + "- The Info button."
-            + "\n"
-            + "- New Opening and Tag Families."
-            + "\n"
-            + "- Easily switch to the new families."
+            + "- Fixed a bug in loading opening families."
         )
         self.LanguageComboBox.SelectionChanged += self.LanguageComboBox_SelectionChanged
         self.AddText()
