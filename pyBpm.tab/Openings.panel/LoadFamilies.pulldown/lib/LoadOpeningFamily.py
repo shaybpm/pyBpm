@@ -3,14 +3,10 @@ import os
 
 from Autodesk.Revit.DB import FilteredElementCollector, Family, Transaction
 
-from pyrevit import script, forms
+from pyrevit import forms
 from RevitUtils import (
     get_family_by_name,
 )
-
-# ------------------------------------------------------------
-output = script.get_output()
-output.close_others()
 
 
 def get_discipline_from_user():
@@ -59,7 +55,9 @@ def run(doc, family_names):
         List[Autodesk.Revit.DB.Family]: The loaded families.
     """
 
-    output.print_html("<h1>Load Families</h1>")
+    messages = []
+    messages.append("Load Families Results:")
+    messages.append("=" * 14)
 
     some_family_already_exist = False
 
@@ -80,20 +78,17 @@ def run(doc, family_names):
             family_loaded = doc.LoadFamily(get_family_path(family_name))
             t.Commit()
             if family_loaded:
-                output.print_html(
-                    '<div style="color:green">Loaded family: ' + family_name + "</div>"
-                )
+                messages.append("✓ Loaded family: {}".format(family_name))
         else:
-            output.print_html(
-                '<div style="color:yellow; background-color:#020B4A;">Family already loaded: '
-                + family_name
-                + "</div>"
-            )
+            messages.append("⚠ Family already loaded: {}".format(family_name))
 
     if some_family_already_exist:
-        output.print_html(
-            '<div style="color:blue">If you want to reload family that is already exist, you need to change the name of the family that already loaded, or remove it from the project.</div>'
-        )
+        messages.append("")
+        messages.append("Note: To reload an existing family, you need to change")
+        messages.append("the name of the loaded family or remove it from the project.")
+
+    # Show the collected messages in a single alert
+    forms.alert("\n".join(messages), title="Load Families Report")
 
     families_to_return = []
     for family_name in family_names:
