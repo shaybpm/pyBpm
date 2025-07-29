@@ -42,11 +42,7 @@ class PyBpmInfo(Windows.Window):
             + "\n"
             + "מה חדש בגרסה זו:"
             + "\n"
-            + "- כפתור ה-Info."
-            + "\n"
-            + "- משפחות פתחים ותגים חדשות."
-            + "\n"
-            + "- אפשרות להחליף למשפחות החדשות בקלות."
+            + "- תוקן באג בטעינת משפחות הפתחים."
         )
         self.engText = (
             "BPM offers pyBpm, an add-in for Revit that was built specifically to help companies working with us in BIM planning and management processes. The add-in allows you to streamline work processes, improve the quality of the products and save time."
