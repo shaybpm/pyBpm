@@ -1,0 +1,58 @@
+<Page xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	Title="SRI_MultipleSourceModelsPage"
+	FlowDirection="RightToLeft">
+	<Grid Margin="4">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition />
+		</Grid.RowDefinitions>
+
+		<Grid Grid.Row="0" Margin="4">
+			<StackPanel>
+				<TextBlock x:Name="titleTextBlock"
+					Text="בחר מודלי מקור"
+					FontWeight="Bold" />
+				<Grid Margin="0,5,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<ComboBox Grid.Column="0" x:Name="reservoirModelComboBox" />
+					<Button Grid.Column="1" x:Name="selectReservoirModelButton"
+						Content="הוסף מודל"
+						Margin="5,0,0,0"
+						Click="selectReservoirModelButton_click" />
+				</Grid>
+			</StackPanel>
+		</Grid>
+
+		<Grid Grid.Row="1" Margin="4">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="Auto" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+			<StackPanel Grid.Column="0" Orientation="Vertical" Margin="5,0,5,0">
+				<Button x:Name="raisingPriorityButton"
+					Content="↑"
+					Click="raisingPriorityButton_click" />
+				<Button x:Name="loweringPriorityButton"
+					Content="↓"
+					Margin="0,5,0,0"
+					Click="loweringPriorityButton_click" />
+				<Button x:Name="removeSourceModelButton"
+					Content="הסר מודל"
+					Margin="0,5,0,0"
+					Click="removeSourceModelButton_click" />
+				<Button x:Name="clearSourceModelsButton"
+					Content="נקה רשימה"
+					Margin="0,5,0,0"
+					Click="clearSourceModelsButton_click" />
+			</StackPanel>
+			<ListBox Grid.Column="1" x:Name="sourceModelsListBox"
+				SelectionMode="Single"
+			/>
+		</Grid>
+
+	</Grid>
+</Page>
