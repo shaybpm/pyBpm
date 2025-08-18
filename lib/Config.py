@@ -21,6 +21,7 @@ extension_json_url = (
 
 root_path = __file__[: __file__.rindex(".extension") + len(".extension")]
 
+shared_parameters_path = root_path + "/pyBPM_SharedParameters.txt"
 
 def get_opening_set_temp_file_id(doc):
     OPENING_SET_TEMP_FILE_ID = "OPENING_SET"
