@@ -21,16 +21,25 @@ class SRI_OneSourceModelPage(Windows.Controls.Page):
         wpf.LoadComponent(self, xaml_file)
         self.dialog_results = dialog_results  # type: SRI_DialogResults
         self.initialize_combobox()
+        self.set_sources()
 
     def dialog_results_callback(self, sources, reservoir):
+        self.set_sources()
+
+    def set_sources(self):
+        sources = self.dialog_results.sources
         if len(sources) == 0:
             self.sourceModelComboBox.SelectedItem = None
             return
-        
+
         if len(sources) == 1:
             for combobox_item in self.sourceModelComboBox.Items:
                 item = combobox_item.Tag
-                if isinstance(item, SRI_DialogResultsItem) and item.is_valid() and item == sources[0]:
+                if (
+                    isinstance(item, SRI_DialogResultsItem)
+                    and item.is_valid()
+                    and item == sources[0]
+                ):
                     self.sourceModelComboBox.SelectedItem = combobox_item
                     break
 

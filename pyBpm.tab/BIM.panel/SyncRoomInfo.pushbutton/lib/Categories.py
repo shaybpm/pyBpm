@@ -25,7 +25,6 @@ category_names = [
     "Pipe Accessories",
     "Plumbing Equipment",
     "Plumbing Fixtures",
-    "RVT Links",
     "Security Devices",
     "Specialty Equipment",
     "Sprinklers",
@@ -57,7 +56,6 @@ built_in_categories = [
     BuiltInCategory.OST_PipeAccessory,  # Pipe Accessories
     BuiltInCategory.OST_PlumbingEquipment,  # Plumbing Equipment
     BuiltInCategory.OST_PlumbingFixtures,  # Plumbing Fixtures
-    BuiltInCategory.OST_RvtLinks,  # RVT Links
     BuiltInCategory.OST_SecurityDevices,  # Security Devices
     BuiltInCategory.OST_SpecialityEquipment,  # Specialty Equipment
     BuiltInCategory.OST_Sprinklers,  # Sprinklers

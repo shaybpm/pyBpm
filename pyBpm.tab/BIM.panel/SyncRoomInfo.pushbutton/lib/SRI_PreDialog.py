@@ -24,7 +24,6 @@ class SRI_PreDialog(Windows.Window):
         wpf.LoadComponent(self, xaml_file)
         self.doc = doc
         self.dialog_results = SRI_DialogResults(doc)
-        self.dialog_results.cb_func = self.dialog_results_callback
 
         self.sources_link_result = None
 
@@ -32,6 +31,9 @@ class SRI_PreDialog(Windows.Window):
         self.multiple_source_models_page = SRI_MultipleSourceModelsPage(
             self.dialog_results
         )
+        
+        # IMPORTANT: Set the callback function after initializing the pages
+        self.dialog_results.cb_func = self.dialog_results_callback
 
         if len(self.dialog_results.sources) <= 1:
             self.MainFrame.Navigate(self.one_source_model_page)
