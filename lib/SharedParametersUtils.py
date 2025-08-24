@@ -1,7 +1,5 @@
 from Autodesk.Revit.DB import (
     TransactionGroup,
-    BuiltInParameterGroup,
-    GroupTypeId,
     Transaction,
 )
 from System import Guid
@@ -35,8 +33,12 @@ class SharedParameterManager:
     def get_default_p_group_or_f_type_id(self):
         revit_version = getRevitVersion(self.doc)
         if revit_version >= 2024:
+            from Autodesk.Revit.DB import GroupTypeId
+
             return GroupTypeId.Data
         else:
+            from Autodesk.Revit.DB import BuiltInParameterGroup
+
             return BuiltInParameterGroup.PG_DATA
 
     def add_shared_parameter_to_categories(
