@@ -1,0 +1,62 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	WindowStyle="None"
+	WindowStartupLocation="CenterScreen"
+	ResizeMode="NoResize"
+	Height="400" Width="300">
+	<Grid x:Name="LoadingPanel" Background="#80000000">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<!-- Title -->
+		<TextBlock
+			Grid.Row="0"
+			x:Name="TitleText"
+			Foreground="White"
+			FontSize="20"
+			HorizontalAlignment="Center"
+			Margin="0,0,0,24"
+			Text="Progress Bar" />
+
+		<!-- Main Progress Panel -->
+		<StackPanel Grid.Row="1" x:Name="MainProgressPanel" Margin="0,0,0,12">
+			<!-- Main Spinner -->
+			<ProgressBar
+				x:Name="MainProgressBarElement"
+				Minimum="0"
+				Maximum="100"
+				Width="200"
+				Height="20" />
+			<!-- Main Loading Text -->
+			<TextBlock
+				x:Name="MainLoadingText"
+				Foreground="White"
+				FontSize="16"
+				HorizontalAlignment="Center"
+				Margin="4" />
+		</StackPanel>
+
+		<!-- Sub Progress Panel -->
+		<StackPanel Grid.Row="2" x:Name="SubProgressPanel" Margin="0,0,0,24">
+
+		</StackPanel>
+
+		<!-- Cancel Button - For now we hide it! -->
+		<Button
+			Grid.Row="3"
+			x:Name="CancelBtn"
+			Content="Cancel"
+			Click="Cancel_Click"
+			Width="200"
+			VerticalAlignment="Center"
+			HorizontalAlignment="Center"
+			Background="Black"
+			Foreground="White"
+			Margin="0,8,0,20" />
+
+	</Grid>
+</Window>

@@ -16,6 +16,7 @@ from pyrevit import forms
 
 from SharedParametersUtils import SharedParameterManager, PyBpmSharedParameters
 from RevitUtils import getRevitVersion, getOutlineByBoundingBox
+from ProgressBar import ProgressBar, UserCanceledException
 
 from Categories import built_in_categories
 from SRI_PreDialog import SRI_PreDialog
@@ -52,8 +53,12 @@ def add_the_shared_parameters_to_the_categories(app, doc):
     ]
 
     with SharedParameterManager(app, doc) as sp_manager:
-        sp_manager.add_shared_parameters_to_categories(sp_instance_guids, categories, type_binding=False)
-        sp_manager.add_shared_parameters_to_categories(sp_type_guids, categories, type_binding=True)
+        sp_manager.add_shared_parameters_to_categories(
+            sp_instance_guids, categories, type_binding=False
+        )
+        sp_manager.add_shared_parameters_to_categories(
+            sp_type_guids, categories, type_binding=True
+        )
 
 
 def get_parameters_from_element(element, param_names):
@@ -113,77 +118,114 @@ def main(app, doc):
     if not source_links:
         return
 
-    elements = get_elements(doc)
+    def ex_func(progress_bar):  # type: (ProgressBar) -> None
 
-    t_group = TransactionGroup(doc, "pyBpm | Sync Room Info")
-    t_group.Start()
+        elements = get_elements(doc)
 
-    add_the_shared_parameters_to_the_categories(app, doc)
+        if len(elements) == 0:
+            return
 
-    pyBpm_shared_parameters = PyBpmSharedParameters()
-    for elem in elements:
-        param_new_values = {
-            pyBpm_shared_parameters.BPM_Room_Num.name: {
-                "parameter": None,
-                "new_value": "",
-                "cb_func": lambda room: room.Number,
-            },
-            pyBpm_shared_parameters.BPM_Room_Level.name: {
-                "parameter": None,
-                "new_value": "",
-                "cb_func": lambda room: room.Level.Name if room.Level else "-",
-            },
-            pyBpm_shared_parameters.BPM_Room_Name.name: {
-                "parameter": None,
-                "new_value": "",
-                "cb_func": lambda room: room.get_Parameter(
-                    BuiltInParameter.ROOM_NAME
-                ).AsString(),
-            },
-            pyBpm_shared_parameters.BPM_Link_Source.name: {
-                "parameter": None,
-                "new_value": "",
-                "cb_func": lambda room: room.Document.Title,
-            },
-        }
+        progress_bar.pre_set_main_status(
+            "{}/{}".format(0, len(elements))
+        )
 
-        name_param_dict = get_parameters_from_element(elem, param_new_values.keys())
-        for param_name, param_info in param_new_values.items():
-            param_info["parameter"] = name_param_dict[param_name]
+        t_group = TransactionGroup(doc, "pyBpm | Sync Room Info")
+        t_group.Start()
 
-        for link in source_links:
-            link_doc = link.GetLinkDocument()
-            if not link_doc:
-                continue
+        t = None
+        try:
+            add_the_shared_parameters_to_the_categories(app, doc)
 
-            elem_bbox = elem.get_BoundingBox(None)
-            if not elem_bbox:
-                continue
-            outline = getOutlineByBoundingBox(
-                elem_bbox, link.GetTotalTransform().Inverse
-            )
-            bbox_intersect_filter = BoundingBoxIntersectsFilter(outline)
-            bbox_inside_filter = BoundingBoxIsInsideFilter(outline)
-            bbox_filter = LogicalOrFilter(bbox_intersect_filter, bbox_inside_filter)
+            pyBpm_shared_parameters = PyBpmSharedParameters()
+            for i, elem in enumerate(elements):
 
-            room = (
-                FilteredElementCollector(link_doc)
-                .OfCategory(BuiltInCategory.OST_Rooms)
-                .WherePasses(bbox_filter)
-                .WhereElementIsNotElementType()
-                .FirstElement()
-            )
-            if not room:
-                continue
+                param_new_values = {
+                    pyBpm_shared_parameters.BPM_Room_Num.name: {
+                        "parameter": None,
+                        "new_value": "",
+                        "cb_func": lambda room: room.Number,
+                    },
+                    pyBpm_shared_parameters.BPM_Room_Level.name: {
+                        "parameter": None,
+                        "new_value": "",
+                        "cb_func": lambda room: room.Level.Name if room.Level else "-",
+                    },
+                    pyBpm_shared_parameters.BPM_Room_Name.name: {
+                        "parameter": None,
+                        "new_value": "",
+                        "cb_func": lambda room: room.get_Parameter(
+                            BuiltInParameter.ROOM_NAME
+                        ).AsString(),
+                    },
+                    pyBpm_shared_parameters.BPM_Link_Source.name: {
+                        "parameter": None,
+                        "new_value": "",
+                        "cb_func": lambda room: room.Document.Title,
+                    },
+                }
 
-            t = Transaction(doc, "pyBpm | Sync Room Info")
-            t.Start()
-            for param_name, param_info in param_new_values.items():
-                param = param_info["parameter"]
-                new_value = param_info["cb_func"](room)
-                if new_value is not None:
-                    param.Set(new_value)
-            t.Commit()
-            break
+                name_param_dict = get_parameters_from_element(
+                    elem, param_new_values.keys()
+                )
+                for param_name, param_info in param_new_values.items():
+                    param_info["parameter"] = name_param_dict[param_name]
 
-    t_group.Assimilate()
+                for link in source_links:
+                    link_doc = link.GetLinkDocument()
+                    if not link_doc:
+                        continue
+
+                    elem_bbox = elem.get_BoundingBox(None)
+                    if not elem_bbox:
+                        continue
+                    outline = getOutlineByBoundingBox(
+                        elem_bbox, link.GetTotalTransform().Inverse
+                    )
+                    bbox_intersect_filter = BoundingBoxIntersectsFilter(outline)
+                    bbox_inside_filter = BoundingBoxIsInsideFilter(outline)
+                    bbox_filter = LogicalOrFilter(
+                        bbox_intersect_filter, bbox_inside_filter
+                    )
+
+                    room = (
+                        FilteredElementCollector(link_doc)
+                        .OfCategory(BuiltInCategory.OST_Rooms)
+                        .WherePasses(bbox_filter)
+                        .WhereElementIsNotElementType()
+                        .FirstElement()
+                    )
+                    if not room:
+                        continue
+
+                    t = Transaction(doc, "pyBpm | Sync Room Info")
+                    t.Start()
+                    for param_name, param_info in param_new_values.items():
+                        param = param_info["parameter"]
+                        new_value = param_info["cb_func"](room)
+                        if new_value is not None:
+                            param.Set(new_value)
+                    t.Commit()
+                    break
+
+                main_percent = (i + 1) * (100 / float(len(elements)))
+                main_text = "{}/{}".format(i + 1, len(elements))
+                progress_bar.update_main_status(main_percent, main_text)
+
+            t_group.Assimilate()
+
+        except UserCanceledException:
+            if t is not None and t.HasStarted() and not t.HasEnded():
+                t.RollBack()
+            if t_group.HasStarted() and not t_group.HasEnded():
+                t_group.RollBack()
+        except Exception as ex:
+            forms.alert(str(ex), title="Error")
+        finally:
+            progress_bar.Close()
+
+    ProgressBar.exec_with_progressbar(
+        ex_func,
+        title="Sync Room Info",
+        cancelable=True,
+        height=200,
+    )
