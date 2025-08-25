@@ -119,15 +119,24 @@ def main(app, doc):
         return
 
     def ex_func(progress_bar):  # type: (ProgressBar) -> None
-
         elements = get_elements(doc)
-
         if len(elements) == 0:
             return
 
-        progress_bar.pre_set_main_status(
-            "{}/{}".format(0, len(elements))
-        )
+        link_rooms_data = []
+        for link in source_links:
+            link_doc = link.GetLinkDocument()
+            if not link_doc:
+                continue
+            link_rooms_data.append(
+                {
+                    "link_doc": link_doc,
+                    "transform": link.GetTotalTransform(),
+                    "rooms_data": None,
+                }
+            )
+
+        progress_bar.pre_set_main_status("{}/{}".format(0, len(elements)))
 
         t_group = TransactionGroup(doc, "pyBpm | Sync Room Info")
         t_group.Start()
@@ -170,38 +179,47 @@ def main(app, doc):
                 for param_name, param_info in param_new_values.items():
                     param_info["parameter"] = name_param_dict[param_name]
 
-                for link in source_links:
-                    link_doc = link.GetLinkDocument()
-                    if not link_doc:
-                        continue
+                for link_data_item in link_rooms_data:
+                    link_doc = link_data_item["link_doc"]
+                    rooms_data = link_data_item["rooms_data"]
+                    if not rooms_data:
+                        rooms = (
+                            FilteredElementCollector(link_doc)
+                            .OfCategory(BuiltInCategory.OST_Rooms)
+                            .WhereElementIsNotElementType()
+                            .ToElements()
+                        )
+                        rooms_data = []
+                        for room in rooms:
+                            room_bbox = room.get_BoundingBox(None)
+                            if not room_bbox:
+                                continue
+                            room_outline = getOutlineByBoundingBox(
+                                room_bbox, link_data_item["transform"]
+                            )
+                            bbox_intersect_filter = BoundingBoxIntersectsFilter(
+                                room_outline
+                            )
+                            bbox_inside_filter = BoundingBoxIsInsideFilter(room_outline)
+                            room_filter = LogicalOrFilter(
+                                bbox_intersect_filter, bbox_inside_filter
+                            )
+                            rooms_data.append((room, room_filter))
+                        link_data_item["rooms_data"] = rooms_data
 
-                    elem_bbox = elem.get_BoundingBox(None)
-                    if not elem_bbox:
-                        continue
-                    outline = getOutlineByBoundingBox(
-                        elem_bbox, link.GetTotalTransform().Inverse
-                    )
-                    bbox_intersect_filter = BoundingBoxIntersectsFilter(outline)
-                    bbox_inside_filter = BoundingBoxIsInsideFilter(outline)
-                    bbox_filter = LogicalOrFilter(
-                        bbox_intersect_filter, bbox_inside_filter
-                    )
-
-                    room = (
-                        FilteredElementCollector(link_doc)
-                        .OfCategory(BuiltInCategory.OST_Rooms)
-                        .WherePasses(bbox_filter)
-                        .WhereElementIsNotElementType()
-                        .FirstElement()
-                    )
-                    if not room:
+                    elem_room = None
+                    for room, room_filter in rooms_data:
+                        if room_filter.PassesFilter(elem):
+                            elem_room = room
+                            break
+                    if not elem_room:
                         continue
 
                     t = Transaction(doc, "pyBpm | Sync Room Info")
                     t.Start()
                     for param_name, param_info in param_new_values.items():
                         param = param_info["parameter"]
-                        new_value = param_info["cb_func"](room)
+                        new_value = param_info["cb_func"](elem_room)
                         if new_value is not None:
                             param.Set(new_value)
                     t.Commit()
