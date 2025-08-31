@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-""" Loads the BPM Tag Opening families into the project.
-families:
-- BPM Opening Tag (R20).rfa
-- BPM Opening Tag (R22).rfa """
+""" Loads the BPM Tag Opening families into the project. """
 __title__ = "Tag\nFamilies"
 __author__ = "Eyal Sinay"
 
@@ -33,6 +30,10 @@ families = (
     if getRevitVersion(doc) < 2022
     else [
         "BPM Opening Tag (R22)",
+    ]
+    if getRevitVersion(doc) < 2023
+    else [
+        "BPM Opening Tag (R23)",
     ]
 )
 
