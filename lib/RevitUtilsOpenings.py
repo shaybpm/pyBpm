@@ -46,15 +46,25 @@ def create_filter_to_opening_view(doc):
         ElementParameterFilter,
     )
 
+    from RevitUtils import getRevitVersion
+
+    revit_version_less_than_2023 = getRevitVersion(doc) < 2023
+
     built_in_categories = [BuiltInCategory.OST_GenericModel]
     category_ids = [Category.GetCategory(doc, x).Id for x in built_in_categories]
     category_ids_iCollection = List[ElementId](category_ids)
 
     element_parameter_filter_rules = List[ElementFilter]([])
     for opening_name in opening_names:
-        rule = ParameterFilterRuleFactory.CreateContainsRule(
-            ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME),
-            opening_name,
+        rule = (
+            ParameterFilterRuleFactory.CreateContainsRule(
+                ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME), opening_name, True
+            )
+            if revit_version_less_than_2023
+            else ParameterFilterRuleFactory.CreateContainsRule(
+                ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME),
+                opening_name,
+            )
         )
         element_parameter_filter_rules.Add(ElementParameterFilter(rule))
 
@@ -189,6 +199,9 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
         Category,
         ElementParameterFilter,
     )
+    from RevitUtils import getRevitVersion
+
+    revit_version_less_than_2023 = getRevitVersion(doc) < 2023
 
     built_in_categories = [BuiltInCategory.OST_GenericModel]
     category_ids = [Category.GetCategory(doc, x).Id for x in built_in_categories]
@@ -196,9 +209,17 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
 
     e_p_f_family_type_name_rules = List[ElementFilter]([])
     for opening_name in opening_names:
-        rule = ParameterFilterRuleFactory.CreateContainsRule(
-            ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME),
-            opening_name,
+        rule = (
+            ParameterFilterRuleFactory.CreateContainsRule(
+                ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME),
+                opening_name,
+                True,
+            )
+            if revit_version_less_than_2023
+            else ParameterFilterRuleFactory.CreateContainsRule(
+                ElementId(BuiltInParameter.ALL_MODEL_TYPE_NAME),
+                opening_name,
+            )
         )
         e_p_f_family_type_name_rules.Add(ElementParameterFilter(rule))
 
