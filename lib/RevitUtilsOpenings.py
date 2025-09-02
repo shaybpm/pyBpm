@@ -27,7 +27,7 @@ def is_opening_rectangular(opening):
     )
 
 
-def create_opening_filter(doc):
+def create_filter_to_opening_view(doc):
     import clr
 
     clr.AddReferenceByPartialName("System")
@@ -77,7 +77,7 @@ def get_opening_filter(doc):
     for _filter in filters:
         if _filter.Name == PYBPM_FILTER_NAME_OPENING:
             return _filter
-    return create_opening_filter(doc)
+    return create_filter_to_opening_view(doc)
 
 
 def create_not_opening_filter(doc):
