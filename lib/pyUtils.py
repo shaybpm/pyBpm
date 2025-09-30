@@ -25,3 +25,21 @@ def safe_int(val, default=0):
         return int(val)
     except (ValueError, TypeError):
         return default
+
+
+def get_unique_file_name(folder, base_name, extension):
+    import os
+
+    file_path = os.path.join(folder, "{}.{}".format(base_name, extension))
+    if not os.path.exists(file_path):
+        return file_path
+    i = 1
+    max_tries = 1000
+    while i < max_tries:
+        file_path = os.path.join(folder, "{}_{}.{}".format(base_name, i, extension))
+        if not os.path.exists(file_path):
+            return file_path
+        i += 1
+    raise Exception(
+        "Could not find a unique file name after {} tries".format(max_tries)
+    )
