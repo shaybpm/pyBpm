@@ -154,6 +154,7 @@ class ModelQualityAutoChecksToggleIcon:
 
 
 def open_pybpm_page(rel_target_html, rel_target_css, output=None):
+    import webbrowser
     from HttpRequest import download_string
 
     target_html = server_url + rel_target_html
@@ -176,4 +177,4 @@ def open_pybpm_page(rel_target_html, rel_target_css, output=None):
         output.center()
         output.inject_script("window.scrollTo(0, 0);")
     else:
-        start_process(target_html)
+        webbrowser.open(target_html)
