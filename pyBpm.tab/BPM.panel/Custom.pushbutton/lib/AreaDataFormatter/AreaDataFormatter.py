@@ -1,4 +1,4 @@
-from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, Transaction
+from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, Transaction, BuiltInParameter
 from pyrevit import forms
 from ProgressBar import ProgressBar, UserCanceledException
 
@@ -11,6 +11,7 @@ def area_data_formatter(uidoc):
         .WhereElementIsNotElementType()
         .ToElements()
     )
+    # areas = [doc.GetElement(ElementId(13459028))]  # for testing a single area
     if not areas:
         forms.alert("No areas found in the document.", title="Area Data Formatter")
         return
@@ -18,9 +19,9 @@ def area_data_formatter(uidoc):
     target_parameter_name = "Apartment Code"
 
     source1_parameter_name = "Building Number"
-    source2_parameter_name = "Level"
+    source2_b_i_parameter = BuiltInParameter.LEVEL_NAME
     source3_parameter_name = "Apartment"
-    source3_parameter_name = "NumberRooms"
+    source4_parameter_name = "NumberRooms"
 
     def ex_func(progress_bar):  # type: (ProgressBar) -> None
         progress_bar.pre_set_main_status("{}/{}".format(0, float(len(areas))))
@@ -30,9 +31,9 @@ def area_data_formatter(uidoc):
             for i, area in enumerate(areas):
                 param_target = area.LookupParameter(target_parameter_name)
                 param_source1 = area.LookupParameter(source1_parameter_name)
-                param_source2 = area.LookupParameter(source2_parameter_name)
+                param_source2 = area.get_Parameter(source2_b_i_parameter)
                 param_source3 = area.LookupParameter(source3_parameter_name)
-                param_source4 = area.LookupParameter(source3_parameter_name)
+                param_source4 = area.LookupParameter(source4_parameter_name)
 
                 # if some parameter is missing, rollback and alert
                 if not all(
@@ -51,10 +52,10 @@ def area_data_formatter(uidoc):
                     )
                     return
 
-                value1 = param_source1.AsString() or "?"
-                value2 = param_source2.AsString() or "?"
-                value3 = param_source3.AsString() or "?"
-                value4 = param_source4.AsString() or "?"
+                value1 = param_source1.AsValueString() or "?"
+                value2 = param_source2.AsValueString() or "?"
+                value3 = param_source3.AsValueString() or "?"
+                value4 = param_source4.AsValueString() or "?"
 
                 formatted_value = "{}-{}-{}-{}".format(value1, value2, value3, value4)
                 param_target.Set(formatted_value)
@@ -74,5 +75,5 @@ def area_data_formatter(uidoc):
         t.Commit()
 
     ProgressBar.exec_with_progressbar(
-        ex_func, title="Area Data Formatter", cancelable=True
+        ex_func, title="Area Data Formatter", cancelable=True, height=150
     )
