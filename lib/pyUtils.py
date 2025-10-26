@@ -43,3 +43,21 @@ def get_unique_file_name(folder, base_name, extension):
     raise Exception(
         "Could not find a unique file name after {} tries".format(max_tries)
     )
+
+
+def sanitize_filename(name):
+    import re
+
+    invalid_chars_pattern = r'[<>:"/\\|?*\x00-\x1F]'
+    sanitized_name = re.sub(invalid_chars_pattern, "_", name).strip().strip(".")
+
+    reserved = {"CON", "PRN", "AUX", "NUL"}
+    if sanitized_name.upper() in reserved or re.match(
+        r"^(COM|LPT)[1-9]$", sanitized_name.upper()
+    ):
+        sanitized_name = "_" + sanitized_name
+
+    sanitized_name = re.sub(r"_+", "_", sanitized_name)  # optional
+    sanitized_name = sanitized_name[:255] or "_unnamed"  # optional
+
+    return sanitized_name
