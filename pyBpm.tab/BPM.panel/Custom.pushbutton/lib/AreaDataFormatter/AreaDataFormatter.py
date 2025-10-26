@@ -5,9 +5,16 @@ from pyUtils import sanitize_filename
 from ExcelUtils import get_excel_app_class, FIELD_DELIMITER, Excel
 
 
-ex_titles = ["Apartment Code", "Building Number", "Level", "Apartment", "NumberRooms"]
+ex_titles = [
+    "Apartment Code",
+    "Building Number",
+    "Level",
+    "Apartment",
+    "NumberRooms",
+    "ApartmentNumber",
+]
 
-# Apartment Code = <Building Number>-<Level>-<Apartment>-<NumberRooms>
+# Apartment Code = <Building Number>-<Level>-<Apartment>-<NumberRooms>-<ApartmentNumber>
 
 
 def csv_to_excel_for_AreaDataFormatter_script(csv_path, excel_path):
@@ -27,6 +34,7 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_path, excel_path):
     level_col_index = None
     apartment_col_index = None
     number_rooms_col_index = None
+    apartment_number_col_index = None
 
     # Open the CSV file
     with open(csv_path, "r") as csv_file:
@@ -47,6 +55,7 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_path, excel_path):
                             level_col_index is not None,
                             apartment_col_index is not None,
                             number_rooms_col_index is not None,
+                            apartment_number_col_index is not None,
                         ]
                     ):
                         raise ValueError(
@@ -58,13 +67,15 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_path, excel_path):
                         level_col_index,
                         apartment_col_index,
                         number_rooms_col_index,
+                        apartment_number_col_index,
                     )
                     if max_col_index < len(columns):
-                        apartment_code_value = "{}-{}-{}-{}".format(
+                        apartment_code_value = "{}-{}-{}-{}-{}".format(
                             columns[building_number_col_index].replace('"', ""),
                             columns[level_col_index].replace('"', ""),
                             columns[apartment_col_index].replace('"', ""),
                             columns[number_rooms_col_index].replace('"', ""),
+                            columns[apartment_number_col_index].replace('"', ""),
                         )
                         cell_content = apartment_code_value
 
@@ -84,6 +95,11 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_path, excel_path):
                     apartment_col_index = col_index
                 elif number_rooms_col_index is None and cell_content == "NumberRooms":
                     number_rooms_col_index = col_index
+                elif (
+                    apartment_number_col_index is None
+                    and cell_content == "ApartmentNumber"
+                ):
+                    apartment_number_col_index = col_index
 
                 worksheet.Cells(row_index + 1, col_index + 1).Value2 = cell_content
 
