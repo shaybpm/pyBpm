@@ -175,7 +175,7 @@ def area_data_formatter(uidoc):
     to_open_folder = forms.alert(
         "Area Data Formatter completed successfully.\n\nDo you want to open the output folder?",
         yes=True,
-        no=False,
+        no=True,
         title="Area Data Formatter",
     )
     if to_open_folder:
