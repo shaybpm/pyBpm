@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os, shutil
 from Autodesk.Revit.DB import ElementId, Category, ViewScheduleExportOptions
 from pyrevit import forms
@@ -16,92 +18,116 @@ ex_titles = [
 
 # Apartment Code = <Building Number>-<Level>-<Apartment>-<NumberRooms>-<ApartmentNumber>
 
+def get_worksheet_name_by_csv_path(csv_path, exist_names):
+    _name = os.path.basename(csv_path)
+    _name = os.path.splitext(_name)[0]
+    _name = sanitize_filename(_name)
+    _name = _name[:31]  # Excel worksheet name max length is 31 characters
+    original_name = _name
+    i = 1
+    while _name in exist_names:
+        suffix = "_{}".format(i)
+        if len(original_name) + len(suffix) > 31:
+            _name = original_name[: 31 - len(suffix)] + suffix
+        else:
+            _name = original_name + suffix
+        i += 1
+    return _name
 
-def csv_to_excel_for_AreaDataFormatter_script(csv_path, excel_path):
+def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
     """Only for Area Data Formatter script use"""
     import os
-
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError("CSV file not found: {}".format(csv_path))
 
     # Create a new Excel application
     excel_app = get_excel_app_class()
     workbook = excel_app.Workbooks.Add()
-    worksheet = workbook.Worksheets[1]
 
-    apartment_code_col_index = None
-    building_number_col_index = None
-    level_col_index = None
-    apartment_col_index = None
-    number_rooms_col_index = None
-    apartment_number_col_index = None
+    exist_names = []
+    for index, csv_path in enumerate(csv_paths):
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError("CSV file not found: {}".format(csv_path))
 
-    # Open the CSV file
-    with open(csv_path, "r") as csv_file:
-        file_obj = csv_file.read().decode("utf-8")
-        rows = file_obj.split("\n")
-        for row_index, row in enumerate(rows):
-            columns = row.strip().split(FIELD_DELIMITER)
-            for col_index, cell_value in enumerate(columns):
-                cell_content = cell_value.replace('"', "")
+        if index == 0:
+            worksheet = workbook.Worksheets[1]
+        else:
+            worksheet = workbook.Worksheets.Add()
+        
+        worksheet.Name = get_worksheet_name_by_csv_path(csv_path, exist_names) or "Sheet{}".format(index + 1)
+        exist_names.append(worksheet.Name)
 
-                if (
-                    apartment_code_col_index is not None
-                    and apartment_code_col_index == col_index
-                ):
-                    if not all(
-                        [
-                            building_number_col_index is not None,
-                            level_col_index is not None,
-                            apartment_col_index is not None,
-                            number_rooms_col_index is not None,
-                            apartment_number_col_index is not None,
-                        ]
+        apartment_code_col_index = None
+        building_number_col_index = None
+        level_col_index = None
+        apartment_col_index = None
+        number_rooms_col_index = None
+        apartment_number_col_index = None
+
+        # Open the CSV file
+        with open(csv_path, "r") as csv_file:
+            file_obj = csv_file.read().decode("utf-8")
+            rows = file_obj.split("\n")
+            for row_index, row in enumerate(rows):
+                columns = row.strip().split(FIELD_DELIMITER)
+                for col_index, cell_value in enumerate(columns):
+                    cell_content = cell_value.replace('"', "")
+
+                    if (
+                        apartment_code_col_index is not None
+                        and apartment_code_col_index == col_index
                     ):
-                        raise ValueError(
-                            "One or more required columns are missing in the CSV file."
+                        if not all(
+                            [
+                                building_number_col_index is not None,
+                                level_col_index is not None,
+                                apartment_col_index is not None,
+                                number_rooms_col_index is not None,
+                                apartment_number_col_index is not None,
+                            ]
+                        ):
+                            raise ValueError(
+                                "One or more required columns are missing in the CSV file."
+                            )
+
+                        max_col_index = max(
+                            building_number_col_index,
+                            level_col_index,
+                            apartment_col_index,
+                            number_rooms_col_index,
+                            apartment_number_col_index,
                         )
+                        if max_col_index < len(columns):
+                            apartment_code_value = "{}-{}-{}-{}-{}".format(
+                                columns[building_number_col_index].replace('"', ""),
+                                columns[level_col_index].replace('"', ""),
+                                columns[apartment_col_index].replace('"', ""),
+                                columns[number_rooms_col_index].replace('"', ""),
+                                columns[apartment_number_col_index].replace('"', ""),
+                            )
+                            cell_content = apartment_code_value
 
-                    max_col_index = max(
-                        building_number_col_index,
-                        level_col_index,
-                        apartment_col_index,
-                        number_rooms_col_index,
-                        apartment_number_col_index,
-                    )
-                    if max_col_index < len(columns):
-                        apartment_code_value = "{}-{}-{}-{}-{}".format(
-                            columns[building_number_col_index].replace('"', ""),
-                            columns[level_col_index].replace('"', ""),
-                            columns[apartment_col_index].replace('"', ""),
-                            columns[number_rooms_col_index].replace('"', ""),
-                            columns[apartment_number_col_index].replace('"', ""),
-                        )
-                        cell_content = apartment_code_value
+                    if (
+                        apartment_code_col_index is None
+                        and cell_content == "Apartment Code"
+                    ):
+                        apartment_code_col_index = col_index
+                    elif (
+                        building_number_col_index is None
+                        and cell_content == "Building Number"
+                    ):
+                        building_number_col_index = col_index
+                    elif level_col_index is None and cell_content == "Level":
+                        level_col_index = col_index
+                    elif apartment_col_index is None and cell_content == "Apartment":
+                        apartment_col_index = col_index
+                    elif number_rooms_col_index is None and cell_content == "NumberRooms":
+                        number_rooms_col_index = col_index
+                    elif (
+                        apartment_number_col_index is None
+                        and cell_content == "ApartmentNumber"
+                    ):
+                        apartment_number_col_index = col_index
 
-                if (
-                    apartment_code_col_index is None
-                    and cell_content == "Apartment Code"
-                ):
-                    apartment_code_col_index = col_index
-                elif (
-                    building_number_col_index is None
-                    and cell_content == "Building Number"
-                ):
-                    building_number_col_index = col_index
-                elif level_col_index is None and cell_content == "Level":
-                    level_col_index = col_index
-                elif apartment_col_index is None and cell_content == "Apartment":
-                    apartment_col_index = col_index
-                elif number_rooms_col_index is None and cell_content == "NumberRooms":
-                    number_rooms_col_index = col_index
-                elif (
-                    apartment_number_col_index is None
-                    and cell_content == "ApartmentNumber"
-                ):
-                    apartment_number_col_index = col_index
-
-                worksheet.Cells(row_index + 1, col_index + 1).Value2 = cell_content
+                    worksheet.Cells(row_index + 1, col_index + 1).Value2 = cell_content
 
     # Save the workbook as an Excel file
     workbook.SaveAs(excel_path, Excel.XlFileFormat.xlWorkbookDefault)
@@ -161,14 +187,17 @@ def area_data_formatter(uidoc):
     view_schedule_export_options = ViewScheduleExportOptions()
     view_schedule_export_options.FieldDelimiter = FIELD_DELIMITER
 
+    csv_paths = []
     for schedule in schedules:
         file_name = "{}.csv".format(sanitize_filename(schedule.Name))
         csv_path = os.path.join(temp_folder, file_name)
-        excel_path = os.path.join(
-            folder, "{}.xlsx".format(sanitize_filename(schedule.Name))
-        )
         schedule.Export(temp_folder, file_name, view_schedule_export_options)
-        csv_to_excel_for_AreaDataFormatter_script(csv_path, excel_path)
+        csv_paths.append(csv_path)
+        
+    excel_path = os.path.join(
+        folder, "{}.xlsx".format(sanitize_filename("Area Data Formatter - {}".format(doc.Title)))
+    )
+    csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path)
 
     shutil.rmtree(temp_folder)
 
