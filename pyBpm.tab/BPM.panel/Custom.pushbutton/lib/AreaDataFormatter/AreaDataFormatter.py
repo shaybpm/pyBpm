@@ -14,9 +14,12 @@ ex_titles = [
     "Apartment",
     "NumberRooms",
     "ApartmentNumber",
+    "Name",
+    "LookUpCode",
 ]
 
 # Apartment Code = <Building Number>-<Level>-<Apartment>-<NumberRooms>-<ApartmentNumber>
+
 
 def get_worksheet_name_by_csv_path(csv_path, exist_names):
     _name = os.path.basename(csv_path)
@@ -33,6 +36,7 @@ def get_worksheet_name_by_csv_path(csv_path, exist_names):
             _name = original_name + suffix
         i += 1
     return _name
+
 
 def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
     """Only for Area Data Formatter script use"""
@@ -51,8 +55,10 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
             worksheet = workbook.Worksheets[1]
         else:
             worksheet = workbook.Worksheets.Add()
-        
-        worksheet.Name = get_worksheet_name_by_csv_path(csv_path, exist_names) or "Sheet{}".format(index + 1)
+
+        worksheet.Name = get_worksheet_name_by_csv_path(
+            csv_path, exist_names
+        ) or "Sheet{}".format(index + 1)
         exist_names.append(worksheet.Name)
 
         apartment_code_col_index = None
@@ -61,6 +67,8 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
         apartment_col_index = None
         number_rooms_col_index = None
         apartment_number_col_index = None
+        name_col_index = None
+        lookup_code_col_index = None
 
         # Open the CSV file
         with open(csv_path, "r") as csv_file:
@@ -104,12 +112,51 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
                                 columns[apartment_number_col_index].replace('"', ""),
                             )
                             cell_content = apartment_code_value
+                    elif (
+                        lookup_code_col_index is not None
+                        and lookup_code_col_index == col_index
+                    ):
+                        if not all(
+                            [
+                                building_number_col_index is not None,
+                                level_col_index is not None,
+                                apartment_col_index is not None,
+                                number_rooms_col_index is not None,
+                                apartment_number_col_index is not None,
+                                name_col_index is not None,
+                            ]
+                        ):
+                            raise ValueError(
+                                "One or more required columns are missing in the CSV file."
+                            )
+                        max_col_index = max(
+                            building_number_col_index,
+                            level_col_index,
+                            apartment_col_index,
+                            number_rooms_col_index,
+                            apartment_number_col_index,
+                            name_col_index,
+                        )
+                        if max_col_index < len(columns):
+                            apartment_code_value = "{}-{}-{}-{}-{}-{}".format(
+                                columns[building_number_col_index].replace('"', ""),
+                                columns[level_col_index].replace('"', ""),
+                                columns[apartment_col_index].replace('"', ""),
+                                columns[number_rooms_col_index].replace('"', ""),
+                                columns[apartment_number_col_index].replace('"', ""),
+                                columns[name_col_index].replace('"', ""),
+                            )
+                            cell_content = apartment_code_value
 
                     if (
                         apartment_code_col_index is None
                         and cell_content == "Apartment Code"
                     ):
                         apartment_code_col_index = col_index
+                    elif lookup_code_col_index is None and cell_content == "LookUpCode":
+                        lookup_code_col_index = col_index
+                    elif name_col_index is None and cell_content == "Name":
+                        name_col_index = col_index
                     elif (
                         building_number_col_index is None
                         and cell_content == "Building Number"
@@ -119,7 +166,9 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
                         level_col_index = col_index
                     elif apartment_col_index is None and cell_content == "Apartment":
                         apartment_col_index = col_index
-                    elif number_rooms_col_index is None and cell_content == "NumberRooms":
+                    elif (
+                        number_rooms_col_index is None and cell_content == "NumberRooms"
+                    ):
                         number_rooms_col_index = col_index
                     elif (
                         apartment_number_col_index is None
@@ -193,9 +242,12 @@ def area_data_formatter(uidoc):
         csv_path = os.path.join(temp_folder, file_name)
         schedule.Export(temp_folder, file_name, view_schedule_export_options)
         csv_paths.append(csv_path)
-        
+
     excel_path = os.path.join(
-        folder, "{}.xlsx".format(sanitize_filename("Area Data Formatter - {}".format(doc.Title)))
+        folder,
+        "{}.xlsx".format(
+            sanitize_filename("Area Data Formatter - {}".format(doc.Title))
+        ),
     )
     csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path)
 
