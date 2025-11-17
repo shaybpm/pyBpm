@@ -42,15 +42,29 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
     """Only for Area Data Formatter script use"""
     import os
 
+    def _ensure_required_columns(indices):
+        """Verify all required columns exist; raise if not."""
+        if any(idx is None for idx in indices):
+            raise ValueError(
+                "One or more required columns are missing in the CSV file."
+            )
+        return max(indices)
+
+    def _build_composite_value(columns, indices):
+        """Build a dash-separated composite value from given column indices."""
+        return "-".join(columns[idx].replace('"', "") for idx in indices)
+
     # Create a new Excel application
     excel_app = get_excel_app_class()
     workbook = excel_app.Workbooks.Add()
 
     exist_names = []
+
     for index, csv_path in enumerate(csv_paths):
         if not os.path.exists(csv_path):
             raise FileNotFoundError("CSV file not found: {}".format(csv_path))
 
+        # Choose / create worksheet
         if index == 0:
             worksheet = workbook.Worksheets[1]
         else:
@@ -61,121 +75,110 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
         ) or "Sheet{}".format(index + 1)
         exist_names.append(worksheet.Name)
 
-        apartment_code_col_index = None
-        building_number_col_index = None
-        level_col_index = None
-        apartment_col_index = None
-        number_rooms_col_index = None
-        apartment_number_col_index = None
-        name_col_index = None
-        lookup_code_col_index = None
+        # Track all relevant column indices in one place
+        col_indexes = {
+            "apartment_code": None,
+            "lookup_code": None,
+            "name": None,
+            "building_number": None,
+            "level": None,
+            "apartment": None,
+            "number_rooms": None,
+            "apartment_number": None,
+        }
 
         # Open the CSV file
         with open(csv_path, "r") as csv_file:
             file_obj = csv_file.read().decode("utf-8")
             rows = file_obj.split("\n")
+
             for row_index, row in enumerate(rows):
+                if not row:
+                    continue  # skip empty lines
+
                 columns = row.strip().split(FIELD_DELIMITER)
+
                 for col_index, cell_value in enumerate(columns):
                     cell_content = cell_value.replace('"', "")
 
+                    # --- Composite value logic (uses indices if already detected) ---
+
+                    # Apartment Code: Building Number - Level - Apartment - NumberRooms - ApartmentNumber
                     if (
-                        apartment_code_col_index is not None
-                        and apartment_code_col_index == col_index
+                        col_indexes["apartment_code"] is not None
+                        and col_indexes["apartment_code"] == col_index
                     ):
-                        if not all(
-                            [
-                                building_number_col_index is not None,
-                                level_col_index is not None,
-                                apartment_col_index is not None,
-                                number_rooms_col_index is not None,
-                                apartment_number_col_index is not None,
-                            ]
-                        ):
-                            raise ValueError(
-                                "One or more required columns are missing in the CSV file."
+                        required_indices = [
+                            col_indexes["building_number"],
+                            col_indexes["level"],
+                            col_indexes["apartment"],
+                            col_indexes["number_rooms"],
+                            col_indexes["apartment_number"],
+                        ]
+                        max_col_index = _ensure_required_columns(required_indices)
+
+                        if max_col_index < len(columns):
+                            cell_content = _build_composite_value(
+                                columns, required_indices
                             )
 
-                        max_col_index = max(
-                            building_number_col_index,
-                            level_col_index,
-                            apartment_col_index,
-                            number_rooms_col_index,
-                            apartment_number_col_index,
-                        )
-                        if max_col_index < len(columns):
-                            apartment_code_value = "{}-{}-{}-{}-{}".format(
-                                columns[building_number_col_index].replace('"', ""),
-                                columns[level_col_index].replace('"', ""),
-                                columns[apartment_col_index].replace('"', ""),
-                                columns[number_rooms_col_index].replace('"', ""),
-                                columns[apartment_number_col_index].replace('"', ""),
-                            )
-                            cell_content = apartment_code_value
+                    # LookUpCode: Building Number - Level - Apartment - NumberRooms - ApartmentNumber - Name
                     elif (
-                        lookup_code_col_index is not None
-                        and lookup_code_col_index == col_index
+                        col_indexes["lookup_code"] is not None
+                        and col_indexes["lookup_code"] == col_index
                     ):
-                        if not all(
-                            [
-                                building_number_col_index is not None,
-                                level_col_index is not None,
-                                apartment_col_index is not None,
-                                number_rooms_col_index is not None,
-                                apartment_number_col_index is not None,
-                                name_col_index is not None,
-                            ]
-                        ):
-                            raise ValueError(
-                                "One or more required columns are missing in the CSV file."
-                            )
-                        max_col_index = max(
-                            building_number_col_index,
-                            level_col_index,
-                            apartment_col_index,
-                            number_rooms_col_index,
-                            apartment_number_col_index,
-                            name_col_index,
-                        )
+                        required_indices = [
+                            col_indexes["building_number"],
+                            col_indexes["level"],
+                            col_indexes["apartment"],
+                            col_indexes["number_rooms"],
+                            col_indexes["apartment_number"],
+                            col_indexes["name"],
+                        ]
+                        max_col_index = _ensure_required_columns(required_indices)
+
                         if max_col_index < len(columns):
-                            apartment_code_value = "{}-{}-{}-{}-{}-{}".format(
-                                columns[building_number_col_index].replace('"', ""),
-                                columns[level_col_index].replace('"', ""),
-                                columns[apartment_col_index].replace('"', ""),
-                                columns[number_rooms_col_index].replace('"', ""),
-                                columns[apartment_number_col_index].replace('"', ""),
-                                columns[name_col_index].replace('"', ""),
+                            cell_content = _build_composite_value(
+                                columns, required_indices
                             )
-                            cell_content = apartment_code_value
+
+                    # --- Header detection (set indices once) ---
 
                     if (
-                        apartment_code_col_index is None
+                        col_indexes["apartment_code"] is None
                         and cell_content == "Apartment Code"
                     ):
-                        apartment_code_col_index = col_index
-                    elif lookup_code_col_index is None and cell_content == "LookUpCode":
-                        lookup_code_col_index = col_index
-                    elif name_col_index is None and cell_content == "Name":
-                        name_col_index = col_index
+                        col_indexes["apartment_code"] = col_index
                     elif (
-                        building_number_col_index is None
+                        col_indexes["lookup_code"] is None
+                        and cell_content == "LookUpCode"
+                    ):
+                        col_indexes["lookup_code"] = col_index
+                    elif col_indexes["name"] is None and cell_content == "Name":
+                        col_indexes["name"] = col_index
+                    elif (
+                        col_indexes["building_number"] is None
                         and cell_content == "Building Number"
                     ):
-                        building_number_col_index = col_index
-                    elif level_col_index is None and cell_content == "Level":
-                        level_col_index = col_index
-                    elif apartment_col_index is None and cell_content == "Apartment":
-                        apartment_col_index = col_index
+                        col_indexes["building_number"] = col_index
+                    elif col_indexes["level"] is None and cell_content == "Level":
+                        col_indexes["level"] = col_index
                     elif (
-                        number_rooms_col_index is None and cell_content == "NumberRooms"
+                        col_indexes["apartment"] is None and cell_content == "Apartment"
                     ):
-                        number_rooms_col_index = col_index
+                        col_indexes["apartment"] = col_index
                     elif (
-                        apartment_number_col_index is None
+                        col_indexes["number_rooms"] is None
+                        and cell_content == "NumberRooms"
+                    ):
+                        col_indexes["number_rooms"] = col_index
+                    elif (
+                        col_indexes["apartment_number"] is None
                         and cell_content == "ApartmentNumber"
                     ):
-                        apartment_number_col_index = col_index
+                        col_indexes["apartment_number"] = col_index
 
+                    # Write to Excel
                     worksheet.Cells(row_index + 1, col_index + 1).Value2 = cell_content
 
     # Save the workbook as an Excel file
