@@ -54,6 +54,15 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
         """Build a dash-separated composite value from given column indices."""
         return "-".join(columns[idx].replace('"', "") for idx in indices)
 
+    def str_compare(str1, str2):
+        str1_without_bom = str1.encode("utf-8").decode("utf-8-sig")
+        str2_without_bom = str2.encode("utf-8").decode("utf-8-sig")
+        return (
+            str1_without_bom is not None
+            and str2_without_bom is not None
+            and str1_without_bom.strip().lower() == str2_without_bom.strip().lower()
+        )
+
     # Create a new Excel application
     excel_app = get_excel_app_class()
     workbook = excel_app.Workbooks.Add()
@@ -121,6 +130,10 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
                             cell_content = _build_composite_value(
                                 columns, required_indices
                             )
+                        else:
+                            raise ValueError(
+                                "Something went wrong while building 'Apartment Code' composite value."
+                            )
 
                     # LookUpCode: Building Number - Level - Apartment - NumberRooms - ApartmentNumber - Name
                     elif (
@@ -141,41 +154,28 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
                             cell_content = _build_composite_value(
                                 columns, required_indices
                             )
+                        else:
+                            raise ValueError(
+                                "Something went wrong while building 'LookUpCode' composite value."
+                            )
 
                     # --- Header detection (set indices once) ---
 
-                    if (
-                        col_indexes["apartment_code"] is None
-                        and cell_content == "Apartment Code"
-                    ):
+                    if str_compare(cell_content, "Apartment Code"):
                         col_indexes["apartment_code"] = col_index
-                    elif (
-                        col_indexes["lookup_code"] is None
-                        and cell_content == "LookUpCode"
-                    ):
+                    elif str_compare(cell_content, "LookUpCode"):
                         col_indexes["lookup_code"] = col_index
-                    elif col_indexes["name"] is None and cell_content == "Name":
+                    elif str_compare(cell_content, "Name"):
                         col_indexes["name"] = col_index
-                    elif (
-                        col_indexes["building_number"] is None
-                        and cell_content == "Building Number"
-                    ):
+                    elif str_compare(cell_content, "Building Number"):
                         col_indexes["building_number"] = col_index
-                    elif col_indexes["level"] is None and cell_content == "Level":
+                    elif str_compare(cell_content, "Level"):
                         col_indexes["level"] = col_index
-                    elif (
-                        col_indexes["apartment"] is None and cell_content == "Apartment"
-                    ):
+                    elif str_compare(cell_content, "Apartment"):
                         col_indexes["apartment"] = col_index
-                    elif (
-                        col_indexes["number_rooms"] is None
-                        and cell_content == "NumberRooms"
-                    ):
+                    elif str_compare(cell_content, "NumberRooms"):
                         col_indexes["number_rooms"] = col_index
-                    elif (
-                        col_indexes["apartment_number"] is None
-                        and cell_content == "ApartmentNumber"
-                    ):
+                    elif str_compare(cell_content, "ApartmentNumber"):
                         col_indexes["apartment_number"] = col_index
 
                     # Write to Excel
