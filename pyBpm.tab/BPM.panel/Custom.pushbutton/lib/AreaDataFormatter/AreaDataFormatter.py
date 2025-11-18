@@ -55,13 +55,11 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
         return "-".join(columns[idx].replace('"', "") for idx in indices)
 
     def str_compare(str1, str2):
+        if str1 is None or str2 is None:
+            return False
         str1_without_bom = str1.encode("utf-8").decode("utf-8-sig")
         str2_without_bom = str2.encode("utf-8").decode("utf-8-sig")
-        return (
-            str1_without_bom is not None
-            and str2_without_bom is not None
-            and str1_without_bom.strip().lower() == str2_without_bom.strip().lower()
-        )
+        return str1_without_bom.strip().lower() == str2_without_bom.strip().lower()
 
     # Create a new Excel application
     excel_app = get_excel_app_class()
