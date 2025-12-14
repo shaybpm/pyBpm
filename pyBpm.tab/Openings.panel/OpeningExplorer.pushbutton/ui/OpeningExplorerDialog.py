@@ -186,61 +186,70 @@ class OpeningExplorerDialog(Windows.Window):
         return rendered_openings
 
     def render_openings(self):
-        rendered_openings = self.get_rendered_openings()
-        self.rendered_openings = rendered_openings
+        try:
+            rendered_openings = self.get_rendered_openings()
+            self.rendered_openings = rendered_openings
 
-        main_stack_panel = self.StackPanelMain
-        main_stack_panel.Children.Clear()
+            main_stack_panel = self.StackPanelMain
+            main_stack_panel.Children.Clear()
 
-        title_grid = self.get_row_grid(
-            0,
-            {
-                "opening_discipline": "Discipline",
-                "opening_number": "Number",
-                "opening_level_name": "Level",
-            },
-            title_row=True,
-        )
-        main_stack_panel.Children.Add(title_grid)
+            title_grid = self.get_row_grid(
+                0,
+                {
+                    "opening_discipline": "Discipline",
+                    "opening_number": "Number",
+                    "opening_level_name": "Level",
+                },
+                title_row=True,
+            )
+            main_stack_panel.Children.Add(title_grid)
 
-        for index, opening in enumerate(rendered_openings):
-            opening_grid = self.get_row_grid(index + 1, opening)
-            main_stack_panel.Children.Add(opening_grid)
+            for index, opening in enumerate(rendered_openings):
+                opening_grid = self.get_row_grid(index + 1, opening)
+                main_stack_panel.Children.Add(opening_grid)
+        except Exception as ex:
+            print(ex)
 
     def get_opening_by_tag(self, tag):
         return self.rendered_openings[tag - 1]
 
     def opening_zoom_button_click(self, sender, e):
-        ui_view = get_ui_view(self.uidoc)
-        if not ui_view:
-            self.Hide()
-            forms.alert("Please select a view")
-            self.Show()
-            return
+        try:
+            ui_view = get_ui_view(self.uidoc)
+            if not ui_view:
+                self.Hide()
+                forms.alert("Please select a view")
+                self.Show()
+                return
 
-        opening = self.get_opening_by_tag(sender.Tag)
+            opening = self.get_opening_by_tag(sender.Tag)
 
-        zoom_increment = 0.8
-        zoom_viewCorner1 = XYZ(
-            opening["min_max_points"]["Min"]["X"],
-            opening["min_max_points"]["Min"]["Y"],
-            opening["min_max_points"]["Min"]["Z"],
-        ).Subtract(XYZ(zoom_increment, zoom_increment, zoom_increment))
+            zoom_increment = 0.8
+            zoom_viewCorner1 = XYZ(
+                opening["min_max_points"]["Min"]["X"],
+                opening["min_max_points"]["Min"]["Y"],
+                opening["min_max_points"]["Min"]["Z"],
+            ).Subtract(XYZ(zoom_increment, zoom_increment, zoom_increment))
 
-        zoom_viewCorner2 = XYZ(
-            opening["min_max_points"]["Max"]["X"],
-            opening["min_max_points"]["Max"]["Y"],
-            opening["min_max_points"]["Max"]["Z"],
-        ).Add(XYZ(zoom_increment, zoom_increment, zoom_increment))
-        ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
+            zoom_viewCorner2 = XYZ(
+                opening["min_max_points"]["Max"]["X"],
+                opening["min_max_points"]["Max"]["Y"],
+                opening["min_max_points"]["Max"]["Z"],
+            ).Add(XYZ(zoom_increment, zoom_increment, zoom_increment))
+            ui_view.ZoomAndCenterRectangle(zoom_viewCorner1, zoom_viewCorner2)
+        except Exception as ex:
+            print(ex)
 
     def opening_3d_button_click(self, sender, e):
-        opening = self.get_opening_by_tag(sender.Tag)
+        try:
+            opening = self.get_opening_by_tag(sender.Tag)
 
-        ex_event_file = ExternalEventDataFile(self.doc)
-        ex_event_file.set_key_value("min_max_points_dict", opening["min_max_points"])
+            ex_event_file = ExternalEventDataFile(self.doc)
+            ex_event_file.set_key_value("min_max_points_dict", opening["min_max_points"])
 
-        show_bbox_3d_event.Raise()
+            show_bbox_3d_event.Raise()
+        except Exception as ex:
+            print(ex)
 
     def isolate_btn_mouse_down(self, sender, e):
         active_view = self.uidoc.ActiveView
@@ -270,4 +279,7 @@ class OpeningExplorerDialog(Windows.Window):
             print(ex)
 
     def filter_selection_changed(self, sender, e):
-        self.render_openings()
+        try:
+            self.render_openings()
+        except Exception as ex:
+            print(ex)
