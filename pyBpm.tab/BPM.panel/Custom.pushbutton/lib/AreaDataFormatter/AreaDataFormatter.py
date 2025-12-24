@@ -4,7 +4,6 @@ import os, shutil
 from Autodesk.Revit.DB import ElementId, Category, ViewScheduleExportOptions
 from pyrevit import forms
 from pyUtils import sanitize_filename
-from ExcelUtils import get_excel_app_class, FIELD_DELIMITER, Excel
 
 
 ex_titles = [
@@ -39,6 +38,7 @@ def get_worksheet_name_by_csv_path(csv_path, exist_names):
 
 
 def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
+    from ExcelUtils import get_excel_app_class, FIELD_DELIMITER, Excel
     """Only for Area Data Formatter script use"""
     import os
 
@@ -221,6 +221,7 @@ def schedules_filter(schedule):
 
 
 def area_data_formatter(uidoc):
+    from ExcelUtils import FIELD_DELIMITER
     doc = uidoc.Document
     schedules = forms.select_schedules(filterfunc=schedules_filter, doc=doc)
     if not schedules:
