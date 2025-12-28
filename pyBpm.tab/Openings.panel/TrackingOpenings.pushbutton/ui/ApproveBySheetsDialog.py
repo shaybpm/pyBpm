@@ -34,7 +34,7 @@ class ApproveBySheetsDialog(Windows.Window):
     def initialize_sheet_tree_view_container_StackPanel(self):
         for sheet in sorted(
             self.data.get("sheets", []),
-            key=lambda x: int(x.get("number", "9999")),
+            key=lambda x: safe_int(x.get("number", "9999"), 9999),
         ):
             sheet_tree_view_item = Windows.Controls.TreeViewItem()
             sheet_tree_view_item.Header = sheet.get("title", "-- No Title --")
