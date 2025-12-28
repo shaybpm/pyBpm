@@ -40,7 +40,7 @@ class ApproveBySheetsDialog(Windows.Window):
             sheet_tree_view_item.Header = sheet.get("title", "-- No Title --")
             for revision in sheet.get("revisions", []):
                 revision_tree_view_item = Windows.Controls.TreeViewItem()
-                revision_data = revision.get("revisionData", {})
+                revision_data = revision.get("revisionData", {}) or {}
 
                 revision_tree_view_item_header_grid = Windows.Controls.Grid()
                 revision_tree_view_item_header_grid.ColumnDefinitions.Add(
@@ -92,7 +92,8 @@ class ApproveBySheetsDialog(Windows.Window):
             return []
         for sheet in self.data.get("sheets", []):
             for revision in sheet.get("revisions", []):
-                if revision.get("revisionData", {}).get("uniqueId") == revision_uid:
+                revision_data = revision.get("revisionData", {}) or {}
+                if revision_data.get("uniqueId") == revision_uid:
                     return revision.get("openings", [])
 
     def double_click_rev_tree_view_item(self, sender, e):
