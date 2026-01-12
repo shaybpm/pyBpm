@@ -28,7 +28,6 @@ from RevitUtils import (
     get_model_guids,
     get_level_by_point,
 )
-from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
 from UiUtils import SelectFromList
 
 from FiltersInViewsDialog import FiltersInViewsDialog
@@ -1070,6 +1069,8 @@ class TrackingOpeningsDialog(Windows.Window):
                 self.alert("מספר נסיונות מקסימלי ליצירת שם קובץ חדש, הקובץ לא נוצר")
                 return
         try:
+            from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
+
             excel_path = create_new_workbook_file(folder_path + "\\" + file_name)
             add_data_to_worksheet(excel_path, self.openings, ignore_fields=["_id"])
             self.Hide()
