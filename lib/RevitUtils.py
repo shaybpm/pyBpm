@@ -43,12 +43,32 @@ def convertCmToRevitNum(doc, cm):
         return UnitUtils.ConvertToInternalUnits(cm, UnitTypeId.Centimeters)
 
 
-def get_comp_link(doc):
-    from Autodesk.Revit.DB import (
-        BuiltInParameter,
-        FilteredElementCollector,
-        RevitLinkInstance,
+def is_comp_doc(doc):
+    from Autodesk.Revit.DB import BuiltInParameter
+
+    project_info = doc.ProjectInformation
+    organization_name_param = project_info.get_Parameter(
+        BuiltInParameter.PROJECT_ORGANIZATION_NAME
     )
+    organization_description_param = project_info.get_Parameter(
+        BuiltInParameter.PROJECT_ORGANIZATION_DESCRIPTION
+    )
+    if (
+        not organization_name_param
+        or not organization_name_param.AsString()
+        or not organization_description_param
+        or not organization_description_param.AsString()
+    ):
+        return False
+
+    return (
+        organization_name_param.AsString() == "BPM"
+        and organization_description_param.AsString() == "CM"
+    )
+
+
+def get_comp_link(doc):
+    from Autodesk.Revit.DB import FilteredElementCollector, RevitLinkInstance
 
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
 
@@ -65,25 +85,7 @@ def get_comp_link(doc):
         link_doc = link.GetLinkDocument()
         if not link_doc:
             continue
-        project_info = link_doc.ProjectInformation
-        organization_name_param = project_info.get_Parameter(
-            BuiltInParameter.PROJECT_ORGANIZATION_NAME
-        )
-        organization_description_param = project_info.get_Parameter(
-            BuiltInParameter.PROJECT_ORGANIZATION_DESCRIPTION
-        )
-        if (
-            not organization_name_param
-            or not organization_name_param.AsString()
-            or not organization_description_param
-            or not organization_description_param.AsString()
-        ):
-            continue
-
-        if (
-            organization_name_param.AsString() == "BPM"
-            and organization_description_param.AsString() == "CM"
-        ):
+        if is_comp_doc(link_doc):
             return link
     return None
 

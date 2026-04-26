@@ -1,7 +1,7 @@
 import json, os
 from pyrevit import script
 from HttpRequest import get, patch, post
-from RevitUtils import get_model_info, get_comp_link
+from RevitUtils import get_model_info, get_comp_link, is_comp_doc
 from Config import server_url
 
 
@@ -203,17 +203,22 @@ def get_comp_opening_sheets_data(doc):
     if not doc.IsModelInCloud:
         return {"status": "ERROR", "message": "Document is not in cloud.", "data": None}
     comp_link = get_comp_link(doc)
-    if not comp_link:
+    message = ""
+    if comp_link:
+        comp_doc = comp_link.GetLinkDocument()
+        if not comp_doc:
+            return {
+                "status": "ERROR",
+                "message": "Compilation document is not loaded.",
+                "data": None,
+            }
+    elif is_comp_doc(doc):
+        comp_doc = doc
+        message = "Using the current model as the compilation model."
+    else:
         return {
             "status": "ERROR",
             "message": "No compilation link found.",
-            "data": None,
-        }
-    comp_doc = comp_link.GetLinkDocument()
-    if not comp_doc:
-        return {
-            "status": "ERROR",
-            "message": "Compilation document is not loaded.",
             "data": None,
         }
     comp_doc_model_guid = get_model_info(comp_doc)["modelGuid"]
@@ -225,7 +230,7 @@ def get_comp_opening_sheets_data(doc):
         if not data:
             return {"status": "ERROR", "message": "No data found.", "data": None}
         data["modelTitle"] = comp_doc.Title
-        return {"status": "OK", "message": "", "data": data}
+        return {"status": "OK", "message": message, "data": data}
     except Exception as e:
         return {"status": "ERROR", "message": str(e), "data": None}
 
