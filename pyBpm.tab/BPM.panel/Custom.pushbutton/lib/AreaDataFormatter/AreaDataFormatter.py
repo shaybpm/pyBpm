@@ -38,8 +38,8 @@ def get_worksheet_name_by_csv_path(csv_path, exist_names):
 
 
 def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
-    from ExcelUtils import get_excel_app_class, FIELD_DELIMITER, Excel
     """Only for Area Data Formatter script use"""
+    from ExcelUtilsPure import xlsxwriter, FIELD_DELIMITER
     import os
 
     def _ensure_required_columns(indices):
@@ -61,9 +61,7 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
         str2_without_bom = str2.encode("utf-8").decode("utf-8-sig")
         return str1_without_bom.strip().lower() == str2_without_bom.strip().lower()
 
-    # Create a new Excel application
-    excel_app = get_excel_app_class()
-    workbook = excel_app.Workbooks.Add()
+    workbook = xlsxwriter.Workbook(excel_path)
 
     exist_names = []
 
@@ -71,16 +69,11 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
         if not os.path.exists(csv_path):
             raise FileNotFoundError("CSV file not found: {}".format(csv_path))
 
-        # Choose / create worksheet
-        if index == 0:
-            worksheet = workbook.Worksheets[1]
-        else:
-            worksheet = workbook.Worksheets.Add()
-
-        worksheet.Name = get_worksheet_name_by_csv_path(
+        ws_name = get_worksheet_name_by_csv_path(
             csv_path, exist_names
         ) or "Sheet{}".format(index + 1)
-        exist_names.append(worksheet.Name)
+        worksheet = workbook.add_worksheet(ws_name)
+        exist_names.append(ws_name)
 
         # Track all relevant column indices in one place
         col_indexes = {
@@ -94,8 +87,8 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
             "apartment_number": None,
         }
 
-        # Open the CSV file
-        with open(csv_path, "r") as csv_file:
+        # Open the CSV file (binary read keeps decode() working on both IronPython 2 and 3)
+        with open(csv_path, "rb") as csv_file:
             file_obj = csv_file.read().decode("utf-8")
             rows = file_obj.split("\n")
 
@@ -176,13 +169,10 @@ def csv_to_excel_for_AreaDataFormatter_script(csv_paths, excel_path):
                     elif str_compare(cell_content, "ApartmentNumber"):
                         col_indexes["apartment_number"] = col_index
 
-                    # Write to Excel
-                    worksheet.Cells(row_index + 1, col_index + 1).Value2 = cell_content
+                    # Write to Excel (xlsxwriter is 0-indexed)
+                    worksheet.write(row_index, col_index, cell_content)
 
-    # Save the workbook as an Excel file
-    workbook.SaveAs(excel_path, Excel.XlFileFormat.xlWorkbookDefault)
-    workbook.Close()
-    excel_app.Quit()
+    workbook.close()
 
 
 def schedules_filter(schedule):
@@ -221,7 +211,7 @@ def schedules_filter(schedule):
 
 
 def area_data_formatter(uidoc):
-    from ExcelUtils import FIELD_DELIMITER
+    from ExcelUtilsPure import FIELD_DELIMITER
     doc = uidoc.Document
     schedules = forms.select_schedules(filterfunc=schedules_filter, doc=doc)
     if not schedules:
