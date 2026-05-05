@@ -32,7 +32,7 @@ try:
             return
 
         opening_set_temp_file_id = get_opening_set_temp_file_id(doc)
-        temp_storage = TempElementStorage(opening_set_temp_file_id)
+        temp_storage = TempElementStorage(opening_set_temp_file_id, doc)
         opening_ids = temp_storage.get_element_ids()
 
         if len(opening_ids) > 0:

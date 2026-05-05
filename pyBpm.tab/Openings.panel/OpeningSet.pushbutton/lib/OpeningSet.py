@@ -430,7 +430,7 @@ def execute_all_functions(doc, opening):
         results["message"] = "Completed successfully."
 
     opening_set_temp_file_id = get_opening_set_temp_file_id(doc)
-    temp_storage = TempElementStorage(opening_set_temp_file_id)
+    temp_storage = TempElementStorage(opening_set_temp_file_id, doc)
     temp_storage.remove_element(opening.Id)
 
     return results
@@ -525,7 +525,7 @@ def post_openings_data(doc, openings, to_print=False):
 
         opening_data = {
             "uniqueId": opening.UniqueId,
-            "internalDocId": opening.Id.IntegerValue,
+            "internalDocId": RevitUtils.getElementIdValue(doc, opening.Id),
             "isFloorOpening": is_floor(opening),
             "discipline": discipline,
             "mark": mark,

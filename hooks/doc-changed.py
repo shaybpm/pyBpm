@@ -73,7 +73,7 @@ try:
             return
 
         opening_set_temp_file_id = get_opening_set_temp_file_id(doc)
-        temp_storage = TempElementStorage(opening_set_temp_file_id)
+        temp_storage = TempElementStorage(opening_set_temp_file_id, doc)
         if len(added_and_modified_element_ids) > 0:
             temp_storage.add_elements(added_and_modified_element_ids)
 

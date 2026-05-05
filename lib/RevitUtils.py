@@ -5,6 +5,12 @@ def getRevitVersion(doc):
     return int(doc.Application.VersionNumber)
 
 
+def getElementIdValue(doc, element_id):
+    if getRevitVersion(doc) < 2024:
+        return element_id.IntegerValue
+    return element_id.Value
+
+
 def getElementName(element):
     from Autodesk.Revit.DB import Element
 

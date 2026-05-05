@@ -1,7 +1,7 @@
 import json, os
 from pyrevit import script
 from HttpRequest import get, patch, post
-from RevitUtils import get_model_info, get_comp_link, is_comp_doc
+from RevitUtils import get_model_info, get_comp_link, is_comp_doc, getElementIdValue
 from Config import server_url
 
 
@@ -48,7 +48,7 @@ class ServerPermissions:
 
 def patch_deleted_elements(doc, deleted_element_ids):
     model_info = get_model_info(doc)
-    deleted_element_ids_int = [x.IntegerValue for x in deleted_element_ids]
+    deleted_element_ids_int = [getElementIdValue(doc, x) for x in deleted_element_ids]
     data = {
         "projectGuid": model_info["projectGuid"],
         "modelGuid": model_info["modelGuid"],

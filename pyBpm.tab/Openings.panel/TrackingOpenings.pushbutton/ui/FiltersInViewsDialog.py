@@ -11,6 +11,7 @@ except:
 from System import Windows
 from ServerUtils import get_project_openings_filter001
 from LocalUserInputs import LocalUserInputs
+from RevitUtils import getElementIdValue
 from RevitUtilsOpenings import get_specific_openings_filter
 from Autodesk.Revit.DB import FilteredElementCollector, View, ViewType, ElementId
 from pyrevit.framework import wpf
@@ -207,7 +208,7 @@ class FiltersInViewsDialog(Windows.Window):
         for view_app in self.views_app:
             views_res.append(
                 {
-                    "view_id": view_app["view"].Id.IntegerValue,
+                    "view_id": getElementIdValue(self.doc, view_app["view"].Id),
                     "apply": view_app["apply"],
                 }
             )

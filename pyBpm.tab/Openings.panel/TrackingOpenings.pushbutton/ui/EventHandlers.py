@@ -15,6 +15,7 @@ from RevitUtils import (
     get_bpm_3d_view,
     get_tags_of_element_in_view,
     get_ogs_by_color,
+    getElementIdValue,
 )
 from RevitUtilsOpenings import (
     create_or_modify_specific_openings_filter,
@@ -138,7 +139,7 @@ def filters_in_views_cb(uiapp):
 
     def get_view_by_id_int(id_int):
         for view in views:
-            if view.Id.IntegerValue == id_int:
+            if getElementIdValue(doc, view.Id) == id_int:
                 return view
         return None
 

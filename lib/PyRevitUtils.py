@@ -11,11 +11,13 @@ from pyrevit import script
 from pyrevit.coreutils import ribbon
 
 from Config import root_path, server_url
+from RevitUtils import getElementIdValue
 
 
 class TempElementStorage:
-    def __init__(self, file_id):
+    def __init__(self, file_id, doc):
         self.file_path = script.get_instance_data_file(file_id)
+        self.doc = doc
 
     def is_file_exists(self):
         return os.path.isfile(self.file_path)
@@ -31,7 +33,7 @@ class TempElementStorage:
             return data
 
     def add_element(self, element_id):
-        id_val_str = str(element_id.IntegerValue)
+        id_val_str = str(getElementIdValue(self.doc, element_id))
         data = self.get_data()
         if id_val_str in data:
             return
@@ -42,7 +44,7 @@ class TempElementStorage:
     def add_elements(self, element_ids):
         data = self.get_data()
         for element_id in element_ids:
-            id_val_str = str(element_id.IntegerValue)
+            id_val_str = str(getElementIdValue(self.doc, element_id))
             if id_val_str in data:
                 continue
             data.append(id_val_str)
@@ -51,18 +53,20 @@ class TempElementStorage:
 
     def remove_element(self, element_id):
         data = self.get_data()
-        if str(element_id.IntegerValue) not in data:
+        id_val_str = str(getElementIdValue(self.doc, element_id))
+        if id_val_str not in data:
             return
-        data.remove(str(element_id.IntegerValue))
+        data.remove(id_val_str)
         with open(self.file_path, "w") as f:
             f.write(",".join(data))
 
     def remove_elements(self, element_ids):
         data = self.get_data()
         for element_id in element_ids:
-            if str(element_id.IntegerValue) not in data:
+            id_val_str = str(getElementIdValue(self.doc, element_id))
+            if id_val_str not in data:
                 continue
-            data.remove(str(element_id.IntegerValue))
+            data.remove(id_val_str)
         with open(self.file_path, "w") as f:
             f.write(",".join(data))
 

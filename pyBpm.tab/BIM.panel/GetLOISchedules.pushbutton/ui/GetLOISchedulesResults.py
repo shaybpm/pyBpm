@@ -14,6 +14,8 @@ from pyrevit.framework import wpf
 from System import Windows
 import os, sys
 
+from RevitUtils import getElementIdValue
+
 xaml_file = os.path.join(os.path.dirname(__file__), "GetLOISchedulesResults.xaml")
 
 
@@ -23,6 +25,8 @@ class GetLOISchedulesResults(Windows.Window):
         self.uidoc = uidoc
         self.schedules = schedules
 
+        doc = self.uidoc.Document
+
         self.h1_TextBlock.Text = "{} schedules loaded to your model.".format(
             len(self.schedules)
         )
@@ -30,14 +34,15 @@ class GetLOISchedulesResults(Windows.Window):
         for schedule in self.schedules:
             schedule_button = Windows.Controls.Button()
             schedule_button.Content = schedule.Name
-            schedule_button.Tag = schedule.Id.IntegerValue
+            schedule_button.Tag = getElementIdValue(doc, schedule.Id)
             schedule_button.Click += self.schedule_button_Click
 
             self.main_StackPanel.Children.Add(schedule_button)
 
     def get_schedule_by_id_int(self, id_int):
+        doc = self.uidoc.Document
         for schedule in self.schedules:
-            if schedule.Id.IntegerValue == id_int:
+            if getElementIdValue(doc, schedule.Id) == id_int:
                 return schedule
         return None
 
