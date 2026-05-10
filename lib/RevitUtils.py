@@ -7,8 +7,8 @@ def getRevitVersion(doc):
 
 def getElementIdValue(doc, element_id):
     if getRevitVersion(doc) < 2024:
-        return element_id.IntegerValue
-    return element_id.Value
+        return int(element_id.IntegerValue)
+    return int(element_id.Value)
 
 
 def getElementName(element):
