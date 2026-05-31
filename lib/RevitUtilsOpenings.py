@@ -11,6 +11,9 @@ opening_names = shapes["rectangular"] + shapes["circular"]
 PYBPM_FILTER_NAME_OPENING = "PYBPM-FILTER-NAME_OPENING"
 PYBPM_FILTER_NAME_NOT_OPENING = "PYBPM-FILTER-NAME_NOT-OPENING"
 PYBPM_FILTER_SPECIFIC_OPENINGS = "PYBPM-FILTER-SPECIFIC-OPENINGS"
+# Per-view variant of the specific-openings filter. The view id is appended so
+# each view owns a dedicated filter (e.g. PYBPM-FILTER-SPECIFIC-OPENINGS-VIEW-1234).
+PYBPM_FILTER_SPECIFIC_OPENINGS_VIEW_PREFIX = PYBPM_FILTER_SPECIFIC_OPENINGS + "-VIEW-"
 
 THERE_IS_NO_DESPAIR_IN_THE_WORLD_AT_ALL = "THERE_IS_NO_DESPAIR_IN_THE_WORLD_AT_ALL"
 
@@ -174,13 +177,23 @@ def create_opening_filter(discipline, mark):
     return e_p_f_this_opening_data_logical_and
 
 
-def create_or_modify_specific_openings_filter(doc, openings_data):
+def create_or_modify_specific_openings_filter(doc, openings_data, filter_name=None):
     """The openings_data is a list of dictionaries with the following structure:
     {
         "discipline": str,
         "mark": str,
     }
+
+    The filter is rebuilt from scratch out of openings_data on every call (it does
+    not append), so passing the full desired list replaces the previous content.
+
+    filter_name lets callers target a dedicated filter (e.g. a per-view filter via
+    get_view_specific_openings_filter_name). Defaults to the shared
+    PYBPM_FILTER_SPECIFIC_OPENINGS filter to preserve the original behavior.
     """
+    if filter_name is None:
+        filter_name = PYBPM_FILTER_SPECIFIC_OPENINGS
+
     import clr
 
     clr.AddReferenceByPartialName("System")
@@ -247,7 +260,7 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
         e_p_f_family_type_name_logical_or, e_p_f_opening_data_logical_or
     )
 
-    _filter = get_specific_openings_filter(doc)
+    _filter = get_specific_openings_filter(doc, filter_name)
     if _filter:
         # if found, modify it
         t = Transaction(doc, "pyBpm | Modify Specific Openings Filter")
@@ -261,7 +274,7 @@ def create_or_modify_specific_openings_filter(doc, openings_data):
     t.Start()
     new_parameter_filter = ParameterFilterElement.Create(
         doc,
-        PYBPM_FILTER_SPECIFIC_OPENINGS,
+        filter_name,
         category_ids_iCollection,
         element_filter,
     )
@@ -376,15 +389,29 @@ def remove_one_opening_from_specific_openings_filter(doc, opening_data):
     return _filter
 
 
-def get_specific_openings_filter(doc):
-    """If not found, return None."""
+def get_specific_openings_filter(doc, filter_name=None):
+    """If not found, return None.
+
+    filter_name defaults to the shared PYBPM_FILTER_SPECIFIC_OPENINGS filter; pass a
+    per-view name (get_view_specific_openings_filter_name) to look up a view filter.
+    """
     from Autodesk.Revit.DB import FilteredElementCollector, ParameterFilterElement
+
+    if filter_name is None:
+        filter_name = PYBPM_FILTER_SPECIFIC_OPENINGS
 
     filters = FilteredElementCollector(doc).OfClass(ParameterFilterElement)
     for _filter in filters:
-        if _filter.Name == PYBPM_FILTER_SPECIFIC_OPENINGS:
+        if _filter.Name == filter_name:
             return _filter
     return None
+
+
+def get_view_specific_openings_filter_name(view_id_value):
+    """Build the per-view specific-openings filter name from a view id integer
+    (use getElementIdValue to obtain it). Each view gets its own filter so views
+    do not share/clobber each other's hidden-openings selection."""
+    return "{}{}".format(PYBPM_FILTER_SPECIFIC_OPENINGS_VIEW_PREFIX, view_id_value)
 
 
 def get_opening_element_filter(doc):

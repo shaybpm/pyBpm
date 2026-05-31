@@ -1,0 +1,5 @@
+title:
+  en_us: "Hide Openings\nOut Of Range"
+layout:
+  - HideByViewRange
+  - HidePickedOpenings
