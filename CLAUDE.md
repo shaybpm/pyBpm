@@ -29,6 +29,14 @@ All scripts run on **IronPython 2.7**, NOT CPython 3. This is the single biggest
 - All server traffic flows through `lib/ServerUtils.py` → `lib/HttpRequest.py` (`get`/`post`/`patch` via `WebClient`).
 - Blast radius: changing the pyBpm-server API (Ch 14) breaks this extension; this is its primary client.
 
+## ⚠️ Scripts Must Be Generic — NEVER Hardcode Model-Specific Data
+
+**Every script here is GENERIC — it ships to many client offices and must work on ANY model, never one specific project.** Do not put model-specific data into a script — no hardcoded element IDs, link IDs, link names, model GUIDs, level names, or coordinates copied from a single model.
+
+- **Resolve links and elements through the proper lookup** (category/discipline filters, the project's configured links, or explicit user selection) — **never by a literal `ElementId`, by name, or by index.**
+- **If it is not clear which link or element is the right one — ASK. Do not decide by ID.**
+- A hardcoded ID silently makes a script "work on my model" and break for every client — doubly critical here, since this extension is customer-facing.
+
 ## Environment Detection (`lib/Config.py`)
 
 Dev vs prod is decided by inspecting `__file__`: if the path contains the BPM `Software_Development` working-tree string it returns `"dev"` (→ localhost:5000), otherwise `"prod"` (→ Azure). A deployed client copy lives outside that path, so it resolves to prod automatically.
