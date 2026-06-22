@@ -6,6 +6,7 @@ from RevitUtils import (
     get_family_by_name,
     get_family_symbols,
     activate_family_symbol,
+    getElementId,
 )
 from ExEventHandlers import get_simple_external_event
 from ExternalEventDataFile import ExternalEventDataFile
@@ -40,12 +41,12 @@ def rename_current_family(uiapp):
             doc, instead_bundle_name="OVERWRITE_FAMILY"
         )
         current_family_id = ex_event_file.get_key_value("current_family_id")
-        family = doc.GetElement(ElementId(int(current_family_id)))
+        family = doc.GetElement(getElementId(doc, current_family_id))
 
         current_family_symbol_id = ex_event_file.get_key_value(
             "current_family_symbol_id"
         )
-        family_symbol = doc.GetElement(ElementId(int(current_family_symbol_id)))
+        family_symbol = doc.GetElement(getElementId(doc, current_family_symbol_id))
 
         # Change family name and symbol name
         family_name = family.Name
@@ -138,7 +139,7 @@ def change_family_symbol(uiapp):
         )
 
         new_family_symbol_id = ex_event_file.get_key_value("new_family_symbol_id")
-        new_family_symbol = doc.GetElement(ElementId(int(new_family_symbol_id)))
+        new_family_symbol = doc.GetElement(getElementId(doc, new_family_symbol_id))
 
         instances_param_dict = ex_event_file.get_key_value("instances_param_dict")
 
@@ -146,7 +147,7 @@ def change_family_symbol(uiapp):
         t = Transaction(doc, "BPM | Change Family Symbol")
         t.Start()
         for instance_id_str in instances_param_dict:
-            instance = doc.GetElement(ElementId(int(instance_id_str)))
+            instance = doc.GetElement(getElementId(doc, instance_id_str))
             if instance is None:
                 raise Exception("Failed to get instance by id: " + instance_id_str)
             instance.Symbol = new_family_symbol
@@ -173,7 +174,7 @@ def restore_parameters(uiapp):
         t4 = Transaction(doc, "BPM | Restore Parameters")
         t4.Start()
         for instance_id_str, param_dict in instances_param_dict.items():
-            instance = doc.GetElement(ElementId(int(instance_id_str)))
+            instance = doc.GetElement(getElementId(doc, instance_id_str))
             if instance is None:
                 raise Exception("Failed to get instance by id: " + instance_id_str)
             for param_name, param_vt_dict in param_dict.items():
@@ -189,7 +190,7 @@ def restore_parameters(uiapp):
                 value = (
                     param_vt_dict["value"]
                     if param_vt_dict["type"] != "ElementId"
-                    else ElementId(int(param_vt_dict["value"]))
+                    else getElementId(doc, param_vt_dict["value"])
                 )
                 param.Set(value)
         t4.Commit()
@@ -210,7 +211,7 @@ def delete_old_family(uiapp):
         )
 
         current_family_id = ex_event_file.get_key_value("current_family_id")
-        old_family_id = ElementId(int(current_family_id))
+        old_family_id = getElementId(doc, current_family_id)
 
         t = Transaction(doc, "BPM | Delete Old Family")
         t.Start()

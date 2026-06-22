@@ -11,7 +11,7 @@ from pyrevit import script
 from pyrevit.coreutils import ribbon
 
 from Config import root_path, server_url
-from RevitUtils import getElementIdValue
+from RevitUtils import getElementIdValue, getElementId
 
 
 class TempElementStorage:
@@ -72,7 +72,7 @@ class TempElementStorage:
 
     def get_element_ids(self):
         data = self.get_data()
-        return List[ElementId]([ElementId(int(x)) for x in data])
+        return List[ElementId]([getElementId(self.doc, x) for x in data])
 
 
 def print_table(output, columns, table_data):

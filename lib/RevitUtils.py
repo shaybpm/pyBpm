@@ -11,6 +11,21 @@ def getElementIdValue(doc, element_id):
     return int(element_id.Value)
 
 
+def getElementId(doc, id_value):
+    # Companion to getElementIdValue. Revit 2026 removed the int (Int32)
+    # ElementId constructor, so a plain Python int is ambiguous between the
+    # remaining ElementId(Int64) / ElementId(BuiltInCategory) /
+    # ElementId(BuiltInParameter) overloads ("Multiple targets could match").
+    # Cast to System.Int64 on 2024+ (which is when the Int64 ctor exists).
+    from Autodesk.Revit.DB import ElementId
+
+    if getRevitVersion(doc) < 2024:
+        return ElementId(int(id_value))
+    from System import Int64
+
+    return ElementId(Int64(int(id_value)))
+
+
 def getElementName(element):
     from Autodesk.Revit.DB import Element
 

@@ -22,6 +22,7 @@ from RevitUtils import (
     get_min_max_points_from_bbox,
     get_link_by_model_guid,
     get_ui_view,
+    getElementId,
 )
 from ReusableExternalEvents import show_bbox_3d_event
 from ExternalEventDataFile import ExternalEventDataFile
@@ -185,7 +186,7 @@ class BondsViewerUI(Windows.Window):
                 Windows.MessageBoxImage.Error,
             )
             return None, None
-        bond_elem = _doc.GetElement(ElementId(bond_id))
+        bond_elem = _doc.GetElement(getElementId(_doc, bond_id))
         if (
             not bond_elem
             or not bond_elem.Category
