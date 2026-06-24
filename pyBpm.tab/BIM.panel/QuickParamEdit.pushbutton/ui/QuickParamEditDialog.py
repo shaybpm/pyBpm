@@ -41,7 +41,7 @@ from Autodesk.Revit.DB import (
 # Version-safe element-id helpers: Revit 2026 removed ElementId.IntegerValue and
 # the ElementId(int) constructor. getElementIdValue / getElementId pick the right
 # API per Revit version (RevitUtils lives in the extension's lib/, on sys.path).
-from RevitUtils import getElementIdValue, getElementId
+from RevitUtils import getElementIdValue, getElementId, getElementName
 
 xaml_file = os.path.join(os.path.dirname(__file__), "QuickParamEditDialogUi.xaml")
 
@@ -119,7 +119,10 @@ def get_element_display_name(elem):
             fam = u""
         nm = u""
         try:
-            nm = type_elem.Name or u""
+            # Element.Name via the proper static getter; a direct elem.Name
+            # raises for many element types in IronPython (hence the Id fallback
+            # the user was seeing for instances).
+            nm = getElementName(type_elem) or u""
         except:
             nm = u""
         if fam and nm:
@@ -129,7 +132,7 @@ def get_element_display_name(elem):
     except:
         pass
     try:
-        return elem.Name
+        return getElementName(elem)
     except:
         pass
     try:
