@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 shapes = {
     "rectangular": [
         "Rectangular Face Opening",

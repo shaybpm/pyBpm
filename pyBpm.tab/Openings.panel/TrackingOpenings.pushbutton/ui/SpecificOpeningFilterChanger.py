@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from ExternalEventDataFile import ExternalEventDataFile
 from EventHandlers import change_specific_openings_filter_event
 

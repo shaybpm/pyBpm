@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os, sys
 from Autodesk.Revit.DB import ElementId, Transaction, TransactionGroup
 from RevitUtils import (

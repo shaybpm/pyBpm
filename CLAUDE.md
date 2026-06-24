@@ -16,7 +16,8 @@ This is **NOT** the internal `DEV.extension` (`../DEV.extension/`). DEV is BPM's
 All scripts run on **IronPython 2.7**, NOT CPython 3. This is the single biggest source of mistakes. The shared `bpm-revit-dev` skill documents the full gotcha list — invoke it before writing Revit/pyRevit code. The essentials:
 
 - **Python 2 syntax only** — `print x` works, f-strings do **not**. Use `.format()` or `%`.
-- **Every file with Hebrew or non-ASCII literals MUST start with** `# -*- coding: utf-8 -*-`. Most lib files already do.
+- **EVERY `.py` file MUST start with** `# -*- coding: utf-8 -*-` (line 1, or line 2 after a shebang) — unconditionally, not only files that currently contain non-ASCII. A file that lacks it and later gains a non-ASCII char fails to compile, so always add it up front and never have to think about it again.
+- **Keep docstrings and dunder metadata (`__title__`, `__author__`, `__doc__`, `__tooltip__`) ASCII-only.** pyRevit's component parser (`pyrevit.extensions.genericcomps`) reads a button's docstring/metadata and ASCII-encodes it for the tooltip; a non-ASCII char there (even `§`, `—`, or Hebrew) raises `UnicodeEncodeError` and the whole extension fails to load on reload — and the coding header does **not** prevent this (it only fixes the compiler). Non-ASCII is fine inside the script *body* (string literals shown to users), where the header covers it; just never in the docstring/metadata of a `script.py`. Use `-`/`--` instead of en/em dashes and spell out symbols (`section` not `§`).
 - **No pip / no CPython C-extensions** (`requests`, `pandas`, `numpy` are unavailable). HTTP goes through `System.Net.WebClient` (see `lib/HttpRequest.py`), not `requests`.
 - **.NET interop** — types come from `System`, `Autodesk.Revit.DB`, `pyrevit.framework`. Strings are .NET strings; watch Unicode/`str`/`unicode` boundaries.
 - Integer division, `dict.has_key`, `unicode()` and other Py2 behaviors apply.

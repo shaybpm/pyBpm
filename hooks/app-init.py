@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from Config import get_env_mode
 
 try:
