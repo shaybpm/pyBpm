@@ -206,6 +206,15 @@ def _label(text, bold=False, align_center=False, wrap=False):
     return lbl
 
 
+def _row_separator():
+    """A thin horizontal line placed between rows in the Categories list."""
+    line = Windows.Controls.Border()
+    line.Height = 1
+    line.Background = Windows.Media.Brushes.LightGray
+    line.Margin = Windows.Thickness(2, 0, 2, 0)
+    return line
+
+
 # --------------------------------------------------------------------------
 # ------------------------------- Dialog -----------------------------------
 # --------------------------------------------------------------------------
@@ -223,6 +232,13 @@ class QuickParamEditDialog(Windows.Window):
         self._row_eids = []         # element id per DataTable row (index-aligned)
         self._col_by_pid = {}       # param_id -> column dict
         self.change_btn = None
+        self._datagrid = None       # the Elements DataGrid (for SelectedItems)
+        self._suppress_propagate = False  # re-entrancy guard for bulk-fill
+
+        # Categories-page state (search/filter box + the list it repopulates)
+        self._all_categories = []
+        self._cat_stack = None
+        self._cat_filter_box = None
 
         self.show_main_page()
 
@@ -238,8 +254,11 @@ class QuickParamEditDialog(Windows.Window):
         r0 = Windows.Controls.RowDefinition()
         r0.Height = Windows.GridLength.Auto
         r1 = Windows.Controls.RowDefinition()
+        r1.Height = Windows.GridLength.Auto
+        r2 = Windows.Controls.RowDefinition()
         page.RowDefinitions.Add(r0)
         page.RowDefinitions.Add(r1)
+        page.RowDefinitions.Add(r2)
 
         title = _label(
             "Select a category, then choose Types or Instances:", bold=True
@@ -247,25 +266,73 @@ class QuickParamEditDialog(Windows.Window):
         _set_grid(title, row=0)
         page.Children.Add(title)
 
+        # ---- filter / search row ----
+        filter_grid = Windows.Controls.Grid()
+        filter_grid.Margin = Windows.Thickness(6, 0, 6, 4)
+        fc0 = Windows.Controls.ColumnDefinition()
+        fc0.Width = Windows.GridLength.Auto
+        fc1 = Windows.Controls.ColumnDefinition()
+        fc1.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
+        filter_grid.ColumnDefinitions.Add(fc0)
+        filter_grid.ColumnDefinitions.Add(fc1)
+
+        filter_lbl = _label("Filter:")
+        filter_lbl.VerticalContentAlignment = Windows.VerticalAlignment.Center
+        _set_grid(filter_lbl, col=0)
+        filter_grid.Children.Add(filter_lbl)
+
+        self._cat_filter_box = Windows.Controls.TextBox()
+        self._cat_filter_box.VerticalContentAlignment = (
+            Windows.VerticalAlignment.Center
+        )
+        self._cat_filter_box.Margin = Windows.Thickness(2)
+        _set_grid(self._cat_filter_box, col=1)
+        filter_grid.Children.Add(self._cat_filter_box)
+
+        _set_grid(filter_grid, row=1)
+        page.Children.Add(filter_grid)
+
+        # ---- scrollable category list ----
         scroll = Windows.Controls.ScrollViewer()
         scroll.VerticalScrollBarVisibility = (
             Windows.Controls.ScrollBarVisibility.Auto
         )
         scroll.Margin = Windows.Thickness(4)
-        _set_grid(scroll, row=1)
+        _set_grid(scroll, row=2)
 
-        stack = Windows.Controls.StackPanel()
-        scroll.Content = stack
-
-        categories = get_categories_with_elements(self.doc)
-        if not categories:
-            stack.Children.Add(_label("No categories with elements were found."))
-        else:
-            for cat in categories:
-                stack.Children.Add(self._build_category_row(cat))
-
+        self._cat_stack = Windows.Controls.StackPanel()
+        scroll.Content = self._cat_stack
         page.Children.Add(scroll)
+
+        # Cache once; the filter box re-populates from this without re-querying.
+        self._all_categories = get_categories_with_elements(self.doc)
+        self._populate_categories(u"")
+        # Wire the handler only after state is initialized (avoids early fires).
+        self._cat_filter_box.TextChanged += self._on_category_filter_changed
+
         self._set_content(page)
+
+    def _on_category_filter_changed(self, sender, e):
+        self._populate_categories(sender.Text)
+
+    def _populate_categories(self, filter_text):
+        self._cat_stack.Children.Clear()
+        if not self._all_categories:
+            self._cat_stack.Children.Add(
+                _label("No categories with elements were found.")
+            )
+            return
+        ft = (filter_text or u"").strip().lower()
+        matches = [
+            c for c in self._all_categories if ft in (c["name"] or u"").lower()
+        ]
+        if not matches:
+            self._cat_stack.Children.Add(_label("No matching categories."))
+            return
+        for i, cat in enumerate(matches):
+            if i > 0:
+                self._cat_stack.Children.Add(_row_separator())
+            self._cat_stack.Children.Add(self._build_category_row(cat))
 
     def _build_category_row(self, cat):
         row = Windows.Controls.Grid()
@@ -311,6 +378,18 @@ class QuickParamEditDialog(Windows.Window):
     def _instances_click(self, sender, e):
         self.show_elements_page(sender.Tag, "instances")
 
+    def _selected_category_label(self, cat_id, mode):
+        """'<Category name> (Instances|Types)' for the chosen selection."""
+        name = u""
+        for c in self._all_categories:
+            if c["cat_id"] == cat_id:
+                name = c["name"]
+                break
+        mode_lbl = "Types" if mode == "types" else "Instances"
+        if name:
+            return u"{0}  ({1})".format(name, mode_lbl)
+        return mode_lbl
+
     # ----------------------------- page 2 ----------------------------------
 
     def show_elements_page(self, cat_id, mode):
@@ -320,6 +399,8 @@ class QuickParamEditDialog(Windows.Window):
         except Exception as ex:
             self._show_message_page("Failed to load elements:\n{0}".format(ex))
             return
+
+        cat_name = self._selected_category_label(cat_id, mode)
 
         page = Windows.Controls.Grid()
         r0 = Windows.Controls.RowDefinition()  # table
@@ -340,11 +421,28 @@ class QuickParamEditDialog(Windows.Window):
         _set_grid(content, row=0)
         page.Children.Add(content)
 
+        bottom = Windows.Controls.Grid()
+        bottom.Margin = Windows.Thickness(4)
+        bcol0 = Windows.Controls.ColumnDefinition()
+        bcol0.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
+        bcol1 = Windows.Controls.ColumnDefinition()
+        bcol1.Width = Windows.GridLength.Auto
+        bottom.ColumnDefinitions.Add(bcol0)
+        bottom.ColumnDefinitions.Add(bcol1)
+        _set_grid(bottom, row=1)
+
+        # left side: the selected category (opposite the action buttons)
+        cat_lbl = _label(cat_name, bold=True)
+        cat_lbl.VerticalContentAlignment = Windows.VerticalAlignment.Center
+        _set_grid(cat_lbl, col=0)
+        bottom.Children.Add(cat_lbl)
+
+        # right side: action buttons
         bar = Windows.Controls.StackPanel()
         bar.Orientation = Windows.Controls.Orientation.Horizontal
         bar.HorizontalAlignment = Windows.HorizontalAlignment.Right
-        bar.Margin = Windows.Thickness(4)
-        _set_grid(bar, row=1)
+        _set_grid(bar, col=1)
+        bottom.Children.Add(bar)
 
         back_btn = Windows.Controls.Button()
         back_btn.Content = "< Back"
@@ -361,7 +459,7 @@ class QuickParamEditDialog(Windows.Window):
         self.change_btn.Click += self._change_values_click
         bar.Children.Add(self.change_btn)
 
-        page.Children.Add(bar)
+        page.Children.Add(bottom)
         self._set_content(page)
 
     def _collect_table_data(self, elements):
@@ -456,6 +554,18 @@ class QuickParamEditDialog(Windows.Window):
         dg = Windows.Controls.DataGrid()
         dg.AutoGenerateColumns = False
         dg.HeadersVisibility = Windows.Controls.DataGridHeadersVisibility.Column
+        # Stretch header content to the full column width so the CURRENT / NEW
+        # sub-labels line up with the cell columns below. BasedOn keeps the
+        # default header chrome.
+        dg.ColumnHeaderStyle = Windows.Markup.XamlReader.Parse(
+            '<Style '
+            'xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" '
+            'xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" '
+            'TargetType="DataGridColumnHeader" '
+            'BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">'
+            '<Setter Property="HorizontalContentAlignment" Value="Stretch"/>'
+            '</Style>'
+        )
         dg.CanUserAddRows = False
         dg.CanUserDeleteRows = False
         dg.CanUserResizeRows = False
@@ -483,6 +593,12 @@ class QuickParamEditDialog(Windows.Window):
         # after all columns have been added.
         dg.FrozenColumnCount = 1  # keep the element-name column pinned while scrolling
         dg.ItemsSource = self.dt.DefaultView
+
+        self._datagrid = dg
+        # Bulk-fill: when a NEW value changes in a selected row, mirror it to the
+        # other selected rows (see _on_cell_value_changed). dt is already
+        # populated here, so this never fires for the initial values.
+        self.dt.ColumnChanged += self._on_cell_value_changed
         return dg
 
     def _build_param_header(self, col):
@@ -490,11 +606,13 @@ class QuickParamEditDialog(Windows.Window):
         CURRENT|NEW sub-labels. Kept as a real control (headers are not
         virtualized) so we can hold the checkbox reference directly."""
         grid = Windows.Controls.Grid()
+        grid.HorizontalAlignment = Windows.HorizontalAlignment.Stretch
         for _r in range(3):
             rd = Windows.Controls.RowDefinition()
             rd.Height = Windows.GridLength.Auto
             grid.RowDefinitions.Add(rd)
 
+        # row 0: checkbox, centered
         checkbox = Windows.Controls.CheckBox()
         checkbox.IsChecked = False
         checkbox.Tag = col["param_id"]
@@ -506,11 +624,13 @@ class QuickParamEditDialog(Windows.Window):
         grid.Children.Add(checkbox)
         col["checkbox_control"] = checkbox
 
-        name_lbl = _label(col["name"], bold=True, align_center=True)
+        # row 1: parameter name, centered
+        name_lbl = _label(col["name"], bold=True)
         name_lbl.HorizontalAlignment = Windows.HorizontalAlignment.Center
         _set_grid(name_lbl, row=1)
         grid.Children.Add(name_lbl)
 
+        # row 2: CURRENT | NEW sub-labels, each left-aligned in its own half
         sub = Windows.Controls.Grid()
         sc1 = Windows.Controls.ColumnDefinition()
         sc1.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
@@ -518,12 +638,14 @@ class QuickParamEditDialog(Windows.Window):
         sc2.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
         sub.ColumnDefinitions.Add(sc1)
         sub.ColumnDefinitions.Add(sc2)
-        cur_hdr = _label("CURRENT", align_center=True)
+        cur_hdr = _label("CURRENT")
         cur_hdr.FontSize = 10
+        cur_hdr.HorizontalAlignment = Windows.HorizontalAlignment.Left
         _set_grid(cur_hdr, col=0)
         sub.Children.Add(cur_hdr)
-        new_hdr = _label("NEW", align_center=True)
+        new_hdr = _label("NEW")
         new_hdr.FontSize = 10
+        new_hdr.HorizontalAlignment = Windows.HorizontalAlignment.Left
         _set_grid(new_hdr, col=1)
         sub.Children.Add(new_hdr)
         _set_grid(sub, row=2)
@@ -562,6 +684,34 @@ class QuickParamEditDialog(Windows.Window):
             for idx in col["rows_with_param"]:
                 self.dt.Rows[idx][en] = checked
         self._update_change_button()
+
+    def _on_cell_value_changed(self, sender, e):
+        """Bulk-fill: if a NEW value changed in a row that is selected, copy it
+        to the same parameter in every other selected row. Editing a row that is
+        NOT selected simply changes that row (its own binding already did)."""
+        if self._suppress_propagate:
+            return
+        col_name = e.Column.ColumnName
+        if not col_name.startswith("n_"):
+            return  # only NEW-value edits, not the c_/e_/v_ helper columns
+        dg = self._datagrid
+        if dg is None:
+            return
+        selected = [drv.Row for drv in dg.SelectedItems]
+        # Only fan out when the edited row is itself selected, alongside others.
+        if e.Row not in selected or len(selected) < 2:
+            return
+        new_val = e.ProposedValue
+        self._suppress_propagate = True  # the copies below re-enter this handler
+        try:
+            # Mirror to the other selected rows. A selected row that lacks this
+            # parameter has a hidden cell and is skipped by the transaction, so
+            # setting its (unseen) value is harmless.
+            for r in selected:
+                if r is not e.Row:
+                    r[col_name] = new_val
+        finally:
+            self._suppress_propagate = False
 
     def _update_change_button(self):
         if self.change_btn is None:
