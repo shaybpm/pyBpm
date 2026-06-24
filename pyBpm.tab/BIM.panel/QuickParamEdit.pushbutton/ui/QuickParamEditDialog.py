@@ -3,14 +3,23 @@
 import clr
 
 clr.AddReference("System.Windows.Forms")
+clr.AddReference("System.Data")
 try:
     clr.AddReference("IronPython.Wpf")
 except:
     pass
 
 from System import Windows
+from System import String, Boolean
+from System.Data import DataTable, DataColumn
 from pyrevit.framework import wpf
 import os
+
+# NOTE: pyRevit's IronPython engine does not register System.Windows.Data /
+# System.Windows.Markup as importable modules ("from ... import" fails with
+# "No module named Data"), even though PresentationFramework is loaded. Reach
+# Binding / XamlReader via attribute access (Windows.Data.* / Windows.Markup.*),
+# the same way the rest of this file uses Windows.Controls.*.
 
 from Autodesk.Revit.DB import (
     FilteredElementCollector,
@@ -29,8 +38,9 @@ xaml_file = os.path.join(os.path.dirname(__file__), "QuickParamEditDialogUi.xaml
 
 
 def get_categories_with_elements(doc):
-    """Return a sorted list of {"cat_id", "name"} for every Model/Annotation
-    category that has at least one element (instance OR type) in the model.
+    """Return a sorted list of {"cat_id", "name"} for every category that has
+    at least one element (instance OR type) in the model, excluding the
+    Invalid / Internal / AnalyticalModel category types.
     Fully generic: nothing about the categories is hardcoded."""
     found = {}
     collectors = [
@@ -52,7 +62,11 @@ def get_categories_with_elements(doc):
                 ctype = cat.CategoryType
             except:
                 continue
-            if ctype != CategoryType.Model and ctype != CategoryType.Annotation:
+            if ctype in (
+                CategoryType.Invalid,
+                CategoryType.Internal,
+                CategoryType.AnalyticalModel,
+            ):
                 continue
             name = cat.Name
             if not name:
@@ -170,10 +184,6 @@ def find_param_by_id(element, param_id):
 # ------------------------------ WPF helpers -------------------------------
 # --------------------------------------------------------------------------
 
-THICK = 3.0
-THIN = 1.0
-
-
 def _set_grid(elem, col=None, row=None, col_span=None, row_span=None):
     if col is not None:
         Windows.Controls.Grid.SetColumn(elem, col)
@@ -183,15 +193,6 @@ def _set_grid(elem, col=None, row=None, col_span=None, row_span=None):
         Windows.Controls.Grid.SetColumnSpan(elem, col_span)
     if row_span is not None:
         Windows.Controls.Grid.SetRowSpan(elem, row_span)
-
-
-def _separator(col, total_rows, thick):
-    b = Windows.Controls.Border()
-    b.Background = (
-        Windows.Media.Brushes.Black if thick else Windows.Media.Brushes.DarkGray
-    )
-    _set_grid(b, col=col, row=0, row_span=total_rows)
-    return b
 
 
 def _label(text, bold=False, align_center=False, wrap=False):
@@ -217,9 +218,9 @@ class QuickParamEditDialog(Windows.Window):
         self.doc = uidoc.Document
 
         # Elements-page state (rebuilt on every navigation into the table)
-        self.columns = []           # [{param_id, name, storage_type, checkbox_control, textboxes}]
-        self.rows = []              # [{element_id, name}]
-        self.cells = {}             # (element_id, param_id) -> {textbox_control, current_value_str}
+        self.columns = []           # [{param_id, name, storage_type, safe, checkbox_control, rows_with_param}]
+        self.dt = None              # System.Data.DataTable bound to the DataGrid
+        self._row_eids = []         # element id per DataTable row (index-aligned)
         self._col_by_pid = {}       # param_id -> column dict
         self.change_btn = None
 
@@ -327,16 +328,17 @@ class QuickParamEditDialog(Windows.Window):
         page.RowDefinitions.Add(r0)
         page.RowDefinitions.Add(r1)
 
-        scroll = Windows.Controls.ScrollViewer()
-        scroll.HorizontalScrollBarVisibility = (
-            Windows.Controls.ScrollBarVisibility.Auto
-        )
-        scroll.VerticalScrollBarVisibility = (
-            Windows.Controls.ScrollBarVisibility.Auto
-        )
-        scroll.Content = self._build_table()
-        _set_grid(scroll, row=0)
-        page.Children.Add(scroll)
+        # DataGrid virtualizes + scrolls itself - do NOT wrap it in a ScrollViewer.
+        if not self._row_eids:
+            content = _label("No elements were found for this selection.")
+        elif not self.columns:
+            content = _label(
+                "No editable parameters were found for this selection."
+            )
+        else:
+            content = self._build_datagrid()
+        _set_grid(content, row=0)
+        page.Children.Add(content)
 
         bar = Windows.Controls.StackPanel()
         bar.Orientation = Windows.Controls.Orientation.Horizontal
@@ -363,12 +365,15 @@ class QuickParamEditDialog(Windows.Window):
         self._set_content(page)
 
     def _collect_table_data(self, elements):
-        """Build self.columns (Union of editable params), self.rows and the
-        per-cell current-value strings. Controls are created in _build_table."""
+        """Build self.columns (Union of editable params) and a System.Data
+        DataTable (self.dt) the DataGrid binds to. Per param the table holds
+        four columns keyed by a safe id: c_ (current display), n_ (new value,
+        two-way editable), e_ (enabled flag) and v_ (cell visibility). Values
+        live in the model so the DataGrid can virtualize/recycle cells freely;
+        self._row_eids maps each table row back to its element id."""
         self.columns = []
-        self.rows = []
-        self.cells = {}
         self._col_by_pid = {}
+        self._row_eids = []
 
         columns_map = {}  # param_id -> {param_id, name, storage_type}
         editable = (StorageType.String, StorageType.Integer, StorageType.Double)
@@ -398,164 +403,164 @@ class QuickParamEditDialog(Windows.Window):
 
         columns = list(columns_map.values())
         columns.sort(key=lambda c: (c["name"] or u"").lower())
+
+        dt = DataTable("elements")
+        dt.Columns.Add(DataColumn("ElementName", clr.GetClrType(String)))
         for col in columns:
+            safe = "p" + str(col["param_id"]).replace("-", "m")
+            col["safe"] = safe
             col["checkbox_control"] = None
-            col["textboxes"] = []
+            col["rows_with_param"] = set()  # row indices that actually have it
             self._col_by_pid[col["param_id"]] = col
+            dt.Columns.Add(DataColumn("c_" + safe, clr.GetClrType(String)))
+            dt.Columns.Add(DataColumn("n_" + safe, clr.GetClrType(String)))
+            dt.Columns.Add(DataColumn("e_" + safe, clr.GetClrType(Boolean)))
+            dt.Columns.Add(
+                DataColumn("v_" + safe, clr.GetClrType(Windows.Visibility))
+            )
         self.columns = columns
 
-        # Second pass: rows + current values per cell.
+        # Second pass: one DataRow per element.
         for elem in elements:
             try:
                 eid = elem.Id.IntegerValue
             except:
                 continue
-            self.rows.append(
-                {"element_id": eid, "name": get_element_display_name(elem)}
-            )
-            for col in self.columns:
+            row = dt.NewRow()
+            row["ElementName"] = get_element_display_name(elem)
+            row_index = len(self._row_eids)
+            for col in columns:
+                safe = col["safe"]
                 param = find_param_by_id(elem, col["param_id"])
                 if param is None:
+                    row["c_" + safe] = u""
+                    row["n_" + safe] = u""
+                    row["e_" + safe] = False
+                    row["v_" + safe] = Windows.Visibility.Collapsed
                     continue
                 try:
                     current = read_current_value(param)
                 except:
                     current = u""
-                self.cells[(eid, col["param_id"])] = {
-                    "textbox_control": None,
-                    "current_value_str": current,
-                }
+                row["c_" + safe] = current
+                row["n_" + safe] = current  # initial new value = current
+                row["e_" + safe] = False    # disabled until the column is checked
+                row["v_" + safe] = Windows.Visibility.Visible
+                col["rows_with_param"].add(row_index)
+            dt.Rows.Add(row)
+            self._row_eids.append(eid)
 
-    def _build_table(self):
-        grid = Windows.Controls.Grid()
-        grid.Margin = Windows.Thickness(2)
+        self.dt = dt
 
-        n_params = len(self.columns)
-        total_rows = 3 + len(self.rows)
+    def _build_datagrid(self):
+        dg = Windows.Controls.DataGrid()
+        dg.AutoGenerateColumns = False
+        dg.HeadersVisibility = Windows.Controls.DataGridHeadersVisibility.Column
+        dg.CanUserAddRows = False
+        dg.CanUserDeleteRows = False
+        dg.CanUserResizeRows = False
+        dg.CanUserSortColumns = False
+        dg.GridLinesVisibility = Windows.Controls.DataGridGridLinesVisibility.Vertical
+        dg.VerticalGridLinesBrush = Windows.Media.Brushes.Black
+        dg.EnableRowVirtualization = True
+        dg.EnableColumnVirtualization = True
 
-        if n_params == 0:
-            return _label("No editable parameters were found for this selection.")
-
-        # ---- columns: [names][thick] then per param [cur][thin][new][thick] ----
-        name_col = Windows.Controls.ColumnDefinition()
-        name_col.Width = Windows.GridLength.Auto
+        name_col = Windows.Controls.DataGridTextColumn()
+        name_col.Header = "Element"
+        name_col.Binding = Windows.Data.Binding("ElementName")
+        name_col.IsReadOnly = True
         name_col.MinWidth = 180
-        grid.ColumnDefinitions.Add(name_col)  # 0
+        dg.Columns.Add(name_col)
 
-        thick0 = Windows.Controls.ColumnDefinition()
-        thick0.Width = Windows.GridLength(THICK)
-        grid.ColumnDefinitions.Add(thick0)  # 1
+        for col in self.columns:
+            tcol = Windows.Controls.DataGridTemplateColumn()
+            tcol.Header = self._build_param_header(col)
+            tcol.CellTemplate = self._build_cell_template(col["safe"])
+            tcol.MinWidth = 200
+            dg.Columns.Add(tcol)
 
-        for _i in range(n_params):
-            cur = Windows.Controls.ColumnDefinition()
-            cur.Width = Windows.GridLength.Auto
-            cur.MinWidth = 110
-            grid.ColumnDefinitions.Add(cur)
-            thin = Windows.Controls.ColumnDefinition()
-            thin.Width = Windows.GridLength(THIN)
-            grid.ColumnDefinitions.Add(thin)
-            new = Windows.Controls.ColumnDefinition()
-            new.Width = Windows.GridLength.Auto
-            new.MinWidth = 110
-            grid.ColumnDefinitions.Add(new)
-            thick = Windows.Controls.ColumnDefinition()
-            thick.Width = Windows.GridLength(THICK)
-            grid.ColumnDefinitions.Add(thick)
+        # FrozenColumnCount is clamped to the live column count, so set it only
+        # after all columns have been added.
+        dg.FrozenColumnCount = 1  # keep the element-name column pinned while scrolling
+        dg.ItemsSource = self.dt.DefaultView
+        return dg
 
-        for _r in range(total_rows):
+    def _build_param_header(self, col):
+        """Live control used as a column header: checkbox + param name + the
+        CURRENT|NEW sub-labels. Kept as a real control (headers are not
+        virtualized) so we can hold the checkbox reference directly."""
+        grid = Windows.Controls.Grid()
+        for _r in range(3):
             rd = Windows.Controls.RowDefinition()
             rd.Height = Windows.GridLength.Auto
             grid.RowDefinitions.Add(rd)
 
-        # ---- element-names header (spans the 3 header rows) ----
-        names_header = _label("Element", bold=True)
-        names_header.VerticalContentAlignment = Windows.VerticalAlignment.Bottom
-        _set_grid(names_header, col=0, row=0, row_span=3)
-        grid.Children.Add(names_header)
+        checkbox = Windows.Controls.CheckBox()
+        checkbox.IsChecked = False
+        checkbox.Tag = col["param_id"]
+        checkbox.HorizontalAlignment = Windows.HorizontalAlignment.Center
+        checkbox.Margin = Windows.Thickness(0, 2, 0, 2)
+        checkbox.Checked += self._header_checkbox_toggled
+        checkbox.Unchecked += self._header_checkbox_toggled
+        _set_grid(checkbox, row=0)
+        grid.Children.Add(checkbox)
+        col["checkbox_control"] = checkbox
 
-        # ---- thick separator after the names column ----
-        grid.Children.Add(_separator(1, total_rows, True))
+        name_lbl = _label(col["name"], bold=True, align_center=True)
+        name_lbl.HorizontalAlignment = Windows.HorizontalAlignment.Center
+        _set_grid(name_lbl, row=1)
+        grid.Children.Add(name_lbl)
 
-        # ---- per-parameter headers + separators ----
-        for i, col in enumerate(self.columns):
-            base = 2 + i * 4
-            cur_col = base
-            new_col = base + 2
-            thin_col = base + 1
-            thick_col = base + 3
-
-            checkbox = Windows.Controls.CheckBox()
-            checkbox.IsChecked = False
-            checkbox.Tag = col["param_id"]
-            checkbox.HorizontalAlignment = Windows.HorizontalAlignment.Center
-            checkbox.Margin = Windows.Thickness(0, 4, 0, 2)
-            checkbox.Checked += self._checkbox_toggled
-            checkbox.Unchecked += self._checkbox_toggled
-            _set_grid(checkbox, col=cur_col, row=0, col_span=3)
-            grid.Children.Add(checkbox)
-            col["checkbox_control"] = checkbox
-
-            name_lbl = _label(col["name"], bold=True, align_center=True)
-            name_lbl.HorizontalAlignment = Windows.HorizontalAlignment.Center
-            _set_grid(name_lbl, col=cur_col, row=1, col_span=3)
-            grid.Children.Add(name_lbl)
-
-            cur_hdr = _label("CURRENT VALUE", bold=True, align_center=True)
-            cur_hdr.FontSize = 10
-            _set_grid(cur_hdr, col=cur_col, row=2)
-            grid.Children.Add(cur_hdr)
-
-            new_hdr = _label("NEW VALUE", bold=True, align_center=True)
-            new_hdr.FontSize = 10
-            _set_grid(new_hdr, col=new_col, row=2)
-            grid.Children.Add(new_hdr)
-
-            grid.Children.Add(_separator(thin_col, total_rows, False))
-            grid.Children.Add(_separator(thick_col, total_rows, True))
-
-        # ---- value rows ----
-        for r_index, row in enumerate(self.rows):
-            grid_row = 3 + r_index
-            eid = row["element_id"]
-
-            name_lbl = _label(row["name"])
-            name_lbl.ToolTip = u"ElementId: {0}".format(eid)
-            _set_grid(name_lbl, col=0, row=grid_row)
-            grid.Children.Add(name_lbl)
-
-            for i, col in enumerate(self.columns):
-                base = 2 + i * 4
-                cur_col = base
-                new_col = base + 2
-                cell = self.cells.get((eid, col["param_id"]))
-                if cell is None:
-                    continue
-
-                cur_lbl = _label(cell["current_value_str"])
-                cur_lbl.FontSize = 11
-                _set_grid(cur_lbl, col=cur_col, row=grid_row)
-                grid.Children.Add(cur_lbl)
-
-                textbox = Windows.Controls.TextBox()
-                textbox.Text = cell["current_value_str"]
-                textbox.IsEnabled = False
-                textbox.Margin = Windows.Thickness(2)
-                textbox.MinWidth = 100
-                _set_grid(textbox, col=new_col, row=grid_row)
-                grid.Children.Add(textbox)
-
-                cell["textbox_control"] = textbox
-                col["textboxes"].append(textbox)
-
+        sub = Windows.Controls.Grid()
+        sc1 = Windows.Controls.ColumnDefinition()
+        sc1.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
+        sc2 = Windows.Controls.ColumnDefinition()
+        sc2.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
+        sub.ColumnDefinitions.Add(sc1)
+        sub.ColumnDefinitions.Add(sc2)
+        cur_hdr = _label("CURRENT", align_center=True)
+        cur_hdr.FontSize = 10
+        _set_grid(cur_hdr, col=0)
+        sub.Children.Add(cur_hdr)
+        new_hdr = _label("NEW", align_center=True)
+        new_hdr.FontSize = 10
+        _set_grid(new_hdr, col=1)
+        sub.Children.Add(new_hdr)
+        _set_grid(sub, row=2)
+        grid.Children.Add(sub)
         return grid
 
-    def _checkbox_toggled(self, sender, e):
+    def _build_cell_template(self, safe):
+        """DataTemplate (built per column) binding the current label, the thin
+        separator and the editable NEW textbox to the row's c_/n_/e_/v_ fields."""
+        xaml = (
+            '<DataTemplate '
+            'xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">'
+            '<Grid Visibility="{{Binding v_{s}}}">'
+            '<Grid.ColumnDefinitions>'
+            '<ColumnDefinition Width="*"/>'
+            '<ColumnDefinition Width="1"/>'
+            '<ColumnDefinition Width="*"/>'
+            '</Grid.ColumnDefinitions>'
+            '<TextBlock Grid.Column="0" Text="{{Binding c_{s}}}" '
+            'TextAlignment="Center" VerticalAlignment="Center" Margin="4,2,4,2"/>'
+            '<Border Grid.Column="1" Background="DarkGray"/>'
+            '<TextBox Grid.Column="2" '
+            'Text="{{Binding n_{s}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}}" '
+            'IsEnabled="{{Binding e_{s}}}" Margin="2" VerticalAlignment="Center"/>'
+            '</Grid></DataTemplate>'
+        ).format(s=safe)
+        return Windows.Markup.XamlReader.Parse(xaml)
+
+    def _header_checkbox_toggled(self, sender, e):
         pid = sender.Tag
         col = self._col_by_pid.get(pid)
         if col is not None:
-            enabled = bool(sender.IsChecked)
-            for tb in col["textboxes"]:
-                tb.IsEnabled = enabled
+            checked = bool(sender.IsChecked)
+            en = "e_" + col["safe"]
+            # Flip the enabled flag in the model; virtualized cells re-bind to it.
+            for idx in col["rows_with_param"]:
+                self.dt.Rows[idx][en] = checked
         self._update_change_button()
 
     def _update_change_button(self):
@@ -583,11 +588,6 @@ class QuickParamEditDialog(Windows.Window):
         attempted = 0
         errors = []  # (element_id, element_name, param_name, message)
 
-        # Map element_id -> name for error reporting.
-        name_by_eid = {}
-        for row in self.rows:
-            name_by_eid[row["element_id"]] = row["name"]
-
         t = Transaction(self.doc, "pyBpm | Quick Param Edit")
         t.Start()
         try:
@@ -596,14 +596,17 @@ class QuickParamEditDialog(Windows.Window):
                 if cb is None or not cb.IsChecked:
                     continue
                 pid = col["param_id"]
-                for row in self.rows:
-                    eid = row["element_id"]
-                    cell = self.cells.get((eid, pid))
-                    if cell is None:
-                        continue
-                    new_val = cell["textbox_control"].Text
-                    if new_val == cell["current_value_str"]:
+                cname = "c_" + col["safe"]
+                nname = "n_" + col["safe"]
+                for idx in col["rows_with_param"]:
+                    row = self.dt.Rows[idx]
+                    cur_val = row[cname]
+                    new_val = row[nname]
+                    cur_val = u"" if cur_val is None else unicode(cur_val)
+                    new_val = u"" if new_val is None else unicode(new_val)
+                    if new_val == cur_val:
                         continue  # only changed cells
+                    eid = self._row_eids[idx]
                     element = self.doc.GetElement(ElementId(eid))
                     if element is None:
                         continue
@@ -611,19 +614,17 @@ class QuickParamEditDialog(Windows.Window):
                     if param is None:
                         continue
                     attempted += 1
+                    ename = row["ElementName"]
                     try:
                         ok = set_param_value(param, new_val)
                         if ok:
                             success += 1
                         else:
                             errors.append(
-                                (eid, name_by_eid.get(eid, u""), col["name"],
-                                 u"Set returned False")
+                                (eid, ename, col["name"], u"Set returned False")
                             )
                     except Exception as ex:
-                        errors.append(
-                            (eid, name_by_eid.get(eid, u""), col["name"], unicode(ex))
-                        )
+                        errors.append((eid, ename, col["name"], unicode(ex)))
             t.Commit()
         except Exception as ex:
             if t.HasStarted() and not t.HasEnded():
