@@ -3,7 +3,16 @@
 import clr
 
 clr.AddReference("System.Windows.Forms")
-clr.AddReference("System.Data")
+# System.Data hosts DataTable/DataColumn. On .NET Framework (Revit <= 2024) it is
+# "System.Data"; on .NET 8 (Revit 2025+) that assembly was split and DataTable
+# now lives in "System.Data.Common". Try both so the same code loads on every
+# Revit version - a failed AddReference here used to abort module import and show
+# an empty pyRevit window instead of a traceback.
+for _data_asm in ("System.Data", "System.Data.Common"):
+    try:
+        clr.AddReference(_data_asm)
+    except:
+        pass
 try:
     clr.AddReference("IronPython.Wpf")
 except:
@@ -28,6 +37,11 @@ from Autodesk.Revit.DB import (
     StorageType,
     CategoryType,
 )
+
+# Version-safe element-id helpers: Revit 2026 removed ElementId.IntegerValue and
+# the ElementId(int) constructor. getElementIdValue / getElementId pick the right
+# API per Revit version (RevitUtils lives in the extension's lib/, on sys.path).
+from RevitUtils import getElementIdValue, getElementId
 
 xaml_file = os.path.join(os.path.dirname(__file__), "QuickParamEditDialogUi.xaml")
 
@@ -55,7 +69,7 @@ def get_categories_with_elements(doc):
                 cat = None
             if cat is None:
                 continue
-            cid = cat.Id.IntegerValue
+            cid = getElementIdValue(doc, cat.Id)
             if cid in found:
                 continue
             try:
@@ -80,7 +94,7 @@ def get_categories_with_elements(doc):
 
 def get_elements_for(doc, cat_id, mode):
     """mode == 'types' -> element types ; mode == 'instances' -> instances."""
-    collector = FilteredElementCollector(doc).OfCategoryId(ElementId(cat_id))
+    collector = FilteredElementCollector(doc).OfCategoryId(getElementId(doc, cat_id))
     if mode == "types":
         collector = collector.WhereElementIsElementType()
     else:
@@ -119,7 +133,7 @@ def get_element_display_name(elem):
     except:
         pass
     try:
-        return u"Id {0}".format(elem.Id.IntegerValue)
+        return u"Id {0}".format(getElementIdValue(elem.Document, elem.Id))
     except:
         return u"<unknown>"
 
@@ -170,10 +184,10 @@ def set_param_value(param, text):
 
 
 def find_param_by_id(element, param_id):
-    """Return the parameter whose Id.IntegerValue == param_id, else None."""
+    """Return the parameter whose element-id value == param_id, else None."""
     for p in element.Parameters:
         try:
-            if p.Id.IntegerValue == param_id:
+            if getElementIdValue(element.Document, p.Id) == param_id:
                 return p
         except:
             continue
@@ -489,7 +503,7 @@ class QuickParamEditDialog(Windows.Window):
                     st = p.StorageType
                     if st not in editable:
                         continue
-                    pid = p.Id.IntegerValue
+                    pid = getElementIdValue(self.doc, p.Id)
                     if pid not in columns_map:
                         columns_map[pid] = {
                             "param_id": pid,
@@ -521,7 +535,7 @@ class QuickParamEditDialog(Windows.Window):
         # Second pass: one DataRow per element.
         for elem in elements:
             try:
-                eid = elem.Id.IntegerValue
+                eid = getElementIdValue(self.doc, elem.Id)
             except:
                 continue
             row = dt.NewRow()
@@ -757,7 +771,7 @@ class QuickParamEditDialog(Windows.Window):
                     if new_val == cur_val:
                         continue  # only changed cells
                     eid = self._row_eids[idx]
-                    element = self.doc.GetElement(ElementId(eid))
+                    element = self.doc.GetElement(getElementId(self.doc, eid))
                     if element is None:
                         continue
                     param = find_param_by_id(element, pid)
