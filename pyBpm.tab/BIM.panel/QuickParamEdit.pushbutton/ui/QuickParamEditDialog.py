@@ -229,6 +229,14 @@ def _row_separator():
     return line
 
 
+# Light highlight painted behind a Categories row while the mouse is over it
+# (the standard Windows list-hover blue). Rows carry a Transparent background so
+# the whole row - not only its child controls - is hit-testable for the hover.
+_ROW_HOVER_BRUSH = Windows.Media.SolidColorBrush(
+    Windows.Media.Color.FromRgb(229, 241, 251)
+)
+
+
 # --------------------------------------------------------------------------
 # ------------------------------- Dialog -----------------------------------
 # --------------------------------------------------------------------------
@@ -351,6 +359,11 @@ class QuickParamEditDialog(Windows.Window):
     def _build_category_row(self, cat):
         row = Windows.Controls.Grid()
         row.Margin = Windows.Thickness(2)
+        # Transparent (not null) so the empty parts of the row receive mouse
+        # events too; the handlers swap in the light hover brush on enter/leave.
+        row.Background = Windows.Media.Brushes.Transparent
+        row.MouseEnter += self._category_row_mouse_enter
+        row.MouseLeave += self._category_row_mouse_leave
         c0 = Windows.Controls.ColumnDefinition()
         c0.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
         c1 = Windows.Controls.ColumnDefinition()
@@ -385,6 +398,12 @@ class QuickParamEditDialog(Windows.Window):
         row.Children.Add(inst_btn)
 
         return row
+
+    def _category_row_mouse_enter(self, sender, e):
+        sender.Background = _ROW_HOVER_BRUSH
+
+    def _category_row_mouse_leave(self, sender, e):
+        sender.Background = Windows.Media.Brushes.Transparent
 
     def _types_click(self, sender, e):
         self.show_elements_page(sender.Tag, "types")
