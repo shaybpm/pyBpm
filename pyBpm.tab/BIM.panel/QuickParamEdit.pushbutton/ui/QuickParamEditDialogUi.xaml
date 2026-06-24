@@ -1,7 +1,7 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	Title="BPM Quick Parameter Edit" Height="720" Width="1000"
-	WindowStartupLocation="CenterScreen" MinWidth="520" MinHeight="420" Topmost="True">
+	WindowStartupLocation="CenterScreen" MinWidth="520" MinHeight="420">
 
 	<Grid Margin="8">
 		<ContentControl x:Name="MainContent" />

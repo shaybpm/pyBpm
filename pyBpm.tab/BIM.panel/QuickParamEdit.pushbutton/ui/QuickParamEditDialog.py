@@ -22,6 +22,7 @@ from System import Windows
 from System import String, Boolean
 from System.Data import DataTable, DataColumn
 from pyrevit.framework import wpf
+from pyrevit import forms
 import os
 
 # NOTE: pyRevit's IronPython engine does not register System.Windows.Data /
@@ -232,6 +233,15 @@ def _row_separator():
     return line
 
 
+def _vertical_separator():
+    """A thin vertical line used to group buttons in the Elements button bar."""
+    line = Windows.Controls.Border()
+    line.Width = 1
+    line.Background = Windows.Media.Brushes.Gray
+    line.Margin = Windows.Thickness(6, 4, 6, 4)
+    return line
+
+
 # Light highlight painted behind a Categories row while the mouse is over it
 # (the standard Windows list-hover blue). Rows carry a Transparent background so
 # the whole row - not only its child controls - is hit-testable for the hover.
@@ -257,8 +267,11 @@ class QuickParamEditDialog(Windows.Window):
         self._row_eids = []         # element id per DataTable row (index-aligned)
         self._col_by_pid = {}       # param_id -> column dict
         self.change_btn = None
+        self.export_btn = None      # enabled only when >= 1 param column is checked
         self._datagrid = None       # the Elements DataGrid (for SelectedItems)
         self._suppress_propagate = False  # re-entrancy guard for bulk-fill
+        self._cur_cat_id = None     # active category/mode (for the export file name)
+        self._cur_mode = None
 
         # Categories-page state (search/filter box + the list it repopulates)
         self._all_categories = []
@@ -271,6 +284,14 @@ class QuickParamEditDialog(Windows.Window):
 
     def _set_content(self, element):
         self.MainContent.Content = element
+
+    def _alert(self, msg, **kwargs):
+        """forms.alert wrapper that re-focuses this dialog afterwards. With the
+        window no longer Topmost, a modal alert can leave the dialog behind the
+        Revit window, so Activate() brings it back to the front."""
+        result = forms.alert(msg, **kwargs)
+        self.Activate()
+        return result
 
     # ----------------------------- page 1 ----------------------------------
 
@@ -436,6 +457,9 @@ class QuickParamEditDialog(Windows.Window):
             self._show_message_page("Failed to load elements:\n{0}".format(ex))
             return
 
+        # Remember the active selection for the Excel export file name.
+        self._cur_cat_id = cat_id
+        self._cur_mode = mode
         cat_name = self._selected_category_label(cat_id, mode)
 
         page = Windows.Controls.Grid()
@@ -474,29 +498,41 @@ class QuickParamEditDialog(Windows.Window):
         bottom.Children.Add(cat_lbl)
 
         # right side: action buttons
+        # Layout (left -> right): Export | Import  ::separator::  < Back | Change
         bar = Windows.Controls.StackPanel()
         bar.Orientation = Windows.Controls.Orientation.Horizontal
         bar.HorizontalAlignment = Windows.HorizontalAlignment.Right
         _set_grid(bar, col=1)
         bottom.Children.Add(bar)
 
-        back_btn = Windows.Controls.Button()
-        back_btn.Content = "< Back"
-        back_btn.Margin = Windows.Thickness(4)
-        back_btn.Padding = Windows.Thickness(12, 4, 12, 4)
-        back_btn.Click += self._back_to_main_click
+        # Excel group (left of the separator): Import, then Export. Export
+        # mirrors Change Values' enabled state - both act on the checked columns.
+        import_btn = self._make_bar_button("Import Excel", self._import_excel_click)
+        bar.Children.Add(import_btn)
+
+        self.export_btn = self._make_bar_button("Export Excel", self._export_excel_click)
+        self.export_btn.IsEnabled = False
+        bar.Children.Add(self.export_btn)
+
+        bar.Children.Add(_vertical_separator())
+
+        back_btn = self._make_bar_button("< Back", self._back_to_main_click)
         bar.Children.Add(back_btn)
 
-        self.change_btn = Windows.Controls.Button()
-        self.change_btn.Content = "Change Values"
-        self.change_btn.Margin = Windows.Thickness(4)
-        self.change_btn.Padding = Windows.Thickness(12, 4, 12, 4)
+        self.change_btn = self._make_bar_button("Change Values", self._change_values_click)
         self.change_btn.IsEnabled = False
-        self.change_btn.Click += self._change_values_click
         bar.Children.Add(self.change_btn)
 
         page.Children.Add(bottom)
         self._set_content(page)
+
+    def _make_bar_button(self, content, handler):
+        btn = Windows.Controls.Button()
+        btn.Content = content
+        btn.Margin = Windows.Thickness(4)
+        btn.Padding = Windows.Thickness(12, 4, 12, 4)
+        btn.Click += handler
+        return btn
 
     def _collect_table_data(self, elements):
         """Build self.columns (Union of editable params) and a System.Data
@@ -749,16 +785,23 @@ class QuickParamEditDialog(Windows.Window):
         finally:
             self._suppress_propagate = False
 
-    def _update_change_button(self):
-        if self.change_btn is None:
-            return
-        any_checked = False
+    def _checked_columns(self):
+        """The param columns whose header checkbox is currently checked."""
+        result = []
         for col in self.columns:
             cb = col["checkbox_control"]
             if cb is not None and cb.IsChecked:
-                any_checked = True
-                break
-        self.change_btn.IsEnabled = any_checked
+                result.append(col)
+        return result
+
+    def _update_change_button(self):
+        # Change Values and Export Excel both operate on the checked columns, so
+        # both are enabled only while at least one parameter column is checked.
+        any_checked = len(self._checked_columns()) > 0
+        if self.change_btn is not None:
+            self.change_btn.IsEnabled = any_checked
+        if self.export_btn is not None:
+            self.export_btn.IsEnabled = any_checked
 
     def _back_to_main_click(self, sender, e):
         self.show_main_page()
@@ -818,6 +861,221 @@ class QuickParamEditDialog(Windows.Window):
             errors.append((0, u"", u"", u"Transaction failed: {0}".format(ex)))
 
         return success, attempted, errors
+
+    # --------------------------- Excel I/O ---------------------------------
+    # Pure-Python only (works on .NET 8 / Revit 2026): xlsxwriter to write,
+    # xlrd to read - both bundled with pyRevit. NEVER the COM ExcelUtils here.
+
+    def _cell(self, row, col_name):
+        """A DataTable cell as a clean unicode string (DBNull/None -> u'')."""
+        v = row[col_name]
+        return u"" if v is None else unicode(v)
+
+    def _safe_filename(self, text):
+        out = []
+        for ch in (text or u""):
+            out.append(ch if (ch.isalnum() or ch in (u"-", u"_")) else u"_")
+        return u"".join(out).strip(u"_") or u"export"
+
+    # ------- export -------
+
+    def _export_excel_click(self, sender, e):
+        cols = self._checked_columns()
+        if not cols:
+            return  # the button is disabled in this state; guard anyway
+        folder = forms.pick_folder(title="Select a folder to save the Excel file")
+        if not folder:
+            return
+        try:
+            from ExcelUtilsPure import xlsxwriter  # bundled, pure-Python
+
+            path = self._build_export_path(folder)
+            self._write_excel(path, cols, xlsxwriter)
+        except Exception as ex:
+            self._alert(
+                u"Failed to export Excel:\n{0}".format(ex),
+                title="Quick Param Edit",
+            )
+            return
+        if self._alert(
+            u"Excel exported to:\n{0}\n\nOpen it now?".format(path),
+            title="Quick Param Edit",
+            yes=True,
+            no=True,
+        ):
+            try:
+                os.startfile(path)
+            except Exception as ex:
+                self._alert(
+                    u"Could not open the file:\n{0}".format(ex),
+                    title="Quick Param Edit",
+                )
+
+    def _build_export_path(self, folder):
+        from System import DateTime
+
+        stamp = DateTime.Now.ToString("yyyyMMdd_HHmm")
+        label = self._safe_filename(
+            self._selected_category_label(self._cur_cat_id, self._cur_mode)
+        )
+        return os.path.join(
+            folder, u"QuickParamEdit_{0}_{1}.xlsx".format(label, stamp)
+        )
+
+    def _write_excel(self, path, cols, xlsxwriter):
+        """Layout: col 0 IDS / col 1 Names (each merged over the 3 header rows);
+        then a 2-column block per checked parameter - row0 param.Id, row1 name
+        (both merged across the block), row2 CURRENT | NEW. Data from row 3."""
+        wb = xlsxwriter.Workbook(path)
+        ws = wb.add_worksheet("Quick Param Edit")
+        # Header (all 3 rows): dark-blue fill, white bold text.
+        hdr = wb.add_format(
+            {
+                "bold": True,
+                "align": "center",
+                "valign": "vcenter",
+                "border": 1,
+                "bg_color": "#305496",
+                "font_color": "#FFFFFF",
+            }
+        )
+        # IDS / Names identity columns: light-blue fill, dark-blue text.
+        ident = wb.add_format(
+            {"border": 1, "bg_color": "#D9E1F2", "font_color": "#1F3864"}
+        )
+        # CURRENT columns: gray fill + gray text - signals "read-only, not for edit".
+        current_fmt = wb.add_format(
+            {"border": 1, "bg_color": "#D9D9D9", "font_color": "#808080"}
+        )
+        # NEW columns: plain white - this is what the user edits.
+        new_fmt = wb.add_format({"border": 1})
+
+        ws.merge_range(0, 0, 2, 0, "IDS", hdr)
+        ws.merge_range(0, 1, 2, 1, "Names", hdr)
+        c = 2
+        for col in cols:
+            ws.merge_range(0, c, 0, c + 1, col["param_id"], hdr)
+            ws.merge_range(1, c, 1, c + 1, col["name"], hdr)
+            ws.write_string(2, c, "CURRENT", hdr)
+            ws.write_string(2, c + 1, "NEW", hdr)
+            c += 2
+
+        r = 3
+        for idx in range(len(self._row_eids)):
+            row = self.dt.Rows[idx]
+            ws.write_number(r, 0, self._row_eids[idx], ident)
+            ws.write_string(r, 1, self._cell(row, "ElementName"), ident)
+            c = 2
+            for col in cols:
+                if idx in col["rows_with_param"]:
+                    ws.write_string(r, c, self._cell(row, "c_" + col["safe"]), current_fmt)
+                    ws.write_string(r, c + 1, self._cell(row, "n_" + col["safe"]), new_fmt)
+                else:
+                    ws.write_blank(r, c, None, current_fmt)
+                    ws.write_blank(r, c + 1, None, new_fmt)
+                c += 2
+            r += 1
+
+        ws.set_column(0, 0, 12)
+        ws.set_column(1, 1, 30)
+        if cols:
+            ws.set_column(2, 1 + 2 * len(cols), 18)
+        ws.freeze_panes(3, 2)
+        wb.close()
+
+    # ------- import -------
+
+    def _import_excel_click(self, sender, e):
+        path = forms.pick_excel_file(title="Select the edited Excel file")
+        if not path:
+            return
+        try:
+            import xlrd  # bundled, pure-Python; reads .xlsx (xlrd 1.x)
+
+            updated, skipped = self._read_excel(path, xlrd)
+        except Exception as ex:
+            self._alert(
+                u"Failed to import Excel:\n{0}".format(ex),
+                title="Quick Param Edit",
+            )
+            return
+        msg = u"Imported {0} value(s) into the table.".format(updated)
+        if skipped:
+            msg += u"\n{0} cell(s) skipped (parameter not in the table).".format(
+                skipped
+            )
+        self._alert(msg, title="Quick Param Edit")
+
+    def _read_excel(self, path, xlrd):
+        book = xlrd.open_workbook(path)
+        sheet = book.sheet_by_index(0)
+        if sheet.nrows < 4 or sheet.ncols < 4:
+            return 0, 0
+
+        # Each 2-col block: param.Id sits in the merged top-left header cell
+        # (left col of the block); locate the NEW sub-column via the row-2 label.
+        new_col_to_pid = {}
+        c = 2
+        while c + 1 < sheet.ncols:
+            pid = self._as_int(sheet.cell_value(0, c))
+            label_left = unicode(sheet.cell_value(2, c)).strip().upper()
+            new_col = c if label_left == u"NEW" else c + 1
+            if pid is not None:
+                new_col_to_pid[new_col] = pid
+            c += 2
+
+        eid_to_idx = {}
+        for i, eid in enumerate(self._row_eids):
+            eid_to_idx[eid] = i
+
+        updated = 0
+        skipped = 0
+        self._suppress_propagate = True  # don't trigger bulk-fill on these writes
+        try:
+            for r in range(3, sheet.nrows):
+                eid = self._as_int(sheet.cell_value(r, 0))
+                if eid is None or eid not in eid_to_idx:
+                    continue  # row for a different selection - ignore silently
+                idx = eid_to_idx[eid]
+                for new_col, pid in new_col_to_pid.items():
+                    col = self._col_by_pid.get(pid)
+                    if col is None or idx not in col["rows_with_param"]:
+                        skipped += 1
+                        continue
+                    val = self._clean_num_str(
+                        unicode(sheet.cell_value(r, new_col))
+                    )
+                    self.dt.Rows[idx]["n_" + col["safe"]] = val
+                    updated += 1
+        finally:
+            self._suppress_propagate = False
+
+        # Auto-check every imported parameter so Change Values will apply it.
+        # Setting IsChecked fires _header_checkbox_toggled (sets e_ flags +
+        # refreshes the Change/Export buttons).
+        for pid in set(new_col_to_pid.values()):
+            col = self._col_by_pid.get(pid)
+            if col is not None and col["checkbox_control"] is not None:
+                col["checkbox_control"].IsChecked = True
+
+        return updated, skipped
+
+    def _as_int(self, v):
+        try:
+            if v is None or v == u"" or v == "":
+                return None
+            return int(round(float(v)))
+        except (ValueError, TypeError):
+            return None
+
+    def _clean_num_str(self, s):
+        """xlrd returns numeric cells as floats, so a user-typed 3000 reads back
+        as '3000.0'. Trim a trailing '.0' on otherwise-integer strings."""
+        if s.endswith(u".0"):
+            head = s[:-2]
+            if head.lstrip(u"-").isdigit():
+                return head
+        return s
 
     # ----------------------------- page 3 ----------------------------------
 
