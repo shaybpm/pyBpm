@@ -19,8 +19,9 @@ except:
     pass
 
 from System import Windows
-from System import String, Boolean
+from System import String, Boolean, Object
 from System.Data import DataTable, DataColumn
+from System.Collections.Generic import List
 from pyrevit.framework import wpf
 from pyrevit import forms
 import os
@@ -43,6 +44,14 @@ from Autodesk.Revit.DB import (
 # the ElementId(int) constructor. getElementIdValue / getElementId pick the right
 # API per Revit version (RevitUtils lives in the extension's lib/, on sys.path).
 from RevitUtils import getElementIdValue, getElementId, getElementName
+
+# Resolves the fixed set of valid values for ElementId / Workset parameters
+# (Material, Level, Phase, type selectors, ...). Optional: if this import fails
+# the dialog still works, just without the ComboBox option columns.
+try:
+    from ParameterOptions import get_parameter_options
+except Exception:
+    get_parameter_options = None
 
 xaml_file = os.path.join(os.path.dirname(__file__), "QuickParamEditDialogUi.xaml")
 
@@ -535,20 +544,31 @@ class QuickParamEditDialog(Windows.Window):
         return btn
 
     def _collect_table_data(self, elements):
-        """Build self.columns (Union of editable params) and a System.Data
+        """Build self.columns (union of editable params) and a System.Data
         DataTable (self.dt) the DataGrid binds to. Per param the table holds
-        four columns keyed by a safe id: c_ (current display), n_ (new value,
-        two-way editable), e_ (enabled flag) and v_ (cell visibility). Values
-        live in the model so the DataGrid can virtualize/recycle cells freely;
+        c_ (current display), n_ (new value, two-way editable), e_ (enabled flag)
+        and v_ (cell visibility); option params add o_ (the shared list of choice
+        labels for the ComboBox). Text params edit as a TextBox; params that
+        resolve to a fixed set of elements (Material, Level, Phase, type
+        selectors, Workset ...) edit as a ComboBox - see lib/ParameterOptions.
+        Values live in the model so the DataGrid can virtualize freely;
         self._row_eids maps each table row back to its element id."""
         self.columns = []
         self._col_by_pid = {}
         self._row_eids = []
 
-        columns_map = {}  # param_id -> {param_id, name, storage_type}
-        editable = (StorageType.String, StorageType.Integer, StorageType.Double)
+        text_storages = (
+            StorageType.String, StorageType.Integer, StorageType.Double
+        )
+        option_candidates = (StorageType.Integer, StorageType.ElementId)
 
-        # First pass: discover the union of editable parameters.
+        columns_map = {}       # pid -> {param_id, name, storage_type}
+        samples = {}           # pid -> a representative Parameter for option lookup
+        sample_has_value = {}  # pid -> bool (prefer a non-empty ElementId sample)
+
+        # First pass: discover the union of editable params, and keep ONE
+        # representative parameter per id so get_parameter_options is called once
+        # per column (never per row), preferring a sample that has a value.
         for elem in elements:
             try:
                 params = elem.Parameters
@@ -559,19 +579,44 @@ class QuickParamEditDialog(Windows.Window):
                     if p.IsReadOnly:
                         continue
                     st = p.StorageType
-                    if st not in editable:
-                        continue
-                    pid = getElementIdValue(self.doc, p.Id)
-                    if pid not in columns_map:
-                        columns_map[pid] = {
-                            "param_id": pid,
-                            "name": p.Definition.Name,
-                            "storage_type": st,
-                        }
                 except:
                     continue
+                if st not in text_storages and st != StorageType.ElementId:
+                    continue
+                try:
+                    pid = getElementIdValue(self.doc, p.Id)
+                except:
+                    continue
+                if pid not in columns_map:
+                    columns_map[pid] = {
+                        "param_id": pid,
+                        "name": p.Definition.Name,
+                        "storage_type": st,
+                    }
+                if st in option_candidates:
+                    self._remember_sample(pid, p, st, samples, sample_has_value)
 
-        columns = list(columns_map.values())
+        # Classify each param: option column (has options), text column, or skip.
+        columns = []
+        for pid in columns_map:
+            info = columns_map[pid]
+            st = info["storage_type"]
+            options = None
+            if get_parameter_options is not None and st in option_candidates:
+                try:
+                    options = get_parameter_options(self.doc, samples[pid])
+                except:
+                    options = None
+            if options is not None:
+                info["is_option"] = True
+                info["options"] = options
+            elif st in text_storages:
+                info["is_option"] = False
+                info["options"] = None
+            else:
+                continue  # ElementId param we cannot resolve options for -> skip
+            columns.append(info)
+
         columns.sort(key=lambda c: (c["name"] or u"").lower())
 
         dt = DataTable("elements")
@@ -588,6 +633,9 @@ class QuickParamEditDialog(Windows.Window):
             dt.Columns.Add(
                 DataColumn("v_" + safe, clr.GetClrType(Windows.Visibility))
             )
+            if col["is_option"]:
+                dt.Columns.Add(DataColumn("o_" + safe, clr.GetClrType(Object)))
+                self._index_options(col)
         self.columns = columns
 
         # Second pass: one DataRow per element.
@@ -607,20 +655,120 @@ class QuickParamEditDialog(Windows.Window):
                     row["n_" + safe] = u""
                     row["e_" + safe] = False
                     row["v_" + safe] = Windows.Visibility.Collapsed
+                    if col["is_option"]:
+                        row["o_" + safe] = col["opt_labels"]
                     continue
-                try:
-                    current = read_current_value(param)
-                except:
-                    current = u""
+                if col["is_option"]:
+                    current = self._current_option_label(col, param)
+                else:
+                    try:
+                        current = read_current_value(param)
+                    except:
+                        current = u""
                 row["c_" + safe] = current
                 row["n_" + safe] = current  # initial new value = current
                 row["e_" + safe] = False    # disabled until the column is checked
                 row["v_" + safe] = Windows.Visibility.Visible
+                if col["is_option"]:
+                    row["o_" + safe] = col["opt_labels"]
                 col["rows_with_param"].add(row_index)
             dt.Rows.Add(row)
             self._row_eids.append(eid)
 
         self.dt = dt
+
+    # ------------------------- option columns ------------------------------
+
+    def _remember_sample(self, pid, param, st, samples, sample_has_value):
+        """Keep one representative parameter per id for option resolution,
+        preferring an ElementId param that currently HAS a value (empirical type
+        detection needs a non-empty value; data-type / BIP detection does not)."""
+        if st == StorageType.ElementId:
+            has_val = False
+            try:
+                vid = param.AsElementId()
+                has_val = vid is not None and getElementIdValue(self.doc, vid) > 0
+            except:
+                has_val = False
+            if pid not in samples or (
+                has_val and not sample_has_value.get(pid, False)
+            ):
+                samples[pid] = param
+                sample_has_value[pid] = has_val
+        else:  # Integer (Workset is detected by BuiltInParameter; value not needed)
+            if pid not in samples:
+                samples[pid] = param
+                sample_has_value[pid] = True
+
+    def _index_options(self, col):
+        """Precompute, once per option column: the ComboBox label list plus
+        label->value and id->label maps used for display, import and apply."""
+        labels = List[String]()
+        label_to_value = {}
+        id_to_label = {}
+        for opt in col["options"]:
+            label = opt.label if opt.label is not None else u""
+            labels.Add(label)
+            if label not in label_to_value:
+                label_to_value[label] = opt.value
+            key = self._option_id_key(opt.value)
+            if key is not None:
+                id_to_label[key] = label
+        col["opt_labels"] = labels
+        col["label_to_value"] = label_to_value
+        col["id_to_label"] = id_to_label
+
+    def _option_id_key(self, value):
+        """Integer key for an option value (ElementId -> its id; int kept as-is)."""
+        try:
+            if isinstance(value, int):
+                return value
+            return getElementIdValue(self.doc, value)  # ElementId
+        except:
+            return None
+
+    def _current_option_label(self, col, param):
+        """The label of the parameter's current value, or u'' when unset."""
+        try:
+            st = param.StorageType
+            if st == StorageType.ElementId:
+                vid = param.AsElementId()
+                key = getElementIdValue(self.doc, vid) if vid is not None else -1
+            elif st == StorageType.Integer:
+                key = param.AsInteger()
+            else:
+                return u""
+        except:
+            return u""
+        return col["id_to_label"].get(key, u"")
+
+    def _match_option_label(self, col, raw):
+        """Canonical option label for a user-entered value, matched by label OR
+        by id. Returns None when nothing matches (caller keeps the current value)."""
+        s = (raw or u"").strip()
+        if not s:
+            return None
+        if s in col["label_to_value"]:
+            return s
+        idv = self._as_int(self._clean_num_str(s))
+        if idv is not None and idv in col["id_to_label"]:
+            return col["id_to_label"][idv]
+        return None
+
+    def _set_option_value(self, param, value):
+        """param.Set with an ElementId (reference) or int (Workset) value."""
+        try:
+            return param.Set(value)
+        except Exception:
+            return False
+
+    def _apply_option_value(self, col, param, new_label):
+        """Resolve a label to its option value and write it. Returns (ok, msg)."""
+        label = self._match_option_label(col, new_label)
+        if label is None:
+            return False, u"'{0}' is not a valid option".format(new_label)
+        ok = self._set_option_value(param, col["label_to_value"][label])
+        return ok, u"Set returned False"
 
     def _build_datagrid(self):
         dg = Windows.Controls.DataGrid()
@@ -657,7 +805,7 @@ class QuickParamEditDialog(Windows.Window):
         for col in self.columns:
             tcol = Windows.Controls.DataGridTemplateColumn()
             tcol.Header = self._build_param_header(col)
-            tcol.CellTemplate = self._build_cell_template(col["safe"])
+            tcol.CellTemplate = self._build_cell_template(col)
             tcol.MinWidth = 200
             dg.Columns.Add(tcol)
 
@@ -724,9 +872,30 @@ class QuickParamEditDialog(Windows.Window):
         grid.Children.Add(sub)
         return grid
 
-    def _build_cell_template(self, safe):
+    def _build_cell_template(self, col):
         """DataTemplate (built per column) binding the current label, the thin
-        separator and the editable NEW textbox to the row's c_/n_/e_/v_ fields."""
+        separator and the editable NEW control to the row's c_/n_/e_/v_ fields.
+        Text params use a TextBox; option params (Material, Level, Phase, type
+        selectors ...) use a ComboBox whose items come from the row's o_ list.
+        Both bind NEW to n_, so the group bulk-fill / checkbox / Excel paths are
+        identical for either editor."""
+        safe = col["safe"]
+        if col.get("is_option"):
+            editor = (
+                '<ComboBox Grid.Column="2" ItemsSource="{{Binding o_{s}}}" '
+                'SelectedValue="{{Binding n_{s}, Mode=TwoWay, '
+                'UpdateSourceTrigger=PropertyChanged}}" '
+                'IsEnabled="{{Binding e_{s}}}" Margin="2" '
+                'VerticalAlignment="Center"/>'
+            )
+        else:
+            editor = (
+                '<TextBox Grid.Column="2" '
+                'Text="{{Binding n_{s}, Mode=TwoWay, '
+                'UpdateSourceTrigger=PropertyChanged}}" '
+                'IsEnabled="{{Binding e_{s}}}" Margin="2" '
+                'VerticalAlignment="Center"/>'
+            )
         xaml = (
             '<DataTemplate '
             'xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">'
@@ -739,9 +908,7 @@ class QuickParamEditDialog(Windows.Window):
             '<TextBlock Grid.Column="0" Text="{{Binding c_{s}}}" '
             'TextAlignment="Center" VerticalAlignment="Center" Margin="4,2,4,2"/>'
             '<Border Grid.Column="1" Background="DarkGray"/>'
-            '<TextBox Grid.Column="2" '
-            'Text="{{Binding n_{s}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}}" '
-            'IsEnabled="{{Binding e_{s}}}" Margin="2" VerticalAlignment="Center"/>'
+            + editor +
             '</Grid></DataTemplate>'
         ).format(s=safe)
         return Windows.Markup.XamlReader.Parse(xaml)
@@ -827,6 +994,7 @@ class QuickParamEditDialog(Windows.Window):
                 pid = col["param_id"]
                 cname = "c_" + col["safe"]
                 nname = "n_" + col["safe"]
+                is_option = col.get("is_option")
                 for idx in col["rows_with_param"]:
                     row = self.dt.Rows[idx]
                     cur_val = row[cname]
@@ -835,6 +1003,8 @@ class QuickParamEditDialog(Windows.Window):
                     new_val = u"" if new_val is None else unicode(new_val)
                     if new_val == cur_val:
                         continue  # only changed cells
+                    if is_option and not new_val.strip():
+                        continue  # an option cleared to empty -> nothing to set
                     eid = self._row_eids[idx]
                     element = self.doc.GetElement(getElementId(self.doc, eid))
                     if element is None:
@@ -845,13 +1015,14 @@ class QuickParamEditDialog(Windows.Window):
                     attempted += 1
                     ename = row["ElementName"]
                     try:
-                        ok = set_param_value(param, new_val)
+                        if is_option:
+                            ok, msg = self._apply_option_value(col, param, new_val)
+                        else:
+                            ok, msg = set_param_value(param, new_val), u"Set returned False"
                         if ok:
                             success += 1
                         else:
-                            errors.append(
-                                (eid, ename, col["name"], u"Set returned False")
-                            )
+                            errors.append((eid, ename, col["name"], msg))
                     except Exception as ex:
                         errors.append((eid, ename, col["name"], unicode(ex)))
             t.Commit()
@@ -1001,7 +1172,7 @@ class QuickParamEditDialog(Windows.Window):
             return
         msg = u"Imported {0} value(s) into the table.".format(updated)
         if skipped:
-            msg += u"\n{0} cell(s) skipped (parameter not in the table).".format(
+            msg += u"\n{0} cell(s) skipped (not in the table or invalid value).".format(
                 skipped
             )
         self._alert(msg, title="Quick Param Edit")
@@ -1042,10 +1213,17 @@ class QuickParamEditDialog(Windows.Window):
                     if col is None or idx not in col["rows_with_param"]:
                         skipped += 1
                         continue
-                    val = self._clean_num_str(
-                        unicode(sheet.cell_value(r, new_col))
-                    )
-                    self.dt.Rows[idx]["n_" + col["safe"]] = val
+                    raw = unicode(sheet.cell_value(r, new_col))
+                    if col.get("is_option"):
+                        # Match by label OR id; an invalid value keeps the
+                        # current one (we never write a non-existent option).
+                        label = self._match_option_label(col, raw)
+                        if label is None:
+                            skipped += 1
+                            continue
+                        self.dt.Rows[idx]["n_" + col["safe"]] = label
+                    else:
+                        self.dt.Rows[idx]["n_" + col["safe"]] = self._clean_num_str(raw)
                     updated += 1
         finally:
             self._suppress_propagate = False
