@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from Autodesk.Revit.DB import (
     TransactionGroup,
     Transaction,

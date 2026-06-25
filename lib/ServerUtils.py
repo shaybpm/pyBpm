@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json, os
 from pyrevit import script
 from HttpRequest import get, patch, post
