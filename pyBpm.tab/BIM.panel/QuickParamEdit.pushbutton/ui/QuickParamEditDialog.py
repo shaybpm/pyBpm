@@ -281,6 +281,8 @@ class QuickParamEditDialog(Windows.Window):
         self._suppress_propagate = False  # re-entrancy guard for bulk-fill
         self._cur_cat_id = None     # active category/mode (for the export file name)
         self._cur_mode = None
+        self._elem_filter_box = None   # Elements-page row filter (by element name)
+        self._param_filter_box = None  # Elements-page column filter (by param name)
 
         # Categories-page state (search/filter box + the list it repopulates)
         self._all_categories = []
@@ -472,11 +474,14 @@ class QuickParamEditDialog(Windows.Window):
         cat_name = self._selected_category_label(cat_id, mode)
 
         page = Windows.Controls.Grid()
-        r0 = Windows.Controls.RowDefinition()  # table
-        r1 = Windows.Controls.RowDefinition()  # button bar
-        r1.Height = Windows.GridLength(48)
+        r0 = Windows.Controls.RowDefinition()  # filter bar
+        r0.Height = Windows.GridLength.Auto
+        r1 = Windows.Controls.RowDefinition()  # table
+        r2 = Windows.Controls.RowDefinition()  # button bar
+        r2.Height = Windows.GridLength(48)
         page.RowDefinitions.Add(r0)
         page.RowDefinitions.Add(r1)
+        page.RowDefinitions.Add(r2)
 
         # DataGrid virtualizes + scrolls itself - do NOT wrap it in a ScrollViewer.
         if not self._row_eids:
@@ -487,7 +492,12 @@ class QuickParamEditDialog(Windows.Window):
             )
         else:
             content = self._build_datagrid()
-        _set_grid(content, row=0)
+            # Top filter bar (only meaningful with a table): left box filters
+            # rows by element name, right box filters columns by parameter name.
+            filter_bar = self._build_elements_filter_bar()
+            _set_grid(filter_bar, row=0)
+            page.Children.Add(filter_bar)
+        _set_grid(content, row=1)
         page.Children.Add(content)
 
         bottom = Windows.Controls.Grid()
@@ -498,7 +508,7 @@ class QuickParamEditDialog(Windows.Window):
         bcol1.Width = Windows.GridLength.Auto
         bottom.ColumnDefinitions.Add(bcol0)
         bottom.ColumnDefinitions.Add(bcol1)
-        _set_grid(bottom, row=1)
+        _set_grid(bottom, row=2)
 
         # left side: the selected category (opposite the action buttons)
         cat_lbl = _label(cat_name, bold=True)
@@ -542,6 +552,103 @@ class QuickParamEditDialog(Windows.Window):
         btn.Padding = Windows.Thickness(12, 4, 12, 4)
         btn.Click += handler
         return btn
+
+    # -------------------- Elements-page filter bar -------------------------
+
+    def _build_elements_filter_bar(self):
+        """Row of two filters above the table (outside it): left filters rows by
+        element name, right filters columns by parameter name, with a vertical
+        separator between the two boxes."""
+        grid = Windows.Controls.Grid()
+        grid.Margin = Windows.Thickness(6, 2, 6, 4)
+        widths = [
+            Windows.GridLength.Auto,                            # elements label
+            Windows.GridLength(1, Windows.GridUnitType.Star),   # elements box
+            Windows.GridLength.Auto,                            # separator
+            Windows.GridLength.Auto,                            # parameters label
+            Windows.GridLength(1, Windows.GridUnitType.Star),   # parameters box
+        ]
+        for w in widths:
+            cd = Windows.Controls.ColumnDefinition()
+            cd.Width = w
+            grid.ColumnDefinitions.Add(cd)
+
+        elem_lbl = _label("Filter elements:")
+        elem_lbl.VerticalContentAlignment = Windows.VerticalAlignment.Center
+        _set_grid(elem_lbl, col=0)
+        grid.Children.Add(elem_lbl)
+
+        self._elem_filter_box = Windows.Controls.TextBox()
+        self._elem_filter_box.VerticalContentAlignment = (
+            Windows.VerticalAlignment.Center
+        )
+        self._elem_filter_box.Margin = Windows.Thickness(2)
+        self._elem_filter_box.TextChanged += self._on_element_filter_changed
+        _set_grid(self._elem_filter_box, col=1)
+        grid.Children.Add(self._elem_filter_box)
+
+        sep = _vertical_separator()
+        _set_grid(sep, col=2)
+        grid.Children.Add(sep)
+
+        param_lbl = _label("Filter parameters:")
+        param_lbl.VerticalContentAlignment = Windows.VerticalAlignment.Center
+        _set_grid(param_lbl, col=3)
+        grid.Children.Add(param_lbl)
+
+        self._param_filter_box = Windows.Controls.TextBox()
+        self._param_filter_box.VerticalContentAlignment = (
+            Windows.VerticalAlignment.Center
+        )
+        self._param_filter_box.Margin = Windows.Thickness(2)
+        self._param_filter_box.TextChanged += self._on_param_filter_changed
+        _set_grid(self._param_filter_box, col=4)
+        grid.Children.Add(self._param_filter_box)
+
+        return grid
+
+    def _on_element_filter_changed(self, sender, e):
+        self._apply_element_filter(sender.Text)
+
+    def _apply_element_filter(self, text):
+        """Filter table rows by element name (DataView RowFilter, LIKE %text%)."""
+        if self.dt is None:
+            return
+        t = (text or u"").strip()
+        if not t:
+            self.dt.DefaultView.RowFilter = u""
+        else:
+            self.dt.DefaultView.RowFilter = u"ElementName LIKE '%{0}%'".format(
+                self._escape_like(t)
+            )
+
+    def _on_param_filter_changed(self, sender, e):
+        self._apply_param_filter(sender.Text)
+
+    def _apply_param_filter(self, text):
+        """Show/hide parameter columns by name (the Element column always stays)."""
+        t = (text or u"").strip().lower()
+        for col in self.columns:
+            gc = col.get("grid_column")
+            if gc is None:
+                continue
+            visible = (not t) or (t in (col["name"] or u"").lower())
+            gc.Visibility = (
+                Windows.Visibility.Visible if visible
+                else Windows.Visibility.Collapsed
+            )
+
+    def _escape_like(self, s):
+        """Escape a string for use inside a DataView RowFilter LIKE pattern."""
+        out = []
+        for ch in s:
+            if ch in u"[]%*":
+                out.append(u"[" + ch + u"]")
+            elif ch == u"'":
+                out.append(u"''")
+            else:
+                out.append(ch)
+        return u"".join(out)
 
     def _collect_table_data(self, elements):
         """Build self.columns (union of editable params) and a System.Data
@@ -807,6 +914,7 @@ class QuickParamEditDialog(Windows.Window):
             tcol.Header = self._build_param_header(col)
             tcol.CellTemplate = self._build_cell_template(col)
             tcol.MinWidth = 200
+            col["grid_column"] = tcol  # ref for the parameter-name filter
             dg.Columns.Add(tcol)
 
         # FrozenColumnCount is clamped to the live column count, so set it only
