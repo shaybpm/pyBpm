@@ -14,9 +14,11 @@ from System import DateTime, TimeZoneInfo, Windows
 from pyrevit.framework import wpf
 import os
 import json
+import webbrowser
 
 from pyrevit import forms, script
 
+import Config
 from ServerUtils import (
     get_openings_changes,
     change_openings_approved_status,
@@ -26,6 +28,7 @@ from RevitUtils import (
     convertRevitNumToCm,
     get_ui_view as ru_get_ui_doc,
     get_model_guids,
+    get_model_info,
     get_level_by_point,
 )
 from UiUtils import SelectFromList
@@ -287,11 +290,9 @@ class TrackingOpeningsDialog(Windows.Window):
         self.show_previous_location_3D_btn.IsEnabled = True
         self.isolate_btn.IsEnabled = True
         self.change_approved_status_btn.IsEnabled = True
-        self.export_to_excel_btn.IsEnabled = True
         self.filters_in_views_btn.IsEnabled = True
 
         if len(self.openings) == 0:
-            self.export_to_excel_btn.IsEnabled = False
             self.show_opening_btn.IsEnabled = False
             self.show_previous_location_btn.IsEnabled = False
             self.show_opening_3D_btn.IsEnabled = False
@@ -1050,36 +1051,13 @@ class TrackingOpeningsDialog(Windows.Window):
         except Exception as ex:
             print(ex)
 
-    def export_to_excel_btn_click(self, sender, e):
-        if not self.openings:
-            self.alert("אין נתונים לייצוא")
-            return
-        self.Hide()
-        folder_path = forms.pick_folder()
-        self.Show()
-        if not folder_path:
-            return
-        file_name = "pyBpm-Openings.xlsx"
-        num = 1
-        max_loops = 100
-        while os.path.exists(folder_path + "\\" + file_name):
-            file_name = "pyBpm-Openings_{}.xlsx".format(num)
-            num += 1
-            if num > max_loops:
-                self.alert("מספר נסיונות מקסימלי ליצירת שם קובץ חדש, הקובץ לא נוצר")
-                return
+    def openings_notify_subscription_btn_click(self, sender, e):
         try:
-            from ExcelUtils import create_new_workbook_file, add_data_to_worksheet
-
-            excel_path = create_new_workbook_file(folder_path + "\\" + file_name)
-            add_data_to_worksheet(excel_path, self.openings, ignore_fields=["_id"])
-            self.Hide()
-            is_to_open = forms.alert(
-                "הקובץ נוצר בהצלחה.\nהאם לפתוח אותו?", title="מעקב פתחים"
+            project_guid = get_model_info(self.doc)["projectGuid"]
+            url = "{}openings-notify-subscription?projects={}".format(
+                Config.server_url, project_guid
             )
-            self.Show()
-            if is_to_open:
-                os.startfile(excel_path)
+            webbrowser.open(url)
         except Exception as ex:
             print(ex)
 

@@ -288,8 +288,10 @@
                     Content="שנה סטטוס אישורים" Click="change_approved_status_btn_click" />
             </Grid>
             <Grid Grid.Column="2" Grid.Row="2">
-                <Button x:Name="export_to_excel_btn" Content="ייצוא לאקסל"
-                    Click="export_to_excel_btn_click" />
+                <Button x:Name="openings_notify_subscription_btn"
+                    Content="הרשמה לעדכוני פתחים במייל"
+                    ToolTip="הירשמו לקבלת התראות במייל על שינויי פתחים בפרויקט זה"
+                    Click="openings_notify_subscription_btn_click" />
             </Grid>
         </Grid>
 
