@@ -3,8 +3,8 @@
 
 Opens the modeless results window that scores how well your current model
 already matches the coordinator's compilation-model sections, so you can see
-which sections need attention. Section create / go-to / delete actions are added
-in a later phase. Replaces the old multi-select section picker. """
+which sections need attention, and create / go to / delete the section in your
+model. Replaces the old multi-select section picker. """
 __title__ = "Get Bpm\nSections"
 __author__ = "Eyal Sinay"
 
