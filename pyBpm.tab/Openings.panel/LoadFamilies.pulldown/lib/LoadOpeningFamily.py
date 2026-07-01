@@ -7,6 +7,7 @@ from pyrevit import forms
 from RevitUtils import (
     get_family_by_name,
 )
+from PyBpmAppUtils import discipline_dict
 
 
 def get_discipline_from_user():
@@ -15,18 +16,6 @@ def get_discipline_from_user():
     Returns:
         Tuple[str, str]: The discipline code and the discipline name.
     """
-    discipline_dict = {
-        "A - Architectural": "A",
-        "S - Structural": "S",
-        "P - Plumbing": "P",
-        "SP - Sprinklers": "SP",
-        "C - Communications": "C",
-        "H - HVAC": "H",
-        "E - Electrical": "E",
-        "G - Medical Gases": "G",
-        "F - Fuel": "F",
-    }
-
     selected_discipline_display = forms.SelectFromList.show(
         discipline_dict.keys(),
         title="Select Discipline",

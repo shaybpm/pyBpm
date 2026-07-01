@@ -5,6 +5,19 @@ import Config
 import HttpRequest
 
 
+discipline_dict = {
+    "A - Architectural": "A",
+    "S - Structural": "S",
+    "P - Plumbing": "P",
+    "SP - Sprinklers": "SP",
+    "C - Communications": "C",
+    "H - HVAC": "H",
+    "E - Electrical": "E",
+    "G - Medical Gases": "G",
+    "F - Fuel": "F",
+}
+
+
 def get_current_version():
     local_extension_path = os.path.join(Config.root_path, "extension.json")
     local_extension_file = pyUtils.get_json_from_file(local_extension_path)
