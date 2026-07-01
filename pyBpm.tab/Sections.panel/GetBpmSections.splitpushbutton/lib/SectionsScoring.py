@@ -304,6 +304,38 @@ def collect_candidate_sections(comp_doc):
     return [v for v in all_sections if _is_su_sec(v, ex_suction_names)]
 
 
+def _section_sheet_number(section, views_by_name):
+    """The section's effective sheet number: its own VIEWPORT_SHEET_NUMBER, or its
+    EX twin's (section 4.6). None if neither is on a sheet."""
+    sheet_param = section.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NUMBER)
+    if sheet_param is not None and sheet_param.AsString():
+        return sheet_param.AsString()
+    ex_name = section.Name.replace("SU", "EX")
+    ex_view = views_by_name.get(ex_name)
+    if ex_view is not None:
+        ex_param = ex_view.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NUMBER)
+        if ex_param is not None and ex_param.AsString():
+            return ex_param.AsString()
+    return None
+
+
+def get_candidate_sections_with_sheets(comp_doc):
+    """Return (items, sheets): items = [{'section', 'sheet'}] for every candidate
+    SU section, and sheets = the sorted unique sheet numbers present."""
+    sections = collect_candidate_sections(comp_doc)
+    views_by_name = {}
+    for v in FilteredElementCollector(comp_doc).OfClass(View).ToElements():
+        views_by_name[v.Name] = v
+    items = []
+    sheets_set = set()
+    for section in sections:
+        sheet = _section_sheet_number(section, views_by_name)
+        items.append({"section": section, "sheet": sheet})
+        if sheet:
+            sheets_set.add(sheet)
+    return items, sorted(sheets_set)
+
+
 def _parameter_filter_to_element_filter(pfe):
     """Convert a ParameterFilterElement to an ElementFilter covering BOTH its
     categories and its rules.

@@ -33,8 +33,9 @@ NOT_IN_CLOUD_MSG = u"כלי זה זמין רק כאשר גם המודל הנוכ
 # decision #7
 NO_FILTERS_MSG = u"לא נמצאו פילטרים לפי פורמט. פנה למתאם המערכות"
 
-# Local per-user store (persists across Revit sessions).
+# Local per-user stores (persist across Revit sessions).
 SELECTION_FILE = "get_bpm_sections_filter_selection"
+SHEET_SCOPE_FILE = "get_bpm_sections_sheet_scope"
 
 # Presentation order of discipline groups (values of discipline_dict).
 _DISCIPLINE_ORDER = ["A", "S", "P", "SP", "C", "H", "E", "G", "F"]
@@ -124,6 +125,19 @@ def load_saved_selection(doc, comp_doc):
 def save_selection(doc, comp_doc, filter_ids):
     inputs = LocalUserInputs(SELECTION_FILE)
     inputs.data[_selection_key(doc, comp_doc)] = filter_ids
+    inputs.save_inputs()
+
+
+def load_sheet_scope(doc, comp_doc):
+    """Return the saved list of in-scope sheet numbers for this (model, comp) pair,
+    or None if never saved (caller treats None as 'all sheets')."""
+    inputs = LocalUserInputs(SHEET_SCOPE_FILE)
+    return inputs.data.get(_selection_key(doc, comp_doc))
+
+
+def save_sheet_scope(doc, comp_doc, sheet_numbers):
+    inputs = LocalUserInputs(SHEET_SCOPE_FILE)
+    inputs.data[_selection_key(doc, comp_doc)] = sheet_numbers
     inputs.save_inputs()
 
 
