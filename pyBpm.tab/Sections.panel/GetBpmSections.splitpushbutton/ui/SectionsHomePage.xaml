@@ -1,6 +1,6 @@
 <Page xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="דף ראשי">
+    Title="ראשי">
     <Grid FlowDirection="RightToLeft" Margin="18">
         <StackPanel VerticalAlignment="Top">
             <TextBlock x:Name="HeadingTextBlock" FontSize="16" FontWeight="Bold"

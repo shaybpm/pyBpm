@@ -190,7 +190,7 @@ class SectionsResultsWindow(Windows.Window):
     def _build_nav(self):
         # Home (fixed, top), highlighted as the default page.
         self.home_button = self._make_nav_button(
-            u"דף ראשי", self.home_button_click, bold=True
+            u"ראשי", self.home_button_click, bold=True
         )
         self.home_button.Tag = self.home_page
         self.NavTopPanel.Children.Add(self.home_button)
@@ -198,7 +198,7 @@ class SectionsResultsWindow(Windows.Window):
 
         # Settings (fixed, below Home) - highlighted like the other nav pages.
         self.settings_button = self._make_nav_button(
-            u"דף הגדרות", self.settings_button_click
+            u"הגדרות", self.settings_button_click
         )
         self.settings_button.Tag = self.settings_page
         self.NavTopPanel.Children.Add(self.settings_button)
