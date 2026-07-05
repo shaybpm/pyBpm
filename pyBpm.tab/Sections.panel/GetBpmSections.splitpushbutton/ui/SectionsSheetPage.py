@@ -29,7 +29,6 @@ except:
 from System import Windows
 from System.ComponentModel import SortDescription, ListSortDirection
 from pyrevit.framework import wpf
-from pyrevit import forms
 import os, sys, traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
@@ -86,18 +85,21 @@ class SectionsRowItem(object):
 
 class SectionsSheetPage(Windows.Controls.Page):
     def __init__(self, res_window, sheet, sections):
-        wpf.LoadComponent(self, xaml_file)
+        # Set state BEFORE LoadComponent so a handler firing during component
+        # realization (e.g. a header ComboBox SelectionChanged) never sees a
+        # half-built page (self.res_window / self.filters must already exist).
         self.res_window = res_window
         self.sheet = sheet
         self.sections = sections  # comp View objects on this sheet
-        self.Title = sheet if sheet else u"-"
-
         self.items = []
         self.filters = []  # type: list[FilterItem]
         self.filter_event_is_on = True
         self._computed = False
         self._default_sorted = False
         self._score_cache = None
+
+        wpf.LoadComponent(self, xaml_file)
+        self.Title = sheet if sheet else u"-"
 
     # ------------------------------------------------------------------
     # Lazy compute (decision D5) + cache (decision D6 key set on the window)
@@ -209,16 +211,23 @@ class SectionsSheetPage(Windows.Controls.Page):
             self._report_section_errors(errors)
 
     def _report_section_errors(self, errors):
-        """Surface sections that failed to score (transient errors, skipped from
-        the grid) so they are visible for debugging instead of only printed."""
-        names = ", ".join(name for name, _ in errors[:10])
-        first_trace = errors[0][1]
-        message = (
-            u"{} חתכים נכשלו בחישוב (דולגו):\n{}\n\nשגיאה ראשונה:\n{}"
-        ).format(len(errors), names, first_trace)
+        """A few sections failed to score and were skipped. Print the full
+        tracebacks for debugging (pyRevit output), but show the planner only a
+        concise, friendly note - a raw Python traceback is not appropriate for a
+        client office (this is a customer-facing tool)."""
+        for name, trace in errors:
+            print(
+                u"[GetBpmSections] section '{}' failed to score:\n{}".format(
+                    name, trace
+                )
+            )
+        names = u", ".join(name for name, _ in errors[:10])
+        more = u" ..." if len(errors) > 10 else u""
+        message = u"{} חתכים לא חושבו ודולגו:\n{}{}".format(
+            len(errors), names, more
+        )
         try:
-            forms.alert(message, title="Get Bpm Sections")
-            self.res_window.Activate()
+            self.res_window.notify(message)
         except Exception:
             pass
 
@@ -336,14 +345,18 @@ class SectionsSheetPage(Windows.Controls.Page):
     def ClearFilters_Click(self, sender, e):
         try:
             self.filter_event_is_on = False
-            for filter_item in self.filters:
-                if filter_item.control_type == ControlTypes.TEXT_BOX:
-                    filter_item.control_ref.Text = ""
-                elif filter_item.control_type == ControlTypes.COMBO_BOX:
-                    filter_item.control_ref.SelectedIndex = 0
-            self.filters = []
-            self.initialize_data_grid()
-            self.filter_event_is_on = True
+            try:
+                for filter_item in self.filters:
+                    if filter_item.control_type == ControlTypes.TEXT_BOX:
+                        filter_item.control_ref.Text = ""
+                    elif filter_item.control_type == ControlTypes.COMBO_BOX:
+                        filter_item.control_ref.SelectedIndex = 0
+                self.filters = []
+                self.initialize_data_grid()
+            finally:
+                # Always re-arm filtering, even if the rebuild threw - otherwise
+                # this page's filters would be silently dead until it is rebuilt.
+                self.filter_event_is_on = True
         except Exception:
             self.res_window.report_error(u"ניקוי פילטרים")
 
@@ -379,7 +392,7 @@ class SectionsSheetPage(Windows.Controls.Page):
     def Create_Click(self, sender, e):
         try:
             self.res_window.request_action(
-                "create", self._rows_for_action(sender.DataContext), self
+                "create", self._rows_for_action(sender.DataContext)
             )
         except Exception:
             self.res_window.report_error(u"יצירת חתך")
@@ -387,7 +400,7 @@ class SectionsSheetPage(Windows.Controls.Page):
     def GoTo_Click(self, sender, e):
         try:
             self.res_window.request_action(
-                "goto", self._rows_for_action(sender.DataContext), self
+                "goto", self._rows_for_action(sender.DataContext)
             )
         except Exception:
             self.res_window.report_error(u"מעבר לחתך")
@@ -395,7 +408,7 @@ class SectionsSheetPage(Windows.Controls.Page):
     def Delete_Click(self, sender, e):
         try:
             self.res_window.request_action(
-                "delete", self._rows_for_action(sender.DataContext), self
+                "delete", self._rows_for_action(sender.DataContext)
             )
         except Exception:
             self.res_window.report_error(u"מחיקת חתך")

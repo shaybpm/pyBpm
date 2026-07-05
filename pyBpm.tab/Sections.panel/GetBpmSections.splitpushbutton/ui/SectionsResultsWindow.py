@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """ Modeless results window for Get Bpm Sections - Frame + nav sidebar (R1).
 
-Replaces the old StackPanel dialog (SectionsResultsDialog). This is the shell
-only: a header, a left navigation column, and a <Frame> host. It opens on the
+Replaces the old StackPanel results dialog. This is the shell only: a header,
+a left navigation column, and a <Frame> host. It opens on the
 Home page and COMPUTES NOTHING (decision D1). The nav column (D8) is:
 
     Home       - fixed at top
@@ -107,7 +107,6 @@ class SectionsResultsWindow(Windows.Window):
         # _pending is a QUEUE - Revit coalesces rapid Raise() calls into a single
         # Execute, so a single slot would silently drop earlier requests.
         self._pending = []
-        self._action_source_page = None
         self._action_handler = SectionActionEventHandler(self)
         self._action_event = ExternalEvent.Create(self._action_handler)
 
@@ -338,7 +337,7 @@ class SectionsResultsWindow(Windows.Window):
         self.Activate()
         return result
 
-    def request_action(self, action, rows, source_page):
+    def request_action(self, action, rows):
         """Enqueue a Create / Delete / Go-to for the given rows (SectionsRowItem)
         and raise the External Event. Any UI prompt (section type, delete confirm)
         happens here on the UI thread BEFORE the API context runs. Wrapped because
@@ -389,7 +388,6 @@ class SectionsResultsWindow(Windows.Window):
                 )
             else:
                 return
-            self._action_source_page = source_page
             self._action_event.Raise()
         except Exception:
             self.report_error(u"פעולה על חתך")
@@ -406,8 +404,16 @@ class SectionsResultsWindow(Windows.Window):
                     changed = True
             except Exception as ex:
                 print(ex)
-        if changed and self._action_source_page is not None:
-            self._action_source_page.refresh_exists()
+        if changed:
+            # Refresh every already-built sheet page: a coalesced Execute may
+            # carry actions from more than one sheet, and a created/deleted view
+            # only affects the page holding that section anyway.
+            for page in self._sheet_pages.values():
+                try:
+                    if page.items:
+                        page.refresh_exists()
+                except Exception as ex:
+                    print(ex)
 
     def _run_action(self, uiapp, request):
         """Perform one action. Returns True if an exists-state may have changed.
