@@ -30,6 +30,8 @@ except:
 
 from System import Windows
 from pyrevit.framework import wpf
+from Autodesk.Revit.UI import IExternalEventHandler, ExternalEvent
+from Autodesk.Revit.DB import Transaction
 import os, sys, traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
@@ -39,10 +41,28 @@ from pyrevit import forms
 
 import RevitUtils  # extension-level lib
 import SectionsFilterSelection as sfs  # type: ignore
+import SectionsCreate as creator  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsWindow.xaml")
+
+
+class SectionActionEventHandler(IExternalEventHandler):
+    """Runs the queued Create / Delete / Go-to on Revit's API context (the same
+    thread as the window), then lets the window refresh the affected page."""
+
+    def __init__(self, window):
+        self.window = window
+
+    def Execute(self, uiapp):
+        try:
+            self.window.execute_pending_action(uiapp)
+        except Exception as ex:
+            print(ex)
+
+    def GetName(self):
+        return "BPM Get Bpm Sections Action"
 
 
 class SectionsResultsWindow(Windows.Window):
@@ -79,6 +99,14 @@ class SectionsResultsWindow(Windows.Window):
         # it is never a Frame page and is not in this list.
         self.nav_buttons = []
         self.sheet_buttons = []  # list of (button, sheet)
+
+        # External Event: every Revit write (create/delete/goto) runs through it.
+        # _pending is a QUEUE - Revit coalesces rapid Raise() calls into a single
+        # Execute, so a single slot would silently drop earlier requests.
+        self._pending = []
+        self._action_source_page = None
+        self._action_handler = SectionActionEventHandler(self)
+        self._action_event = ExternalEvent.Create(self._action_handler)
 
         self._build_nav()
 
@@ -287,3 +315,135 @@ class SectionsResultsWindow(Windows.Window):
             self.enable_sheet_buttons()
         except Exception:
             self.report_error(u"הגדרות")
+
+    # ------------------------------------------------------------------
+    # Row actions (R3) - all Revit writes go through the External Event.
+    # ------------------------------------------------------------------
+    def _confirm(self, message):
+        self.Hide()
+        result = forms.alert(message, yes=True, no=True)
+        self.Show()
+        self.Activate()
+        return result
+
+    def request_action(self, action, rows, source_page):
+        """Enqueue a Create / Delete / Go-to for the given rows (SectionsRowItem)
+        and raise the External Event. Any UI prompt (section type, delete confirm)
+        happens here on the UI thread BEFORE the API context runs. Wrapped because
+        this is reached from a modeless handler."""
+        try:
+            if not rows:
+                return
+            if action == "create":
+                targets = [row for row in rows if not row.exists]
+                if not targets:
+                    return
+                type_id = creator.get_type_id(self.doc)  # may prompt (UI thread)
+                self.Activate()
+                if not type_id:
+                    return
+                for row in targets:
+                    self._pending.append(
+                        {
+                            "action": "create",
+                            "name": row.section_name,
+                            "section": row.section,
+                            "type_id": type_id,
+                        }
+                    )
+            elif action == "delete":
+                targets = [row for row in rows if row.exists]
+                if not targets:
+                    return
+                if len(targets) == 1:
+                    prompt = u"למחוק את החתך '{}'?".format(
+                        creator.target_section_name(targets[0].section_name)
+                    )
+                else:
+                    prompt = u"למחוק {} חתכים?".format(len(targets))
+                if not self._confirm(prompt):  # one confirm for N rows (7.3)
+                    return
+                for row in targets:
+                    self._pending.append(
+                        {"action": "delete", "name": row.section_name}
+                    )
+            elif action == "goto":
+                existing = [row for row in rows if row.exists]
+                if not existing:
+                    return
+                # Go-to acts on a single view - the first existing target.
+                self._pending.append(
+                    {"action": "goto", "name": existing[0].section_name}
+                )
+            else:
+                return
+            self._action_source_page = source_page
+            self._action_event.Raise()
+        except Exception:
+            self.report_error(u"פעולה על חתך")
+
+    def execute_pending_action(self, uiapp):
+        """Runs on Revit's API context (via the External Event). Drains the whole
+        queue - Revit coalesces rapid Raise() calls into a single Execute."""
+        requests = self._pending
+        self._pending = []
+        changed = False
+        for request in requests:
+            try:
+                if self._run_action(uiapp, request):
+                    changed = True
+            except Exception as ex:
+                print(ex)
+        if changed and self._action_source_page is not None:
+            self._action_source_page.refresh_exists()
+
+    def _run_action(self, uiapp, request):
+        """Perform one action. Returns True if an exists-state may have changed.
+        Every Transaction is always closed (commit or rollback)."""
+        action = request["action"]
+        name = request["name"]
+
+        if action == "create":
+            # Never create a second, suffixed copy: Create is valid only while the
+            # exact name is free. Re-check here in case a stale click got through.
+            if creator.find_existing_section(self.doc, name) is not None:
+                return True
+            comp_section = request["section"]
+            if comp_section is None:
+                return False
+            transform = self.comp_link.GetTotalTransform()
+            t = Transaction(self.doc, "pyBpm | Create Bpm Section")
+            t.Start()
+            new_view = None
+            try:
+                new_view = creator.create_section(
+                    self.doc, comp_section, request["type_id"], transform
+                )
+            except Exception as ex:
+                print(ex)
+            if new_view is not None:
+                t.Commit()
+                return True
+            t.RollBack()
+            return False
+
+        if action == "delete":
+            view = creator.find_existing_section(self.doc, name)
+            if view is not None:
+                t = Transaction(self.doc, "pyBpm | Delete Bpm Section")
+                t.Start()
+                try:
+                    self.doc.Delete(view.Id)
+                    t.Commit()
+                except Exception as ex:
+                    print(ex)
+                    t.RollBack()
+            return True
+
+        if action == "goto":
+            view = creator.find_existing_section(self.doc, name)
+            if view is not None:
+                uiapp.ActiveUIDocument.ActiveView = view
+            return False
+
+        return False

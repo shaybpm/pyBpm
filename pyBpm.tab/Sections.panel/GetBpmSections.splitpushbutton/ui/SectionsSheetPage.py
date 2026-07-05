@@ -14,8 +14,9 @@ ResultsPage_GenericClass, adapted to flat attribute paths.
 
 Empty sections (0 reference systems) are shown, not dropped (decision D7): an
 'empty' row with n=0, score '-', a neutral-gray tier, hidden via the systems
-filter if the planner wants. Actions (Create / Go-to / Delete / Recompute) come
-in R3. IronPython 2.7 / WPF; Hebrew only inside string bodies. """
+filter if the planner wants. Per-row + multi-select bulk actions (Create /
+Go-to / Delete via the window's External Event, plus a local Recompute) are
+wired in R3. IronPython 2.7 / WPF; Hebrew only inside string bodies. """
 
 import clr
 
@@ -345,3 +346,101 @@ class SectionsSheetPage(Windows.Controls.Page):
             self.filter_event_is_on = True
         except Exception:
             self.res_window.report_error(u"ניקוי פילטרים")
+
+    # ------------------------------------------------------------------
+    # Selection + row actions (R3). All Revit writes go through the window's
+    # External Event; the recompute is a local cache/scoring pass.
+    # ------------------------------------------------------------------
+    def SelectAll_Click(self, sender, e):
+        try:
+            self.DataGrid.SelectAll()
+        except Exception:
+            self.res_window.report_error(u"בחירת הכל")
+
+    def UnselectAll_Click(self, sender, e):
+        try:
+            self.DataGrid.UnselectAll()
+        except Exception:
+            self.res_window.report_error(u"ניקוי בחירה")
+
+    def get_selected_rows(self):
+        """The SectionsRowItem objects currently selected in the grid."""
+        return [row for row in self.DataGrid.SelectedItems]
+
+    def _rows_for_action(self, clicked_row):
+        """Bulk rule (D3): act on the whole selection if the clicked row is part
+        of it, otherwise just the clicked row (CoordChecker is_row_in_rows)."""
+        selected = self.get_selected_rows()
+        for row in selected:
+            if row is clicked_row:
+                return selected
+        return [clicked_row]
+
+    def Create_Click(self, sender, e):
+        try:
+            self.res_window.request_action(
+                "create", self._rows_for_action(sender.DataContext), self
+            )
+        except Exception:
+            self.res_window.report_error(u"יצירת חתך")
+
+    def GoTo_Click(self, sender, e):
+        try:
+            self.res_window.request_action(
+                "goto", self._rows_for_action(sender.DataContext), self
+            )
+        except Exception:
+            self.res_window.report_error(u"מעבר לחתך")
+
+    def Delete_Click(self, sender, e):
+        try:
+            self.res_window.request_action(
+                "delete", self._rows_for_action(sender.DataContext), self
+            )
+        except Exception:
+            self.res_window.report_error(u"מחיקת חתך")
+
+    def Recompute_Click(self, sender, e):
+        try:
+            # Recompute is a bulk action too (D3): act on the whole selection when
+            # the clicked row is part of it, else just the clicked row.
+            rows = self._rows_for_action(sender.DataContext)
+            self.recompute([row.section for row in rows])
+        except Exception:
+            self.res_window.report_error(u"חישוב חתך מחדש")
+
+    def RecomputeSheet_Click(self, sender, e):
+        try:
+            self.recompute(self.sections)
+        except Exception:
+            self.res_window.report_error(u"חישוב גיליון מחדש")
+
+    def recompute(self, sections):
+        """Force-(re)score the given sections into the cache and rebuild the grid,
+        preserving the current sort + filters (initialize_data_grid keeps them)."""
+        if not sections:
+            return
+        if not self.res_window.has_filters():
+            return
+        self._compute(sections)
+        self._build_items()
+        self.initialize_data_grid()
+
+    def refresh_exists(self):
+        """Re-derive every row's exists flag from the live model after a Create /
+        Delete, then refresh the grid so the action buttons (bound to `exists`)
+        swap. Called by the window after the External Event runs."""
+        try:
+            host_names = creator.get_host_view_names(self.res_window.doc)
+            for row in self.items:
+                row.exists = (
+                    creator.target_section_name(row.section_name) in host_names
+                )
+                row.exists_text = u"קיים" if row.exists else u"לא קיים"
+            # Rebuild rather than a bare Items.Refresh(): a row whose exists just
+            # flipped must be re-tested against an active "קיים/לא קיים" filter,
+            # and the exists-bound action buttons re-evaluated. initialize_data_grid
+            # re-applies filters + keeps the sort.
+            self.initialize_data_grid()
+        except Exception:
+            self.res_window.report_error(u"רענון מצב חתכים")
