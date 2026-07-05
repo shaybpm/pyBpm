@@ -11,10 +11,10 @@ Home page and COMPUTES NOTHING (decision D1). The nav column (D8) is:
     one button per sheet - inside a ScrollViewer
 
 Sheet buttons are disabled until a valid discipline-filter selection exists
-(decision D9). The per-sheet DataGrid pages arrive in R2; here a sheet button
-navigates to a light placeholder page. The Settings button (R1) bridges to the
-existing modal FilterSelectionDialog via SectionsFilterSelection; R4 turns it
-into an in-window page.
+(decision D9). A sheet button navigates to a real DataGrid page
+(SectionsSheetPage), created lazily and computed on first visit (R2). The
+Settings button bridges to the existing modal FilterSelectionDialog via
+SectionsFilterSelection; R4 turns it into an in-window page.
 
 Modeled on DEV.extension CoordChecker's ResultsWindow (Frame + dynamic nav
 buttons + active-page highlight). IronPython 2.7 / WPF; Hebrew only inside
@@ -30,15 +30,17 @@ except:
 
 from System import Windows
 from pyrevit.framework import wpf
-import os, sys
+import os, sys, traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 sys.path.append(os.path.dirname(__file__))
 
 from pyrevit import forms
 
+import RevitUtils  # extension-level lib
 import SectionsFilterSelection as sfs  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
+from SectionsSheetPage import SectionsSheetPage  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsWindow.xaml")
 
@@ -54,6 +56,10 @@ class SectionsResultsWindow(Windows.Window):
         self.filters = filters  # list of ParameterFilterElements, or None
         self.items = items  # [{'section', 'sheet'}], no scoring
         self.sheets = sheets  # sorted unique sheet numbers
+
+        # Selected discipline-filter id set - the D6 cache key component. Kept in
+        # sync with self.filters (recomputed whenever the selection changes).
+        self.filter_ids = self._compute_filter_ids(filters)
 
         self.active_page_background = Windows.Media.Brushes.LightBlue
 
@@ -79,10 +85,55 @@ class SectionsResultsWindow(Windows.Window):
         self.MainFrame.Content = self.home_page
 
     # ------------------------------------------------------------------
+    # Error handling - CRITICAL for a modeless pyRevit window
+    # ------------------------------------------------------------------
+    # This window is modeless (.Show()), so its event handlers run on Revit's
+    # message loop with NO pyRevit exception wrapper around them. ANY exception
+    # that escapes a handler propagates unhandled into Revit and crashes it
+    # fatally (observed: an unhandled managed exception, ExceptionCode
+    # 0xe0434352, took Revit down). Therefore EVERY event handler / callback
+    # here MUST be wrapped in try/except and route to report_error.
+    def report_error(self, context=u""):
+        """Show the active exception (with full traceback) in a dialog instead
+        of letting it escape a handler and crash Revit. Call only from inside an
+        except block."""
+        try:
+            details = traceback.format_exc()
+        except Exception:
+            details = ""
+        header = u"אירעה תקלה"
+        if context:
+            header = u"אירעה תקלה ב{}".format(context)
+        try:
+            self.Hide()
+        except Exception:
+            pass
+        try:
+            forms.alert(
+                u"{}:\n\n{}".format(header, details), title="Get Bpm Sections"
+            )
+        except Exception:
+            pass
+        try:
+            self.Show()
+            self.Activate()
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------
     # State helpers
     # ------------------------------------------------------------------
     def has_filters(self):
         return bool(self.filters)
+
+    def _compute_filter_ids(self, filters):
+        """The selected filters' element-id ints (for the D6 cache key), or None
+        when no selection exists yet."""
+        if not filters:
+            return None
+        return [
+            RevitUtils.getElementIdValue(self.comp_doc, f.Id) for f in filters
+        ]
 
     # ------------------------------------------------------------------
     # Nav construction
@@ -159,75 +210,80 @@ class SectionsResultsWindow(Windows.Window):
     # Navigation
     # ------------------------------------------------------------------
     def home_button_click(self, sender, e):
-        self.MainFrame.Content = self.home_page
+        try:
+            self.MainFrame.Content = self.home_page
+        except Exception:
+            self.report_error(u"מעבר לדף הראשי")
 
     def _make_sheet_handler(self, sheet):
         def handler(sender, e):
+            # open_sheet is fully guarded; this stays a thin dispatch.
             self.open_sheet(sheet)
 
         return handler
 
     def open_sheet(self, sheet):
-        page = self._sheet_pages.get(sheet)
-        if page is None:
-            page = self._create_sheet_placeholder(sheet)
-            self._sheet_pages[sheet] = page
-            for btn, s in self.sheet_buttons:
-                if s == sheet:
-                    btn.Tag = page
-                    break
-        self.MainFrame.Content = page
-
-    def _create_sheet_placeholder(self, sheet):
-        """R1 placeholder page for a sheet. R2 replaces this with a real
-        SectionsSheetPage DataGrid."""
-        page = Windows.Controls.Page()
-        page.Title = sheet if sheet else u"-"
-        panel = Windows.Controls.StackPanel()
-        panel.FlowDirection = Windows.FlowDirection.RightToLeft
-        panel.Margin = Windows.Thickness(18)
-        count = len(self._sections_by_sheet.get(sheet, []))
-        text_block = Windows.Controls.TextBlock()
-        text_block.FontSize = 14
-        text_block.TextWrapping = Windows.TextWrapping.Wrap
-        text_block.Text = (
-            u"גיליון {} - {} חתכים. טבלת ההתאמה תתווסף בשלב הבא."
-        ).format(sheet if sheet else u"-", count)
-        panel.Children.Add(text_block)
-        page.Content = panel
-        return page
+        try:
+            page = self._sheet_pages.get(sheet)
+            if page is None:
+                sections = self._sections_by_sheet.get(sheet, [])
+                page = SectionsSheetPage(self, sheet, sections)
+                self._sheet_pages[sheet] = page
+                for btn, s in self.sheet_buttons:
+                    if s == sheet:
+                        btn.Tag = page
+                        break
+            # Lazy compute this sheet only, cache-served (D5). Runs once per page
+            # (its _computed guard); a Settings change drops the page so a fresh
+            # one recomputes with the new filters (D6). Navigate to the page ONLY
+            # if the compute succeeded - showing a half-built page whose DataGrid
+            # is in a bad state re-throws on the render path (uncaught) and
+            # crashes Revit. On failure the error was already shown; stay on Home.
+            if page.ensure_computed():
+                self.MainFrame.Content = page
+            else:
+                self.MainFrame.Content = self.home_page
+        except Exception:
+            self.report_error(u"פתיחת גיליון")
 
     def MainFrame_Navigated(self, sender, e):
-        for btn in self.nav_buttons:
-            btn.Background = Windows.Media.Brushes.Transparent
-        current_page = self.MainFrame.Content
-        for btn in self.nav_buttons:
-            if btn.Tag is not None and btn.Tag == current_page:
-                btn.Background = self.active_page_background
-                break
+        try:
+            for btn in self.nav_buttons:
+                btn.Background = Windows.Media.Brushes.Transparent
+            current_page = self.MainFrame.Content
+            for btn in self.nav_buttons:
+                if btn.Tag is not None and btn.Tag == current_page:
+                    btn.Background = self.active_page_background
+                    break
+        except Exception:
+            self.report_error(u"ניווט")
 
     # ------------------------------------------------------------------
     # Settings (R1 bridge to the existing modal dialog; R4 -> in-window page)
     # ------------------------------------------------------------------
     def settings_button_click(self, sender, e):
         try:
-            result = sfs.ensure_filter_selection(self.doc, force_window=True)
-        except Exception as ex:
-            print(ex)
-            self.Activate()
-            return
-        self.Activate()
-        status = result.get("status")
-        if status == "blocked":
-            self.Hide()
-            forms.alert(result.get("message", u"לא ניתן לשמור בחירת פילטרים."))
-            self.Show()
-            return
-        if status != "ok":
-            return
-        self.filters = result["filters"]
-        # A changed selection invalidates any computed sheet pages (D6). No cache
-        # is used yet in R1, but reset the pages so R2's real pages recompute.
-        self._reset_sheet_pages()
-        self.MainFrame.Content = self.home_page
-        self.enable_sheet_buttons()
+            try:
+                result = sfs.ensure_filter_selection(self.doc, force_window=True)
+            finally:
+                self.Activate()
+            status = result.get("status")
+            if status == "blocked":
+                self.Hide()
+                forms.alert(
+                    result.get("message", u"לא ניתן לשמור בחירת פילטרים.")
+                )
+                self.Show()
+                return
+            if status != "ok":
+                return
+            self.filters = result["filters"]
+            self.filter_ids = self._compute_filter_ids(self.filters)
+            # A changed selection changes the D6 cache key, so the next visit to
+            # a sheet recomputes with the new filters. Drop the already-built
+            # pages so they are rebuilt (and recomputed) on next navigation.
+            self._reset_sheet_pages()
+            self.MainFrame.Content = self.home_page
+            self.enable_sheet_buttons()
+        except Exception:
+            self.report_error(u"הגדרות")

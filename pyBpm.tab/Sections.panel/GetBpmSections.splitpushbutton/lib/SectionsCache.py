@@ -11,13 +11,22 @@ Invalidation (section 4.7 / R2-5):
     current comp VersionGUID differs, the whole cache entry is dropped and
     everything recomputes - this precisely detects a coordinator resync of the
     loaded link.
+  - FILTER SET (decision D6): the selected discipline-filter id set is part of
+    the validity key. Scores depend on which discipline filters define the
+    reference systems, so a changed selection must reset the cache - otherwise
+    the grid would show scores computed with the old disciplines. The ids are
+    stored as a sorted list; any mismatch drops the whole entry. Pre-D6 cache
+    entries (no filter_ids field) therefore invalidate on the first D6 read.
   - FALLBACK: a daily date stamp - a new day invalidates the entry too, so
     planner-side model changes (which don't change the comp version) are picked
     up at least once a day (and any time via the Recompute buttons).
 
 Only the score fields are cached; "exists" and "sheet" are always derived live.
-Empty/failed sections are cached as a {"skipped": True} marker so they are not
-recomputed on every open. IronPython 2.7. """
+Empty sections (0 reference systems) are cached as normal, displayable records
+with n=0 (decision D7) - the caller synthesizes that record. A transient failure
+is NOT cached (retried next visit). The legacy {"skipped": True} marker (and
+put_skipped) is retained for back-compat but no longer written by the live path.
+IronPython 2.7. """
 
 from System import DateTime
 
@@ -49,9 +58,11 @@ def get_comp_version(comp_doc):
 
 
 class SectionsScoreCache:
-    def __init__(self, doc, comp_doc):
+    def __init__(self, doc, comp_doc, filter_ids=None):
         self.version_guid, self.num_of_saves = get_comp_version(comp_doc)
         self.today = _today()
+        # D6: the discipline-filter id set participates in the validity key.
+        self.filter_key = self._normalize_filter_ids(filter_ids)
         self.key = (
             RevitUtils.get_model_info(doc)["modelGuid"]
             + "__"
@@ -63,12 +74,21 @@ class SectionsScoreCache:
             entry = self._fresh_entry()
         self.entry = entry
 
+    @staticmethod
+    def _normalize_filter_ids(filter_ids):
+        """Stable, order-independent representation of the selected filter id set
+        for the validity key. None (no selection given) stays None."""
+        if filter_ids is None:
+            return None
+        return sorted(int(fid) for fid in filter_ids)
+
     def _fresh_entry(self):
         return {
             "version_guid": self.version_guid,
             "num_of_saves": self.num_of_saves,
             "date": self.today,
-            "sections": {},  # str(section_id) -> result dict or {"skipped": True}
+            "filter_ids": self.filter_key,
+            "sections": {},  # str(section_id) -> result dict (empties: n=0 record)
         }
 
     def _is_valid(self, entry):
@@ -77,6 +97,8 @@ class SectionsScoreCache:
         if entry.get("version_guid") != self.version_guid:
             return False
         if entry.get("date") != self.today:
+            return False
+        if entry.get("filter_ids") != self.filter_key:
             return False
         return True
 
@@ -97,5 +119,6 @@ class SectionsScoreCache:
         self.entry["version_guid"] = self.version_guid
         self.entry["num_of_saves"] = self.num_of_saves
         self.entry["date"] = self.today
+        self.entry["filter_ids"] = self.filter_key
         self._store.data[self.key] = self.entry
         self._store.save_inputs()
