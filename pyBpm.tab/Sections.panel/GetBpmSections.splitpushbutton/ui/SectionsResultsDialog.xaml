@@ -23,9 +23,14 @@
                 <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
                     <WrapPanel x:Name="SheetScopePanel" />
                 </ScrollViewer>
-                <Button x:Name="RecomputeButton" Content="החל גיליונות וחשב מחדש"
-                    Click="recompute_click" HorizontalAlignment="Right"
-                    Padding="10 3 10 3" Margin="0 6 0 0" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0 6 0 0">
+                    <Button x:Name="RecomputeAllButton" Content="חשב הכל מחדש"
+                        Click="recompute_all_click" Padding="10 3 10 3"
+                        Margin="0 0 6 0" />
+                    <Button x:Name="RecomputeButton" Content="החל גיליונות"
+                        Click="recompute_click" Padding="10 3 10 3" />
+                </StackPanel>
             </StackPanel>
         </Border>
 

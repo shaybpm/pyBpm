@@ -27,6 +27,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import SectionsScoring as scoring  # type: ignore
 import SectionsFilterSelection as sfs  # type: ignore
 import SectionsCreate as creator  # type: ignore
+import SectionsCache as cache  # type: ignore
 from ProgressBar import ProgressBar  # extension-level lib
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsDialog.xaml")
@@ -108,7 +109,7 @@ class SectionsResultsDialog(Windows.Window):
 
         self._build_sheet_checkboxes()
         self._build_sort_combo()
-        self._compute()
+        self._load_display()
         self._render()
         self._loaded = True
 
@@ -119,11 +120,25 @@ class SectionsResultsDialog(Windows.Window):
         self.SheetScopePanel.Children.Clear()
         self.sheet_checkboxes = []
         for sheet in self.all_sheets:
+            entry = Windows.Controls.StackPanel()
+            entry.Orientation = Windows.Controls.Orientation.Horizontal
+            entry.Margin = Windows.Thickness(0, 2, 14, 2)
+
             checkbox = Windows.Controls.CheckBox()
             checkbox.Content = sheet
             checkbox.IsChecked = sheet in self.selected_sheets
-            checkbox.Margin = Windows.Thickness(0, 2, 12, 2)
-            self.SheetScopePanel.Children.Add(checkbox)
+            checkbox.VerticalAlignment = Windows.VerticalAlignment.Center
+            entry.Children.Add(checkbox)
+
+            recompute_button = Windows.Controls.Button()
+            recompute_button.Content = u"↻"
+            recompute_button.ToolTip = u"חשב את גיליון זה מחדש"
+            recompute_button.Margin = Windows.Thickness(4, 0, 0, 0)
+            recompute_button.Padding = Windows.Thickness(4, 0, 4, 0)
+            recompute_button.Click += self._make_recompute_sheet_handler(sheet)
+            entry.Children.Add(recompute_button)
+
+            self.SheetScopePanel.Children.Add(entry)
             self.sheet_checkboxes.append((checkbox, sheet))
 
     def _build_sort_combo(self):
@@ -147,35 +162,79 @@ class SectionsResultsDialog(Windows.Window):
             if it["sheet"] in self.selected_sheets
         ]
 
-    def _compute(self):
-        sections = self._scoped_sections()
-        holder = {"results": [], "skipped": 0}
+    def _compute_into_cache(self, sections, score_cache):
+        """Force-(re)score the given sections and write them into the cache."""
 
         def work(progress_bar):
             progress_bar.pre_set_main_status(u"מחשב ציוני התאמה...")
-
-            def progress_cb(i, total, name):
+            total = len(sections)
+            for i, section in enumerate(sections):
                 percent = int(100.0 * i / total) if total else 0
                 progress_bar.update_main_status(
                     percent, "{}/{}".format(i + 1, total)
                 )
-
-            results, skipped = scoring.compute_all_scores(
-                self.doc,
-                self.comp_link,
-                self.comp_doc,
-                self.filters,
-                sections=sections,
-                progress_cb=progress_cb,
-            )
-            holder["results"] = results
-            holder["skipped"] = skipped
+                try:
+                    section_id = scoring.section_id_value(self.comp_doc, section)
+                    result = scoring.score_section(
+                        self.doc,
+                        self.comp_link,
+                        self.comp_doc,
+                        section,
+                        self.filters,
+                    )
+                except Exception as ex:
+                    # A transient failure must NOT be cached as a skipped marker
+                    # (that would permanently hide a section that has a real score,
+                    # or overwrite a good cached score on a forced recompute).
+                    # Leaving it uncached means it is retried on the next load.
+                    print(ex)
+                    continue
+                if result is None:
+                    score_cache.put_skipped(section_id)  # genuinely empty section
+                else:
+                    score_cache.put(result)
+            score_cache.save()
 
         ProgressBar.exec_with_progressbar(
             work, title="Get Bpm Sections", cancelable=False
         )
 
-        results = holder["results"]
+    def _load_display(self, force_sections=None):
+        """Build self.results for the in-scope sections from the cache. Cache
+        misses (and the force_sections subset - used by the Recompute buttons)
+        are (re)computed and cached; the rest are served from the local file
+        (valid while the comp version + daily stamp match, see SectionsCache)."""
+        score_cache = cache.SectionsScoreCache(self.doc, self.comp_doc)
+        scoped = self._scoped_sections()
+
+        forced_ids = set()
+        to_compute = []
+        if force_sections:
+            to_compute = list(force_sections)
+            forced_ids = set(
+                scoring.section_id_value(self.comp_doc, s) for s in force_sections
+            )
+        for section in scoped:
+            section_id = scoring.section_id_value(self.comp_doc, section)
+            if section_id in forced_ids:
+                continue
+            if score_cache.get(section_id) is None:
+                to_compute.append(section)
+
+        if to_compute:
+            self._compute_into_cache(to_compute, score_cache)
+
+        results = []
+        skipped = 0
+        for section in scoped:
+            record = score_cache.get(
+                scoring.section_id_value(self.comp_doc, section)
+            )
+            if record is None or record.get("skipped"):
+                skipped += 1
+            else:
+                results.append(dict(record))
+
         host_names = creator.get_host_view_names(self.doc)
         for r in results:
             r["exists"] = (
@@ -183,7 +242,7 @@ class SectionsResultsDialog(Windows.Window):
             )
             r["sheet"] = self.sheet_by_section_name.get(r["section_name"])
         self.results = results
-        self.skipped = holder["skipped"]
+        self.skipped = skipped
 
     # ------------------------------------------------------------------
     # Render
@@ -260,6 +319,15 @@ class SectionsResultsDialog(Windows.Window):
             actions.Children.Add(self._action_button(u"מחיקה", r, "delete"))
         else:
             actions.Children.Add(self._action_button(u"יצירה", r, "create"))
+        recompute_button = Windows.Controls.Button()
+        recompute_button.Content = u"↻"
+        recompute_button.ToolTip = u"חשב חתך זה מחדש"
+        recompute_button.Margin = Windows.Thickness(0, 1, 4, 1)
+        recompute_button.Padding = Windows.Thickness(6, 1, 6, 1)
+        recompute_button.Click += self._make_recompute_section_handler(
+            r["section_name"]
+        )
+        actions.Children.Add(recompute_button)
         grid.Children.Add(actions)
 
         tier = scoring.score_tier(r["lower"])
@@ -317,8 +385,46 @@ class SectionsResultsDialog(Windows.Window):
             return
         self.selected_sheets = selected
         sfs.save_sheet_scope(self.doc, self.comp_doc, sorted(selected))
-        self._compute()
+        self._load_display()
         self._render()
+
+    def recompute_all_click(self, sender, e):
+        if not self._loaded:
+            return
+        self._load_display(force_sections=self._scoped_sections())
+        self._render()
+
+    def _recompute_section(self, name):
+        section = self.section_by_name.get(name)
+        if section is None:
+            return
+        self._load_display(force_sections=[section])
+        self._render()
+
+    def _recompute_sheet(self, sheet):
+        sections = [
+            it["section"]
+            for it in self.items
+            if it["sheet"] == sheet and it["sheet"] in self.selected_sheets
+        ]
+        if not sections:
+            return
+        self._load_display(force_sections=sections)
+        self._render()
+
+    def _make_recompute_section_handler(self, name):
+        def handler(sender, e):
+            if self._loaded:
+                self._recompute_section(name)
+
+        return handler
+
+    def _make_recompute_sheet_handler(self, sheet):
+        def handler(sender, e):
+            if self._loaded:
+                self._recompute_sheet(sheet)
+
+        return handler
 
     def _alert(self, message):
         self.Hide()

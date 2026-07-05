@@ -336,6 +336,11 @@ def get_candidate_sections_with_sheets(comp_doc):
     return items, sorted(sheets_set)
 
 
+def section_id_value(comp_doc, section):
+    """Integer id of a section (used as the cache key for its score)."""
+    return RevitUtils.getElementIdValue(comp_doc, section.Id)
+
+
 def _parameter_filter_to_element_filter(pfe):
     """Convert a ParameterFilterElement to an ElementFilter covering BOTH its
     categories and its rules.
