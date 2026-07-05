@@ -13,8 +13,9 @@ Home page and COMPUTES NOTHING (decision D1). The nav column (D8) is:
 Sheet buttons are disabled until a valid discipline-filter selection exists
 (decision D9). A sheet button navigates to a real DataGrid page
 (SectionsSheetPage), created lazily and computed on first visit (R2). The
-Settings button bridges to the existing modal FilterSelectionDialog via
-SectionsFilterSelection; R4 turns it into an in-window page.
+Settings button navigates to an in-window SectionsSettingsPage (D4); saving a
+selection there refreshes the D6 cache key, drops computed pages, and unlocks
+the sheets.
 
 Modeled on DEV.extension CoordChecker's ResultsWindow (Frame + dynamic nav
 buttons + active-page highlight). IronPython 2.7 / WPF; Hebrew only inside
@@ -44,6 +45,7 @@ import SectionsFilterSelection as sfs  # type: ignore
 import SectionsCreate as creator  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
+from SectionsSettingsPage import SectionsSettingsPage  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsWindow.xaml")
 
@@ -90,13 +92,14 @@ class SectionsResultsWindow(Windows.Window):
                 it["section"]
             )
 
-        # Pages. Home is built once; sheet pages are created lazily (R2 will
-        # make them real DataGrid pages - there may be many sheets).
+        # Pages. Home + Settings are built once; sheet pages are created lazily
+        # (there may be many sheets).
         self.home_page = SectionsHomePage(self)
+        self.settings_page = SectionsSettingsPage(self)
         self._sheet_pages = {}  # sheet -> Page
 
-        # Highlightable nav buttons (Home + sheets). Settings opens a modal, so
-        # it is never a Frame page and is not in this list.
+        # Highlightable nav buttons (Home + Settings + sheets) - each maps to a
+        # Frame page via btn.Tag and is highlighted when that page is shown.
         self.nav_buttons = []
         self.sheet_buttons = []  # list of (button, sheet)
 
@@ -194,11 +197,13 @@ class SectionsResultsWindow(Windows.Window):
         self.NavTopPanel.Children.Add(self.home_button)
         self.nav_buttons.append(self.home_button)
 
-        # Settings (fixed, below Home).
+        # Settings (fixed, below Home) - highlighted like the other nav pages.
         self.settings_button = self._make_nav_button(
             u"דף הגדרות", self.settings_button_click
         )
+        self.settings_button.Tag = self.settings_page
         self.NavTopPanel.Children.Add(self.settings_button)
+        self.nav_buttons.append(self.settings_button)
 
         # Separator between the fixed top and the scrollable sheets (D8).
         self.NavTopPanel.Children.Add(self._make_separator())
@@ -287,34 +292,41 @@ class SectionsResultsWindow(Windows.Window):
             self.report_error(u"ניווט")
 
     # ------------------------------------------------------------------
-    # Settings (R1 bridge to the existing modal dialog; R4 -> in-window page)
+    # Settings - in-window page (D4)
     # ------------------------------------------------------------------
     def settings_button_click(self, sender, e):
         try:
-            try:
-                result = sfs.ensure_filter_selection(self.doc, force_window=True)
-            finally:
-                self.Activate()
-            status = result.get("status")
-            if status == "blocked":
-                self.Hide()
-                forms.alert(
-                    result.get("message", u"לא ניתן לשמור בחירת פילטרים.")
-                )
-                self.Show()
-                return
-            if status != "ok":
-                return
-            self.filters = result["filters"]
-            self.filter_ids = self._compute_filter_ids(self.filters)
-            # A changed selection changes the D6 cache key, so the next visit to
-            # a sheet recomputes with the new filters. Drop the already-built
-            # pages so they are rebuilt (and recomputed) on next navigation.
-            self._reset_sheet_pages()
-            self.MainFrame.Content = self.home_page
-            self.enable_sheet_buttons()
+            # Re-sync the checkboxes to the saved selection so a prior visit's
+            # unsaved edits are discarded, then show the page.
+            self.settings_page.sync_to_current()
+            self.MainFrame.Content = self.settings_page
         except Exception:
             self.report_error(u"הגדרות")
+
+    def apply_filter_selection(self, selected):
+        """Persist and activate a new discipline-filter selection (from the
+        Settings page): save it, refresh the D6 cache key, drop computed sheet
+        pages so they recompute with the new filters, unlock the sheet nav
+        buttons (D9), and return to Home."""
+        ids = [
+            RevitUtils.getElementIdValue(self.comp_doc, f.Id) for f in selected
+        ]
+        sfs.save_selection(self.doc, self.comp_doc, ids)
+        self.filters = selected
+        self.filter_ids = self._compute_filter_ids(selected)
+        self._reset_sheet_pages()
+        self.enable_sheet_buttons()
+        self.MainFrame.Content = self.home_page
+
+    def notify(self, message):
+        """Show a plain info message from a modeless-safe context."""
+        try:
+            self.Hide()
+            forms.alert(message, title="Get Bpm Sections")
+            self.Show()
+            self.Activate()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Row actions (R3) - all Revit writes go through the External Event.
