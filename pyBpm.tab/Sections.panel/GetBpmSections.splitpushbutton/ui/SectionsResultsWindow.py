@@ -50,6 +50,7 @@ from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
 from SectionsSettingsPage import SectionsSettingsPage  # type: ignore
 from SectionsDisplay import SectionsDisplay  # type: ignore
+import SectionsImage  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsWindow.xaml")
 
@@ -156,6 +157,16 @@ class SectionsResultsWindow(Windows.Window):
         # Event can't re-register a server after teardown (section 6 leak guard).
         self._closed = False
 
+        # Section-image state (S4): a stable comp-model key for deterministic file
+        # names, and the set of image files created this session (deleted on
+        # close, D6). Old files are culled on open.
+        self._comp_key = self._compute_comp_key(comp_doc)
+        self._session_image_files = set()
+        try:
+            SectionsImage.cull_old_files()
+        except Exception:
+            pass
+
         self._build_nav()
 
         self.MainFrame.Content = self.home_page
@@ -214,6 +225,18 @@ class SectionsResultsWindow(Windows.Window):
         return [
             RevitUtils.getElementIdValue(self.comp_doc, f.Id) for f in filters
         ]
+
+    def _compute_comp_key(self, comp_doc):
+        """A stable ASCII-ish key identifying the comp model, for deterministic
+        image file names. The comp model is a cloud link (get_model_info returns
+        its modelGuid); fall back to its title if that ever fails."""
+        try:
+            return RevitUtils.get_model_info(comp_doc)["modelGuid"]
+        except Exception:
+            try:
+                return comp_doc.Title
+            except Exception:
+                return "comp"
 
     # ------------------------------------------------------------------
     # Nav construction
@@ -405,6 +428,7 @@ class SectionsResultsWindow(Windows.Window):
             enabled = bool(getattr(row, "exists", False))  # D2
             for sys_record in systems:
                 self.SystemsDataGrid.Items.Add(SystemRowItem(sys_record, enabled))
+            self._load_details_image()
             self.open_details_pane()
         except Exception:
             self.report_error(u"פתיחת פרטים")
@@ -525,9 +549,117 @@ class SectionsResultsWindow(Windows.Window):
             except Exception:
                 pass
         try:
+            SectionsImage.delete_files(list(self._session_image_files))
+        except Exception:
+            pass
+        try:
             script.set_envvar(WINDOW_ENVVAR_KEY, None)
         except Exception:
             pass
+
+    # ------------------------------------------------------------------
+    # Section image (S4) - exported from the compilation model, cached per
+    # (comp model, section) under a deterministic temp path.
+    # ------------------------------------------------------------------
+    def _current_image_path(self):
+        """Deterministic PNG path for the section shown in the details panel, or
+        None when no panel/section is active."""
+        if self._details_row is None:
+            return None
+        section = getattr(self._details_row, "section", None)
+        if section is None:
+            return None
+        section_id = RevitUtils.getElementIdValue(self.comp_doc, section.Id)
+        return SectionsImage.deterministic_path(self._comp_key, section_id)
+
+    def _load_image_into(self, path):
+        """Load a PNG into the details Image control as a frozen, OnLoad bitmap so
+        the file is NOT locked (allows later delete/refresh)."""
+        from System import Uri
+        from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
+
+        bmp = BitmapImage()
+        bmp.BeginInit()
+        bmp.CacheOption = BitmapCacheOption.OnLoad
+        bmp.UriSource = Uri(path)
+        bmp.EndInit()
+        bmp.Freeze()
+        self.DetailsImage.Source = bmp
+        self._session_image_files.add(path)
+
+    def _load_details_image(self):
+        """Show the section's cached image if present; otherwise clear the control
+        (the planner uses 'הצג תמונה' to export). Never fatal."""
+        try:
+            self.DetailsImage.Source = None
+            path = self._current_image_path()
+            if path and os.path.exists(path):
+                self._load_image_into(path)
+        except Exception:
+            try:
+                self.DetailsImage.Source = None
+            except Exception:
+                pass
+
+    def _request_export_image(self):
+        """Enqueue an image export (runs on the API context) for the current
+        section."""
+        try:
+            if self._details_row is None:
+                return
+            section = getattr(self._details_row, "section", None)
+            path = self._current_image_path()
+            if section is None or path is None:
+                return
+            self._pending.append(
+                {"action": "export_image", "section": section, "dest": path}
+            )
+            self._action_event.Raise()
+        except Exception:
+            self.report_error(u"ייצוא תמונה")
+
+    def ShowImage_Click(self, sender, e):
+        try:
+            path = self._current_image_path()
+            if path is None:
+                return
+            if os.path.exists(path):
+                self._load_image_into(path)
+            else:
+                self._request_export_image()
+        except Exception:
+            self.report_error(u"הצגת תמונה")
+
+    def RefreshImage_Click(self, sender, e):
+        try:
+            path = self._current_image_path()
+            if path is None:
+                return
+            # Release the WPF handle, drop the cached PNG, then re-export.
+            try:
+                self.DetailsImage.Source = None
+            except Exception:
+                pass
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except Exception:
+                pass
+            self._request_export_image()
+        except Exception:
+            self.report_error(u"רענון תמונה")
+
+    def ShowImageLarge_Click(self, sender, e):
+        try:
+            path = self._current_image_path()
+            if path and os.path.exists(path):
+                from System.Diagnostics import Process
+
+                Process.Start(path)  # default Windows image viewer (D5)
+            else:
+                self.notify(u"אין תמונה להצגה - לחץ 'הצג תמונה' תחילה")
+        except Exception:
+            self.report_error(u"הצגת תמונה בגדול")
 
     def notify(self, message):
         """Show a plain info message from a modeless-safe context."""
@@ -646,6 +778,33 @@ class SectionsResultsWindow(Windows.Window):
         if action == "hide":
             if self._display is not None:
                 self._display.clear(uiapp)
+            return False
+        if action == "export_image":
+            # ExportImage is read-only (no transaction). Execute runs on the main
+            # UI thread, so loading the result into the WPF Image control here is
+            # safe - but only if the panel still shows the section it was for.
+            dest = None
+            try:
+                dest = SectionsImage.export_section_image(
+                    self.comp_doc, request["section"], request["dest"]
+                )
+            except Exception as ex:
+                print(ex)
+            if dest:
+                try:
+                    if self._current_image_path() == dest:
+                        self._load_image_into(dest)
+                    else:
+                        self._session_image_files.add(dest)
+                except Exception:
+                    pass
+            else:
+                # Clean no-op failure (e.g. Revit wrote nothing) - tell the user,
+                # otherwise the panel just stays blank with no explanation.
+                try:
+                    self.notify(u"ייצוא התמונה נכשל")
+                except Exception:
+                    pass
             return False
 
         name = request["name"]

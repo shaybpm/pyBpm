@@ -120,14 +120,27 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- Image area (built in S4) -->
-                    <Border Grid.Row="2" Margin="0,6,0,0" BorderBrush="LightGray"
-                        BorderThickness="1" MinHeight="40">
-                        <TextBlock x:Name="DetailsImagePlaceholder"
-                            Text="תמונה - בהמשך" Foreground="Gray"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" Margin="4" />
-                    </Border>
+                    <!-- Image area (S4): exported PNG of the compilation section. -->
+                    <Grid Grid.Row="2" Margin="0,6,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Orientation="Horizontal"
+                            Margin="0,0,0,4">
+                            <Button Content="הצג תמונה" Click="ShowImage_Click"
+                                Padding="6,2,6,2" Margin="0,0,4,0" />
+                            <Button Content="רענן" Click="RefreshImage_Click"
+                                Padding="6,2,6,2" Margin="0,0,4,0" />
+                            <Button Content="הצג בגדול" Click="ShowImageLarge_Click"
+                                Padding="6,2,6,2" Margin="0,0,4,0" />
+                        </StackPanel>
+                        <Border Grid.Row="1" BorderBrush="LightGray"
+                            BorderThickness="1" MinHeight="120">
+                            <Image x:Name="DetailsImage" Stretch="Uniform"
+                                MaxHeight="260" Margin="2" />
+                        </Border>
+                    </Grid>
                 </Grid>
             </Grid>
         </Border>
