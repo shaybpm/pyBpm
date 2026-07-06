@@ -641,6 +641,27 @@ class SectionsResultsWindow(Windows.Window):
         bmp.Freeze()
         self.DetailsImage.Source = bmp
         self._session_image_files.add(path)
+        self._update_image_buttons()
+
+    def _update_image_buttons(self):
+        """Show only 'הצג תמונה' while there is no image; once an image is loaded
+        hide it and reveal the icon-only open + refresh buttons instead."""
+        try:
+            has_image = self.DetailsImage.Source is not None
+            self.ShowImageButton.Visibility = (
+                Windows.Visibility.Collapsed
+                if has_image
+                else Windows.Visibility.Visible
+            )
+            vis = (
+                Windows.Visibility.Visible
+                if has_image
+                else Windows.Visibility.Collapsed
+            )
+            self.OpenImageButton.Visibility = vis
+            self.RefreshImageButton.Visibility = vis
+        except Exception:
+            pass
 
     def _load_details_image(self):
         """Show the section's cached image if present; otherwise clear the control
@@ -655,6 +676,7 @@ class SectionsResultsWindow(Windows.Window):
                 self.DetailsImage.Source = None
             except Exception:
                 pass
+        self._update_image_buttons()
 
     def _request_export_image(self):
         """Enqueue an image export (runs on the API context) for the current

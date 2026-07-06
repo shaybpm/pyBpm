@@ -8,6 +8,105 @@
     Width="1100"
     Height="750"
     FlowDirection="LeftToRight">
+    <Window.Resources>
+        <!-- Flat, rounded button look with hover/pressed/disabled states. The
+             default WPF (Aero) chrome is replaced by a Border + ContentPresenter
+             so every action button in the details pane shares one designed style.
+             Neutral variant (icon + secondary text buttons). -->
+        <Style x:Key="FlatButtonBase" TargetType="Button">
+            <Setter Property="Foreground" Value="#2B2B2B" />
+            <Setter Property="Background" Value="#F4F5F7" />
+            <Setter Property="BorderBrush" Value="#CFD3DA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#E6F0FB" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#5B9BD5" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#CFE2F5" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#3A7CBD" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#F0F0F0" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#E2E2E2" />
+                                <Setter Property="Foreground" Value="#AAAAAA" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Icon-only square button (refresh / open / close). -->
+        <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+
+        <!-- Secondary text button - uniform height/padding. -->
+        <Style x:Key="TextButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- Primary call-to-action (filled accent) - used for "הצג תמונה". -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Background" Value="#2D7DD2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2468B2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1E568F" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#BFC4CB" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid Margin="4">
         <Border Margin="4" BorderBrush="Gray" BorderThickness="2">
             <Grid x:Name="RootGrid">
@@ -87,8 +186,9 @@
                         <TextBlock x:Name="DetailsHeader" FontWeight="Bold"
                             FontSize="13" TextTrimming="CharacterEllipsis"
                             VerticalAlignment="Center" Text="פרטי חתך" />
-                        <Button Grid.Column="1" Content="סגור"
-                            Click="CloseDetails_Click" Padding="8,2,8,2" />
+                        <Button Grid.Column="1" Content="&#x2715;" ToolTip="סגור"
+                            Click="CloseDetails_Click"
+                            Style="{StaticResource IconButton}" />
                     </Grid>
 
                     <!-- Hint shown when the host section does not exist yet: the
@@ -140,14 +240,22 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
+                        <!-- No image yet -> only "הצג תמונה" is shown. Once an image
+                             exists it hides and the icon-only open + refresh buttons
+                             appear (visibility toggled from _update_image_buttons). -->
                         <StackPanel Grid.Row="0" Orientation="Horizontal"
                             Margin="0,0,0,4">
-                            <Button Content="הצג תמונה" Click="ShowImage_Click"
-                                Padding="6,2,6,2" Margin="0,0,4,0" />
-                            <Button Content="רענן" Click="RefreshImage_Click"
-                                Padding="6,2,6,2" Margin="0,0,4,0" />
-                            <Button Content="הצג בגדול" Click="ShowImageLarge_Click"
-                                Padding="6,2,6,2" Margin="0,0,4,0" />
+                            <Button x:Name="ShowImageButton" Content="הצג תמונה"
+                                Click="ShowImage_Click"
+                                Style="{StaticResource PrimaryButton}" />
+                            <Button x:Name="OpenImageButton" Content="&#x2922;"
+                                ToolTip="פתח בגדול" Click="ShowImageLarge_Click"
+                                Style="{StaticResource IconButton}"
+                                Visibility="Collapsed" />
+                            <Button x:Name="RefreshImageButton" Content="&#x21BB;"
+                                ToolTip="רענן תמונה" Click="RefreshImage_Click"
+                                Style="{StaticResource IconButton}"
+                                Visibility="Collapsed" />
                         </StackPanel>
                         <Border Grid.Row="1" BorderBrush="LightGray"
                             BorderThickness="1" MinHeight="120">
