@@ -42,12 +42,38 @@ from pyrevit import forms
 
 import RevitUtils  # extension-level lib
 import SectionsFilterSelection as sfs  # type: ignore
+import SectionsScoring as scoring  # type: ignore
 import SectionsCreate as creator  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
 from SectionsSettingsPage import SectionsSettingsPage  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsWindow.xaml")
+
+
+class SystemRowItem(object):
+    """Bindable row for one reference system in the details panel (S2). Built from
+    a per-system record ({id, category, overlap, points, failed}) collected by
+    SectionsScoring in S1. overlap/points are None for a system whose boolean op
+    failed - shown as '?'. display_text is the toggle-button label (wired in S3)."""
+
+    def __init__(self, record):
+        self.system_id = int(record.get("id", -1))
+        category = record.get("category")
+        self.category = category if category else u"-"
+        overlap = record.get("overlap")
+        points = record.get("points")
+        failed = record.get("failed")
+        if failed or overlap is None:
+            self.overlap_text = u"?"
+        else:
+            self.overlap_text = u"{:.0f}%".format(overlap * 100)
+        if failed or points is None:
+            self.points_text = u"?"
+        else:
+            self.points_text = u"{:.1f}".format(points)
+        # S3 toggles this between "הצג" / "הסתר".
+        self.display_text = u"הצג"
 
 
 class SectionActionEventHandler(IExternalEventHandler):
@@ -109,6 +135,9 @@ class SectionsResultsWindow(Windows.Window):
         self._pending = []
         self._action_handler = SectionActionEventHandler(self)
         self._action_event = ExternalEvent.Create(self._action_handler)
+
+        # Details side-panel state (S2): the row whose systems are shown, or None.
+        self._details_row = None
 
         self._build_nav()
 
@@ -243,6 +272,7 @@ class SectionsResultsWindow(Windows.Window):
     # ------------------------------------------------------------------
     def home_button_click(self, sender, e):
         try:
+            self._on_navigate_away()  # D7
             self.MainFrame.Content = self.home_page
         except Exception:
             self.report_error(u"מעבר לדף הראשי")
@@ -256,6 +286,7 @@ class SectionsResultsWindow(Windows.Window):
 
     def open_sheet(self, sheet):
         try:
+            self._on_navigate_away()  # D7
             page = self._sheet_pages.get(sheet)
             if page is None:
                 sections = self._sections_by_sheet.get(sheet, [])
@@ -295,6 +326,7 @@ class SectionsResultsWindow(Windows.Window):
     # ------------------------------------------------------------------
     def settings_button_click(self, sender, e):
         try:
+            self._on_navigate_away()  # D7
             # Re-sync the checkboxes to the saved selection so a prior visit's
             # unsaved edits are discarded, then show the page.
             self.settings_page.sync_to_current()
@@ -307,6 +339,7 @@ class SectionsResultsWindow(Windows.Window):
         Settings page): save it, refresh the D6 cache key, drop computed sheet
         pages so they recompute with the new filters, unlock the sheet nav
         buttons (D9), and return to Home."""
+        self._on_navigate_away()  # D7 - the filter change drops sheet pages too
         ids = [
             RevitUtils.getElementIdValue(self.comp_doc, f.Id) for f in selected
         ]
@@ -316,6 +349,65 @@ class SectionsResultsWindow(Windows.Window):
         self._reset_sheet_pages()
         self.enable_sheet_buttons()
         self.MainFrame.Content = self.home_page
+
+    # ------------------------------------------------------------------
+    # Details side-panel (S2)
+    # ------------------------------------------------------------------
+    def open_details(self, row, page=None):
+        """Open the details panel for a section row: list its reference systems
+        (the S1 per-system records). A cache record predating S1 lacks the
+        'systems' field, so recompute that single section and re-read it. Wrapped
+        - reached from a modeless Click handler."""
+        try:
+            if row is None:
+                return
+            record = row.result
+            systems = record.get("systems") if record else None
+            if systems is None and page is not None:
+                # Pre-S1 record: recompute this one section, then re-read it from
+                # the (now updated) cache - recompute rebuilds the row objects, so
+                # the passed `row` is stale for the record but still valid as the
+                # section reference.
+                page.recompute([row.section])
+                section_id = scoring.section_id_value(self.comp_doc, row.section)
+                record = page._score_cache.get(section_id)
+                systems = record.get("systems") if record else None
+            if systems is None:
+                systems = []
+            self._details_row = row
+            header = record.get("section_name", u"") if record else u""
+            self.DetailsHeader.Text = header if header else u"פרטי חתך"
+            self.SystemsDataGrid.Items.Clear()
+            for sys_record in systems:
+                self.SystemsDataGrid.Items.Add(SystemRowItem(sys_record))
+            self.open_details_pane()
+        except Exception:
+            self.report_error(u"פתיחת פרטים")
+
+    def open_details_pane(self):
+        """Expand the details columns ([3] divider + [4] pane)."""
+        self.RootGrid.ColumnDefinitions[3].Width = Windows.GridLength(1)
+        self.RootGrid.ColumnDefinitions[4].Width = Windows.GridLength(340)
+
+    def close_details_pane(self):
+        """Collapse the details columns and drop the tracked row."""
+        self.RootGrid.ColumnDefinitions[3].Width = Windows.GridLength(0)
+        self.RootGrid.ColumnDefinitions[4].Width = Windows.GridLength(0)
+        self._details_row = None
+
+    def CloseDetails_Click(self, sender, e):
+        try:
+            self.close_details_pane()
+        except Exception:
+            self.report_error(u"סגירת פרטים")
+
+    def _on_navigate_away(self):
+        """D7: leaving the current sheet/page closes the details panel (S3 will
+        also switch off the dc3d display from here)."""
+        try:
+            self.close_details_pane()
+        except Exception:
+            pass
 
     def notify(self, message):
         """Show a plain info message from a modeless-safe context."""

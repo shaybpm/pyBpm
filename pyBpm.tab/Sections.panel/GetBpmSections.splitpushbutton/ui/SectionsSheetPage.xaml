@@ -130,7 +130,7 @@
                 <!-- per-row actions: create (when missing) / go-to + delete
                      (when it exists) + recompute. Buttons swap by {Binding
                      exists}. Each resolves its row via sender.DataContext. -->
-                <DataGridTemplateColumn Header="פעולות" Width="230">
+                <DataGridTemplateColumn Header="פעולות" Width="300">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
@@ -176,6 +176,9 @@
                                 <Button Content="↻" ToolTip="חשב חתך זה מחדש"
                                     Click="Recompute_Click"
                                     Padding="6,1,6,1" Margin="8,1,2,1" />
+                                <Button Content="פרטים" ToolTip="הצג את מערכות החתך"
+                                    Click="Details_Click"
+                                    Padding="6,1,6,1" Margin="2,1,2,1" />
                             </StackPanel>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>

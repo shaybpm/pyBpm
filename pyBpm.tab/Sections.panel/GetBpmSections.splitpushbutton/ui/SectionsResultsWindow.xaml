@@ -10,7 +10,7 @@
     FlowDirection="LeftToRight">
     <Grid Margin="4">
         <Border Margin="4" BorderBrush="Gray" BorderThickness="2">
-            <Grid>
+            <Grid x:Name="RootGrid">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -19,10 +19,14 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <!-- [3] details divider + [4] details pane: collapsed (0) until
+                         a "פרטים" click opens them (S2). Widths set from code. -->
+                    <ColumnDefinition Width="0" />
+                    <ColumnDefinition Width="0" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Header -->
-                <Border Grid.Row="0" Grid.ColumnSpan="3" BorderThickness="0,0,0,1"
+                <Border Grid.Row="0" Grid.ColumnSpan="5" BorderThickness="0,0,0,1"
                     BorderBrush="Gray">
                     <Grid Margin="8,6,8,6">
                         <TextBlock x:Name="TitleTextBlock" FontWeight="Bold"
@@ -58,6 +62,68 @@
                 <Grid Grid.Row="1" Grid.Column="2" Margin="4">
                     <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"
                         Navigated="MainFrame_Navigated" />
+                </Grid>
+
+                <!-- Details divider (column [3]) -->
+                <Border Grid.Row="1" Grid.Column="3" Background="Gray" Width="1" />
+
+                <!-- Details side-panel (column [4]) - reference systems of the
+                     clicked section + (S4) exported image. Collapsed until opened. -->
+                <Grid Grid.Row="1" Grid.Column="4" x:Name="DetailsPane"
+                    FlowDirection="RightToLeft" Margin="6,4,4,4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header + close -->
+                    <Grid Grid.Row="0" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="DetailsHeader" FontWeight="Bold"
+                            FontSize="13" TextTrimming="CharacterEllipsis"
+                            VerticalAlignment="Center" Text="פרטי חתך" />
+                        <Button Grid.Column="1" Content="סגור"
+                            Click="CloseDetails_Click" Padding="8,2,8,2" />
+                    </Grid>
+
+                    <!-- Reference systems -->
+                    <DataGrid x:Name="SystemsDataGrid" Grid.Row="1"
+                        AutoGenerateColumns="False" HeadersVisibility="Column"
+                        CanUserAddRows="False" CanUserDeleteRows="False"
+                        IsReadOnly="True" SelectionMode="Single"
+                        GridLinesVisibility="All">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="קטגוריה"
+                                Binding="{Binding category}" Width="*" />
+                            <DataGridTextColumn Header="% חפיפה"
+                                Binding="{Binding overlap_text}" Width="70" />
+                            <DataGridTextColumn Header="נקודות"
+                                Binding="{Binding points_text}" Width="60" />
+                            <DataGridTemplateColumn Header="פעולה" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <!-- Toggle button wired in S3; disabled placeholder here. -->
+                                        <Button Content="{Binding display_text}"
+                                            IsEnabled="False"
+                                            Padding="6,1,6,1" Margin="2,1,2,1" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Image area (built in S4) -->
+                    <Border Grid.Row="2" Margin="0,6,0,0" BorderBrush="LightGray"
+                        BorderThickness="1" MinHeight="40">
+                        <TextBlock x:Name="DetailsImagePlaceholder"
+                            Text="תמונה - בהמשך" Foreground="Gray"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" Margin="4" />
+                    </Border>
                 </Grid>
             </Grid>
         </Border>

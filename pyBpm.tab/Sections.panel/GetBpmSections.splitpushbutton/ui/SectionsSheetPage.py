@@ -414,6 +414,14 @@ class SectionsSheetPage(Windows.Controls.Page):
         except Exception:
             self.res_window.report_error(u"מחיקת חתך")
 
+    def Details_Click(self, sender, e):
+        try:
+            # Pass self so the window can recompute this single section if the
+            # cached record predates the S1 per-system data.
+            self.res_window.open_details(sender.DataContext, self)
+        except Exception:
+            self.res_window.report_error(u"פתיחת פרטים")
+
     def Recompute_Click(self, sender, e):
         try:
             # Recompute is a bulk action too (D3): act on the whole selection when
