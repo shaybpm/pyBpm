@@ -39,6 +39,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 sys.path.append(os.path.dirname(__file__))
 
 from pyrevit import forms
+from pyrevit import script
+from pyrevit.revit import events
 
 import RevitUtils  # extension-level lib
 import SectionsFilterSelection as sfs  # type: ignore
@@ -47,8 +49,13 @@ import SectionsCreate as creator  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
 from SectionsSettingsPage import SectionsSettingsPage  # type: ignore
+from SectionsDisplay import SectionsDisplay  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsWindow.xaml")
+
+# Envvar holding the single live window instance - the launcher's duplicate guard
+# checks it so a second click never spins up a second dc3d server (section 6).
+WINDOW_ENVVAR_KEY = "PYBPM_GETBPMSECTIONS_WINDOW"
 
 
 class SystemRowItem(object):
@@ -57,7 +64,7 @@ class SystemRowItem(object):
     SectionsScoring in S1. overlap/points are None for a system whose boolean op
     failed - shown as '?'. display_text is the toggle-button label (wired in S3)."""
 
-    def __init__(self, record):
+    def __init__(self, record, enabled=False):
         self.system_id = int(record.get("id", -1))
         category = record.get("category")
         self.category = category if category else u"-"
@@ -74,6 +81,8 @@ class SystemRowItem(object):
             self.points_text = u"{:.1f}".format(points)
         # S3 toggles this between "הצג" / "הסתר".
         self.display_text = u"הצג"
+        # D2: the toggle button is enabled only when the host section exists.
+        self.enabled = bool(enabled)
 
 
 class SectionActionEventHandler(IExternalEventHandler):
@@ -139,9 +148,21 @@ class SectionsResultsWindow(Windows.Window):
         # Details side-panel state (S2): the row whose systems are shown, or None.
         self._details_row = None
 
+        # dc3d display state (S3): the single-owner display server (created lazily)
+        # and the system id currently drawn (None = nothing shown).
+        self._display = None
+        self._current_display_system_id = None
+        # Set on window close so a display request still queued in the External
+        # Event can't re-register a server after teardown (section 6 leak guard).
+        self._closed = False
+
         self._build_nav()
 
         self.MainFrame.Content = self.home_page
+
+        # Window close -> tear down the dc3d server and release the single-window
+        # envvar so the tool can be reopened (section 6).
+        self.Closed += self._on_window_closed
 
     # ------------------------------------------------------------------
     # Error handling - CRITICAL for a modeless pyRevit window
@@ -361,6 +382,9 @@ class SectionsResultsWindow(Windows.Window):
         try:
             if row is None:
                 return
+            # Opening details for a (possibly different) section clears any system
+            # currently drawn (D7/D8) - fresh rows default to the "הצג" state.
+            self.request_hide()
             record = row.result
             systems = record.get("systems") if record else None
             if systems is None and page is not None:
@@ -378,8 +402,9 @@ class SectionsResultsWindow(Windows.Window):
             header = record.get("section_name", u"") if record else u""
             self.DetailsHeader.Text = header if header else u"פרטי חתך"
             self.SystemsDataGrid.Items.Clear()
+            enabled = bool(getattr(row, "exists", False))  # D2
             for sys_record in systems:
-                self.SystemsDataGrid.Items.Add(SystemRowItem(sys_record))
+                self.SystemsDataGrid.Items.Add(SystemRowItem(sys_record, enabled))
             self.open_details_pane()
         except Exception:
             self.report_error(u"פתיחת פרטים")
@@ -390,7 +415,9 @@ class SectionsResultsWindow(Windows.Window):
         self.RootGrid.ColumnDefinitions[4].Width = Windows.GridLength(340)
 
     def close_details_pane(self):
-        """Collapse the details columns and drop the tracked row."""
+        """Collapse the details columns, switch off any dc3d display (D7), and
+        drop the tracked row."""
+        self.request_hide()
         self.RootGrid.ColumnDefinitions[3].Width = Windows.GridLength(0)
         self.RootGrid.ColumnDefinitions[4].Width = Windows.GridLength(0)
         self._details_row = None
@@ -402,10 +429,103 @@ class SectionsResultsWindow(Windows.Window):
             self.report_error(u"סגירת פרטים")
 
     def _on_navigate_away(self):
-        """D7: leaving the current sheet/page closes the details panel (S3 will
-        also switch off the dc3d display from here)."""
+        """D7: leaving the current sheet/page closes the details panel (and, via
+        close_details_pane, switches off the dc3d display)."""
         try:
             self.close_details_pane()
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------
+    # dc3d display (S3) - the single-owner server lives on the window; every
+    # Revit op runs through the External Event (funnelled with the row actions).
+    # ------------------------------------------------------------------
+    def _get_display(self):
+        if self._display is None:
+            self._display = SectionsDisplay(
+                self.uidoc, self.comp_doc, self.comp_link
+            )
+        return self._display
+
+    def request_display(self, system_id, section_name):
+        """Enqueue a 'show this system' request and raise the External Event."""
+        try:
+            self._pending.append(
+                {
+                    "action": "display",
+                    "system_id": int(system_id),
+                    "section_name": section_name,
+                }
+            )
+            self._current_display_system_id = int(system_id)
+            self._action_event.Raise()
+        except Exception:
+            self.report_error(u"תצוגת מערכת")
+
+    def request_hide(self):
+        """Enqueue a 'hide' request (no-op downstream if nothing is shown)."""
+        try:
+            self._current_display_system_id = None
+            self._pending.append({"action": "hide"})
+            self._action_event.Raise()
+        except Exception:
+            pass
+
+    def ToggleSystemDisplay_Click(self, sender, e):
+        try:
+            sys_row = sender.DataContext
+            if sys_row is None:
+                return
+            # D2: display happens in the host section, so it must exist.
+            if self._details_row is None or not getattr(
+                self._details_row, "exists", False
+            ):
+                self.notify(u"צור את החתך תחילה כדי להציג את המערכת")
+                return
+            if self._current_display_system_id == sys_row.system_id:
+                # Already shown -> toggle off.
+                self.request_hide()
+                sys_row.display_text = u"הצג"
+            else:
+                self.request_display(
+                    sys_row.system_id, self._details_row.section_name
+                )
+                for item in self.SystemsDataGrid.Items:
+                    try:
+                        item.display_text = (
+                            u"הסתר"
+                            if item.system_id == sys_row.system_id
+                            else u"הצג"
+                        )
+                    except Exception:
+                        pass
+            self.SystemsDataGrid.Items.Refresh()
+        except Exception:
+            self.report_error(u"תצוגת מערכת")
+
+    def _on_window_closed(self, sender, e):
+        """Tear down the dc3d server and release the single-window envvar.
+
+        remove_server mutates the ExternalService registry the Draw Thread reads,
+        so it MUST run on the Revit API context - defer it via
+        execute_in_revit_context (the ViewRange reference pattern), NOT inline on
+        this UI-thread Closed handler. First flip _closed and drop the pending
+        queue so any display request still in flight can't re-register a server
+        after teardown."""
+        self._closed = True
+        self._pending = []
+        try:
+            if self._display is not None:
+                events.execute_in_revit_context(self._display.shutdown)
+        except Exception:
+            # Fallback: if scheduling fails, remove directly (best effort).
+            try:
+                if self._display is not None:
+                    self._display.shutdown()
+            except Exception:
+                pass
+        try:
+            script.set_envvar(WINDOW_ENVVAR_KEY, None)
         except Exception:
             pass
 
@@ -489,6 +609,10 @@ class SectionsResultsWindow(Windows.Window):
         queue - Revit coalesces rapid Raise() calls into a single Execute."""
         requests = self._pending
         self._pending = []
+        if self._closed:
+            # Window is closing/closed - never (re-)touch the model or register a
+            # server from a late-firing Execute. Teardown is handled separately.
+            return
         changed = False
         for request in requests:
             try:
@@ -511,6 +635,19 @@ class SectionsResultsWindow(Windows.Window):
         """Perform one action. Returns True if an exists-state may have changed.
         Every Transaction is always closed (commit or rollback)."""
         action = request["action"]
+
+        # dc3d display/hide (S3) - no exists-state change, so return False. These
+        # never open a transaction (DirectContext3D draws outside the model).
+        if action == "display":
+            self._get_display().show_system(
+                uiapp, request["system_id"], request["section_name"]
+            )
+            return False
+        if action == "hide":
+            if self._display is not None:
+                self._display.clear(uiapp)
+            return False
+
         name = request["name"]
 
         if action == "create":

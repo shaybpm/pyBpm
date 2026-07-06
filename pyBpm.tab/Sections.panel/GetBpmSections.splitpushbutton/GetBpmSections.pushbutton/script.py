@@ -16,8 +16,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "ui"))
 
 import SectionsScoring as scoring  # type: ignore
 import SectionsFilterSelection as sfs  # type: ignore
-from SectionsResultsWindow import SectionsResultsWindow  # type: ignore
+from SectionsResultsWindow import SectionsResultsWindow, WINDOW_ENVVAR_KEY  # type: ignore
 from pyrevit.forms import alert
+from pyrevit import script
 
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
@@ -41,6 +42,27 @@ def _resolve_saved_filters(comp_doc):
 
 
 def run():
+    # Duplicate-window guard (section 6): a second window would create a second
+    # dc3d server - never allow it. If one is already open and visible, just
+    # activate it. A stale/invalid handle is cleared and we proceed.
+    existing = script.get_envvar(WINDOW_ENVVAR_KEY)
+    if existing is not None:
+        try:
+            if existing.IsVisible:
+                existing.Activate()
+                return
+        except Exception:
+            pass
+        # Not visible but a handle lingers (orphaned/half-closed). Close it so its
+        # own Closed handler tears down its dc3d server before we build a new one
+        # sharing the same fixed server GUID - otherwise the orphan's later
+        # teardown could unregister the new window's server.
+        try:
+            existing.Close()
+        except Exception:
+            pass
+        script.set_envvar(WINDOW_ENVVAR_KEY, None)
+
     comp_link, comp_doc, error = sfs.check_preconditions(doc)
     if error:
         alert(error)
@@ -54,6 +76,7 @@ def run():
     window = SectionsResultsWindow(
         uidoc, comp_link, comp_doc, filters, items, sheets
     )
+    script.set_envvar(WINDOW_ENVVAR_KEY, window)
     window.Show()
 
 

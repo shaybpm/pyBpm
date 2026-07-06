@@ -106,9 +106,13 @@
                             <DataGridTemplateColumn Header="פעולה" Width="80">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <!-- Toggle button wired in S3; disabled placeholder here. -->
+                                        <!-- Show/hide the system's solids in the host
+                                             section (S3). Enabled only when the host
+                                             section exists (D2). -->
                                         <Button Content="{Binding display_text}"
-                                            IsEnabled="False"
+                                            IsEnabled="{Binding enabled}"
+                                            Click="ToggleSystemDisplay_Click"
+                                            ToolTip="הצג/הסתר את המערכת בחתך המארח"
                                             Padding="6,1,6,1" Margin="2,1,2,1" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
