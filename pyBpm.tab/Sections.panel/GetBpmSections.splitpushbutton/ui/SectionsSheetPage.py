@@ -241,6 +241,7 @@ class SectionsSheetPage(Windows.Controls.Page):
             "upper": -1,
             "n": 0,
             "failed": 0,
+            "systems": [],
         }
 
     def _build_items(self):

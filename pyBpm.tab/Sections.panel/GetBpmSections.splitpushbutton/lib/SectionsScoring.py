@@ -118,6 +118,17 @@ def _create_solid_cube_by_minmax(min_p, max_p):
     )
 
 
+def _category_name(element):
+    """Best-effort category display name of an element ("" if unavailable)."""
+    try:
+        cat = element.Category
+        if cat is None:
+            return u""
+        return cat.Name
+    except:
+        return u""
+
+
 def _b_i_category_from_other_doc(host_doc, category):
     if category is None:
         return None
@@ -427,27 +438,54 @@ def score_section(host_doc, comp_link, comp_doc, section, selected_filters):
         return None
     per_system = 100.0 / n
 
-    # Pass 2 - score each reference system.
+    # Pass 2 - score each reference system, collecting a per-system record
+    # (S1: id + category + overlap/points) for the details panel. A failed
+    # system has unknown overlap -> overlap/points are None (section 5.4).
     lower = 0.0
     upper = 0.0
     failed_systems = 0
+    systems = []
     for ref in references:
+        el = ref["el"]
+        sys_id = RevitUtils.getElementIdValue(comp_doc, el.Id)
+        category = _category_name(el)
         if ref["failed"]:
             failed_systems += 1
             upper += per_system  # lower += 0 (overlap unknown)
+            systems.append({
+                "id": sys_id,
+                "category": category,
+                "overlap": None,
+                "points": None,
+                "failed": True,
+            })
             continue
         comp_clipped = ref["clipped"]
         comp_vol = comp_clipped.Volume
-        intersected, op_failed = _measure_overlap(host_doc, ref["el"], comp_clipped)
+        intersected, op_failed = _measure_overlap(host_doc, el, comp_clipped)
         if op_failed:
             failed_systems += 1
             upper += per_system  # lower += 0 (overlap unknown)
+            systems.append({
+                "id": sys_id,
+                "category": category,
+                "overlap": None,
+                "points": None,
+                "failed": True,
+            })
         else:
             fraction = intersected / comp_vol if comp_vol > 0 else 0.0
             if fraction > 1.0:
                 fraction = 1.0
             lower += fraction * per_system
             upper += fraction * per_system
+            systems.append({
+                "id": sys_id,
+                "category": category,
+                "overlap": float(fraction),
+                "points": float(fraction * per_system),
+                "failed": False,
+            })
 
     return {
         "section_name": RevitUtils.getElementName(section),
@@ -456,6 +494,7 @@ def score_section(host_doc, comp_link, comp_doc, section, selected_filters):
         "upper": upper,
         "n": n,
         "failed": failed_systems,
+        "systems": systems,
     }
 
 

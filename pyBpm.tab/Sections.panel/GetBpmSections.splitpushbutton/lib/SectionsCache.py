@@ -35,7 +35,20 @@ import RevitUtils
 
 CACHE_FILE = "get_bpm_sections_scores_cache"
 
-_RESULT_FIELDS = ["section_name", "section_id", "lower", "upper", "n", "failed"]
+# S1: "systems" is a list of per-reference-system dicts
+# ({id, category, overlap, points, failed}) feeding the details panel. It is a
+# JSON-serializable list of primitives, so put() copies it like the scalar
+# fields. Records written before S1 lack it; the details-panel consumer treats a
+# missing "systems" as "needs recompute" (no cache-key change).
+_RESULT_FIELDS = [
+    "section_name",
+    "section_id",
+    "lower",
+    "upper",
+    "n",
+    "failed",
+    "systems",
+]
 
 
 def _today():
