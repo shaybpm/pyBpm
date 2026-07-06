@@ -5,8 +5,8 @@ Handles the launch preconditions, collecting the compilation model's
 discipline filters, persisting the planner's selection locally (per user,
 scoped to both model GUIDs) and opening the selection window when needed.
 
-Shipped as shared code for the GetBpmSections.splitpushbutton buttons
-(Settings opens the window; the main flow reuses the saved selection).
+Shipped as shared code under GetBpmSections.pushbutton; the main flow reuses
+the saved selection, and the in-window Settings page opens the selection window.
 IronPython 2.7 - no f-strings; Hebrew only inside string bodies (this is a
 lib module, not a button script.py, so its strings are never parsed for
 tooltips). """

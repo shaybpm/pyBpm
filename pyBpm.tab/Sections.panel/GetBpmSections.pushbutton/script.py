@@ -11,8 +11,8 @@ __author__ = "Eyal Sinay"
 
 import os, sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "ui"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
 
 import SectionsScoring as scoring  # type: ignore
 import SectionsFilterSelection as sfs  # type: ignore
