@@ -94,6 +94,10 @@ class SectionsSheetPage(Windows.Controls.Page):
         self.items = []
         self.filters = []  # type: list[FilterItem]
         self.filter_event_is_on = True
+        # S6: row selection drives the details panel. Suppressed while the grid is
+        # rebuilt programmatically (Clear/Add fire SelectionChanged) so only real
+        # user selection changes open/close the panel.
+        self._selection_event_is_on = True
         self._computed = False
         self._default_sorted = False
         self._score_cache = None
@@ -287,19 +291,50 @@ class SectionsSheetPage(Windows.Controls.Page):
         sort_descriptions_copy = [
             sort_desc for sort_desc in self.DataGrid.Items.SortDescriptions
         ]
-        self.DataGrid.Items.Clear()
+        # Preserve the single selection across the rebuild so the details panel
+        # (selection-driven, S6) stays on the same row through filter/refresh AND
+        # recompute. Match by the section View (stable across rebuilds) rather than
+        # by row-object identity, since recompute allocates NEW row objects.
+        prev_section = None
+        try:
+            if self.DataGrid.SelectedItems.Count == 1:
+                prev_section = getattr(
+                    self.DataGrid.SelectedItems[0], "section", None
+                )
+        except Exception:
+            prev_section = None
         showing = 0
-        for row in self.items:
-            if not self.is_row_visible(row):
-                continue
-            showing += 1
-            self.DataGrid.Items.Add(row)
-        self.DataGrid.Items.SortDescriptions.Clear()
-        for sort_desc in sort_descriptions_copy:
-            self.DataGrid.Items.SortDescriptions.Add(sort_desc)
+        # Suppress selection events while Clear/Add churn the selection; a single
+        # deterministic sync runs at the end instead.
+        self._selection_event_is_on = False
+        try:
+            self.DataGrid.Items.Clear()
+            restore_row = None
+            for row in self.items:
+                if not self.is_row_visible(row):
+                    continue
+                showing += 1
+                self.DataGrid.Items.Add(row)
+                if prev_section is not None and (
+                    getattr(row, "section", None) is prev_section
+                ):
+                    restore_row = row
+            self.DataGrid.Items.SortDescriptions.Clear()
+            for sort_desc in sort_descriptions_copy:
+                self.DataGrid.Items.SortDescriptions.Add(sort_desc)
+            if restore_row is not None:
+                try:
+                    self.DataGrid.SelectedItem = restore_row
+                except Exception:
+                    pass
+        finally:
+            self._selection_event_is_on = True
         self.set_status_text_block(
             u"סה\"כ: {}, מוצג: {}".format(len(self.items), showing)
         )
+        # Selection was set programmatically (event suppressed) - sync the details
+        # pane once, without recomputing from inside this rebuild.
+        self._sync_details_to_selection(False)
 
     def set_status_text_block(self, text):
         self.StatusTextBlock.Text = text
@@ -414,13 +449,33 @@ class SectionsSheetPage(Windows.Controls.Page):
         except Exception:
             self.res_window.report_error(u"מחיקת חתך")
 
-    def Details_Click(self, sender, e):
+    def SectionSelection_Changed(self, sender, e):
+        # S6: selecting exactly one row shows its details; any other selection
+        # count (0 or multi) closes the panel - so the shown details always match
+        # the selection. Suppressed during programmatic grid rebuilds.
+        if not self._selection_event_is_on:
+            return
+        self._sync_details_to_selection(True)
+
+    def _sync_details_to_selection(self, allow_recompute):
+        """Open the details panel for the single selected row, or close it when the
+        selection is not exactly one. allow_recompute=False when called from a grid
+        rebuild (avoids a recompute-inside-rebuild)."""
         try:
-            # Pass self so the window can recompute this single section if the
-            # cached record predates the S1 per-system data.
-            self.res_window.open_details(sender.DataContext, self)
+            selected = self.DataGrid.SelectedItems
+            if selected.Count == 1:
+                row = selected[0]
+                if row is self.res_window._details_row:
+                    # Same row still selected (e.g. a filter keystroke or a
+                    # create/delete refresh) - light refresh only, so the shown
+                    # image/overlay is not reloaded/cleared.
+                    self.res_window.refresh_details_exists()
+                else:
+                    self.res_window.open_details(row, self, allow_recompute)
+            else:
+                self.res_window.close_details_pane()
         except Exception:
-            self.res_window.report_error(u"פתיחת פרטים")
+            self.res_window.report_error(u"פרטים")
 
     def Recompute_Click(self, sender, e):
         try:

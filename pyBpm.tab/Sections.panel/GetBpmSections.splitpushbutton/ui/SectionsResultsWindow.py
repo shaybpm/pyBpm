@@ -44,7 +44,6 @@ from pyrevit.revit import events
 
 import RevitUtils  # extension-level lib
 import SectionsFilterSelection as sfs  # type: ignore
-import SectionsScoring as scoring  # type: ignore
 import SectionsCreate as creator  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
@@ -348,6 +347,10 @@ class SectionsResultsWindow(Windows.Window):
             # crashes Revit. On failure the error was already shown; stay on Home.
             if page.ensure_computed():
                 self.MainFrame.Content = page
+                # A cached page keeps its prior row selection but the pane was just
+                # closed by _on_navigate_away - reconcile so a retained selection
+                # re-opens its details (no recompute from this rebuild path).
+                page._sync_details_to_selection(False)
             else:
                 self.MainFrame.Content = self.home_page
         except Exception:
@@ -397,11 +400,13 @@ class SectionsResultsWindow(Windows.Window):
     # ------------------------------------------------------------------
     # Details side-panel (S2)
     # ------------------------------------------------------------------
-    def open_details(self, row, page=None):
+    def open_details(self, row, page=None, allow_recompute=True):
         """Open the details panel for a section row: list its reference systems
         (the S1 per-system records). A cache record predating S1 lacks the
-        'systems' field, so recompute that single section and re-read it. Wrapped
-        - reached from a modeless Click handler."""
+        'systems' field, so recompute that single section and re-read it (unless
+        allow_recompute is False - the case when this is called from within a grid
+        rebuild, to avoid a recompute-inside-rebuild recursion). Wrapped - reached
+        from a modeless selection/Click handler."""
         try:
             if row is None:
                 return
@@ -410,15 +415,13 @@ class SectionsResultsWindow(Windows.Window):
             self.request_hide()
             record = row.result
             systems = record.get("systems") if record else None
-            if systems is None and page is not None:
-                # Pre-S1 record: recompute this one section, then re-read it from
-                # the (now updated) cache - recompute rebuilds the row objects, so
-                # the passed `row` is stale for the record but still valid as the
-                # section reference.
+            if systems is None and page is not None and allow_recompute:
+                # Pre-S1 record (missing 'systems'): recompute this one section and
+                # RETURN. recompute rebuilds the grid rows and its selection-sync
+                # re-opens the details for the FRESH row (which now has systems) -
+                # doing it here with the stale `row` would desync pane vs grid.
                 page.recompute([row.section])
-                section_id = scoring.section_id_value(self.comp_doc, row.section)
-                record = page._score_cache.get(section_id)
-                systems = record.get("systems") if record else None
+                return
             if systems is None:
                 systems = []
             self._details_row = row
@@ -464,11 +467,12 @@ class SectionsResultsWindow(Windows.Window):
         except Exception:
             self.report_error(u"סגירת פרטים")
 
-    def _resync_details_exists(self):
-        """Re-sync the OPEN details pane after an in-place exists refresh
-        (Create/Delete): update the D2 toggle-enable + the empty/exists hints, and
-        hide a lingering overlay if the host section was just deleted. No-op if the
-        panel is closed. Runs on the API context (from execute_pending_action)."""
+    def refresh_details_exists(self):
+        """Light refresh of the OPEN details pane for the SAME section (no reload):
+        re-sync the D2 toggle-enable + the empty/exists hints from the current
+        exists state, and hide a lingering overlay if the section was just deleted.
+        Called (S6) when a grid rebuild keeps the same row selected, so filtering
+        does not disturb the shown image/overlay. No-op if the panel is closed."""
         if self._details_row is None:
             return
         try:
@@ -813,10 +817,10 @@ class SectionsResultsWindow(Windows.Window):
                         page.refresh_exists()
                 except Exception as ex:
                     print(ex)
-            # refresh_exists updated _details_row.exists in place - re-sync the
-            # open details pane so the D2 toggle buttons + hint reflect it without
-            # a reopen.
-            self._resync_details_exists()
+            # refresh_exists rebuilds each page's grid, which (selection-driven,
+            # S6) re-syncs the open details pane to the still-selected row - so the
+            # D2 toggle-enable / hint / overlay follow the new exists state with no
+            # extra work here.
 
     def _run_action(self, uiapp, request):
         """Perform one action. Returns True if an exists-state may have changed.
