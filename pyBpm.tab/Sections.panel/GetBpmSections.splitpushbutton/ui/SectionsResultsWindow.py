@@ -428,6 +428,18 @@ class SectionsResultsWindow(Windows.Window):
             enabled = bool(getattr(row, "exists", False))  # D2
             for sys_record in systems:
                 self.SystemsDataGrid.Items.Add(SystemRowItem(sys_record, enabled))
+            # UX hints (S5): empty-state + "create the section first" when it does
+            # not exist yet (the toggle buttons are disabled until then).
+            self.DetailsEmptyHint.Visibility = (
+                Windows.Visibility.Visible
+                if not systems
+                else Windows.Visibility.Collapsed
+            )
+            self.DetailsExistsHint.Visibility = (
+                Windows.Visibility.Collapsed
+                if (enabled or not systems)
+                else Windows.Visibility.Visible
+            )
             self._load_details_image()
             self.open_details_pane()
         except Exception:
@@ -451,6 +463,45 @@ class SectionsResultsWindow(Windows.Window):
             self.close_details_pane()
         except Exception:
             self.report_error(u"סגירת פרטים")
+
+    def _resync_details_exists(self):
+        """Re-sync the OPEN details pane after an in-place exists refresh
+        (Create/Delete): update the D2 toggle-enable + the empty/exists hints, and
+        hide a lingering overlay if the host section was just deleted. No-op if the
+        panel is closed. Runs on the API context (from execute_pending_action)."""
+        if self._details_row is None:
+            return
+        try:
+            enabled = bool(getattr(self._details_row, "exists", False))
+            has_items = False
+            for item in self.SystemsDataGrid.Items:
+                has_items = True
+                try:
+                    item.enabled = enabled
+                except Exception:
+                    pass
+            # Section deleted while a system was shown -> hide the overlay so it
+            # doesn't linger with no host section.
+            if not enabled and self._current_display_system_id is not None:
+                self.request_hide()
+                for item in self.SystemsDataGrid.Items:
+                    try:
+                        item.display_text = u"הצג"
+                    except Exception:
+                        pass
+            self.SystemsDataGrid.Items.Refresh()
+            self.DetailsEmptyHint.Visibility = (
+                Windows.Visibility.Collapsed
+                if has_items
+                else Windows.Visibility.Visible
+            )
+            self.DetailsExistsHint.Visibility = (
+                Windows.Visibility.Collapsed
+                if (enabled or not has_items)
+                else Windows.Visibility.Visible
+            )
+        except Exception:
+            pass
 
     def _on_navigate_away(self):
         """D7: leaving the current sheet/page closes the details panel (and, via
@@ -762,6 +813,10 @@ class SectionsResultsWindow(Windows.Window):
                         page.refresh_exists()
                 except Exception as ex:
                     print(ex)
+            # refresh_exists updated _details_row.exists in place - re-sync the
+            # open details pane so the D2 toggle buttons + hint reflect it without
+            # a reopen.
+            self._resync_details_exists()
 
     def _run_action(self, uiapp, request):
         """Perform one action. Returns True if an exists-state may have changed.

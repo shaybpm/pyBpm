@@ -73,6 +73,7 @@
                     FlowDirection="RightToLeft" Margin="6,4,4,4">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -90,8 +91,15 @@
                             Click="CloseDetails_Click" Padding="8,2,8,2" />
                     </Grid>
 
-                    <!-- Reference systems -->
-                    <DataGrid x:Name="SystemsDataGrid" Grid.Row="1"
+                    <!-- Hint shown when the host section does not exist yet: the
+                         toggle buttons are disabled until it is created (D2). -->
+                    <TextBlock Grid.Row="1" x:Name="DetailsExistsHint"
+                        Text="צור את החתך במודל שלך כדי להציג מערכות בו"
+                        Foreground="#B26A00" TextWrapping="Wrap"
+                        Margin="0,0,0,4" Visibility="Collapsed" />
+
+                    <!-- Reference systems (+ empty-state overlay in the same cell) -->
+                    <DataGrid x:Name="SystemsDataGrid" Grid.Row="2"
                         AutoGenerateColumns="False" HeadersVisibility="Column"
                         CanUserAddRows="False" CanUserDeleteRows="False"
                         IsReadOnly="True" SelectionMode="Single"
@@ -120,8 +128,14 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
+                    <!-- Empty-state overlay (same cell as the grid) -->
+                    <TextBlock Grid.Row="2" x:Name="DetailsEmptyHint"
+                        Text="אין מערכות בחתך זה" Foreground="Gray"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="Collapsed" />
+
                     <!-- Image area (S4): exported PNG of the compilation section. -->
-                    <Grid Grid.Row="2" Margin="0,6,0,0">
+                    <Grid Grid.Row="3" Margin="0,6,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
