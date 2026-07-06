@@ -1,35 +1,168 @@
 <Page xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="הגדרות">
+    <Page.Resources>
+        <!-- Button styles duplicated from SectionsResultsWindow.xaml. A Page loaded
+             inside the window's <Frame> does NOT inherit the Window.Resources, so
+             every StaticResource used here must live in Page.Resources. KEEP IN
+             SYNC with SectionsResultsWindow.xaml / SectionsSheetPage.xaml. -->
+        <Style x:Key="FlatButtonBase" TargetType="Button">
+            <Setter Property="Foreground" Value="#2B2B2B" />
+            <Setter Property="Background" Value="#F4F5F7" />
+            <Setter Property="BorderBrush" Value="#CFD3DA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#E6F0FB" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#5B9BD5" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#CFE2F5" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#3A7CBD" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#F0F0F0" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#E2E2E2" />
+                                <Setter Property="Foreground" Value="#AAAAAA" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary text button - uniform height/padding. -->
+        <Style x:Key="TextButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- Compact secondary button - for the per-group header actions. -->
+        <Style x:Key="SmallButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Padding" Value="10,0,10,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <!-- Primary call-to-action (filled accent) - used for "שמור בחירה". -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Background" Value="#2D7DD2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2468B2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1E568F" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#BFC4CB" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Sub-navigation button (מסננים / יצירת חתך). Active one gets a LightBlue
+             Background set from code (mirrors the main window nav highlight). -->
+        <Style x:Key="SubNavButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="18,0,18,0" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Page.Resources>
+
     <Grid FlowDirection="RightToLeft" Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8"
-            FontSize="13" FontWeight="Bold"
-            Text="בחר את הפילטרים של הדיסציפלינות הרלוונטיות עבור התאמת החתכים. שינוי הבחירה מאפס את החישובים." />
-
-        <Border Grid.Row="1" BorderThickness="1" BorderBrush="Gray">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="groups_panel" Margin="6" />
-            </ScrollViewer>
-        </Border>
-
-        <Border Grid.Row="2" Padding="0,6,0,6" Margin="0,6,0,6"
-            BorderThickness="0,1,0,1" BorderBrush="Gray">
+        <!-- Sub-navigation bar -->
+        <Border Grid.Row="0" Padding="0,0,0,8" Margin="0,0,0,10"
+            BorderThickness="0,0,0,1" BorderBrush="#DDDDDD">
             <StackPanel Orientation="Horizontal">
-                <Button Content="סמן הכל" Click="select_all_click"
-                    Padding="10,3,10,3" Margin="0,0,6,0" />
-                <Button Content="נקה הכל" Click="clear_all_click"
-                    Padding="10,3,10,3" />
+                <Button x:Name="FiltersNavButton" Content="מסננים"
+                    Click="show_filters_click" Style="{StaticResource SubNavButton}" />
+                <Button x:Name="CreateNavButton" Content="יצירת חתך"
+                    Click="show_create_click" Style="{StaticResource SubNavButton}" />
             </StackPanel>
         </Border>
 
-        <Button Grid.Row="3" Content="שמור בחירה" Click="save_click"
-            Padding="14,4,14,4" HorizontalAlignment="Right" FontWeight="Bold" />
+        <!-- ============ Sub-page: Filters ============ -->
+        <Grid Grid.Row="1" x:Name="FiltersPanel">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8"
+                FontSize="13" FontWeight="Bold"
+                Text="בחר את הפילטרים של הדיסציפלינות הרלוונטיות עבור התאמת החתכים. שינוי הבחירה מאפס את החישובים." />
+
+            <Border Grid.Row="1" BorderThickness="1" BorderBrush="Gray">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="groups_panel" Margin="6" />
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- ============ Sub-page: Section creation (placeholder) ============ -->
+        <Grid Grid.Row="1" x:Name="CreatePanel" Visibility="Collapsed">
+            <StackPanel VerticalAlignment="Top">
+                <TextBlock FontSize="13" FontWeight="Bold" Margin="0,0,0,8"
+                    Text="יצירת חתך" />
+                <TextBlock Foreground="Gray" TextWrapping="Wrap"
+                    Text="אפשרויות יצירת החתך יתווספו כאן." />
+            </StackPanel>
+        </Grid>
+
+        <!-- Save bar - shell level, shared by all sub-pages. Disabled until an
+             unsaved change exists (dirty tracking in code-behind). -->
+        <Border Grid.Row="2" Padding="0,8,0,0" Margin="0,10,0,0"
+            BorderThickness="0,1,0,0" BorderBrush="Gray">
+            <Button x:Name="SaveButton" Content="שמור הגדרות" Click="save_click"
+                Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
+                IsEnabled="False" />
+        </Border>
     </Grid>
 </Page>

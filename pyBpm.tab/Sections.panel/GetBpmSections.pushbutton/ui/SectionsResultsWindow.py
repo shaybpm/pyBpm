@@ -313,8 +313,31 @@ class SectionsResultsWindow(Windows.Window):
     # ------------------------------------------------------------------
     # Navigation
     # ------------------------------------------------------------------
+    def _confirm_leave_settings(self):
+        """When navigating away from the Settings page with unsaved changes, ask
+        for confirmation. Returns True if navigation may proceed."""
+        try:
+            if self.MainFrame.Content is self.settings_page and (
+                self.settings_page.has_unsaved_changes()
+            ):
+                self.Hide()
+                ok = forms.alert(
+                    u"קיימים שינויים בהגדרות שלא נשמרו. לעזוב את דף ההגדרות בלי לשמור?",
+                    title="Get Bpm Sections",
+                    yes=True,
+                    no=True,
+                )
+                self.Show()
+                self.Activate()
+                return ok
+        except Exception:
+            pass
+        return True
+
     def home_button_click(self, sender, e):
         try:
+            if not self._confirm_leave_settings():
+                return
             self._on_navigate_away()  # D7
             self.MainFrame.Content = self.home_page
         except Exception:
@@ -329,6 +352,8 @@ class SectionsResultsWindow(Windows.Window):
 
     def open_sheet(self, sheet):
         try:
+            if not self._confirm_leave_settings():
+                return
             self._on_navigate_away()  # D7
             page = self._sheet_pages.get(sheet)
             if page is None:
@@ -373,6 +398,10 @@ class SectionsResultsWindow(Windows.Window):
     # ------------------------------------------------------------------
     def settings_button_click(self, sender, e):
         try:
+            # Already on Settings -> do nothing (re-syncing here would silently
+            # discard the user's unsaved edits).
+            if self.MainFrame.Content is self.settings_page:
+                return
             self._on_navigate_away()  # D7
             # Re-sync the checkboxes to the saved selection so a prior visit's
             # unsaved edits are discarded, then show the page.
