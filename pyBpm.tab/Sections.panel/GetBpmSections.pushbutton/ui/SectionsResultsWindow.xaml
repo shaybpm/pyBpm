@@ -220,8 +220,8 @@
                                         <Button Content="{Binding display_text}"
                                             IsEnabled="{Binding enabled}"
                                             Click="ToggleSystemDisplay_Click"
-                                            ToolTip="הצג/הסתר את המערכת בחתך המארח"
-                                            Padding="6,1,6,1" Margin="2,1,2,1" />
+                                            ToolTip="הצג/נקה את המערכת בחתך המארח"
+                                            Style="{StaticResource TextButton}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

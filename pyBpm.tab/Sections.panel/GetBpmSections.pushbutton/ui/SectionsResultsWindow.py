@@ -79,7 +79,7 @@ class SystemRowItem(object):
             self.points_text = u"?"
         else:
             self.points_text = u"{:.1f}".format(points)
-        # S3 toggles this between "הצג" / "הסתר".
+        # S3 toggles this between "הצג" / "נקה".
         self.display_text = u"הצג"
         # D2: the toggle button is enabled only when the host section exists.
         self.enabled = bool(enabled)
@@ -572,7 +572,7 @@ class SectionsResultsWindow(Windows.Window):
                 for item in self.SystemsDataGrid.Items:
                     try:
                         item.display_text = (
-                            u"הסתר"
+                            u"נקה"
                             if item.system_id == sys_row.system_id
                             else u"הצג"
                         )
