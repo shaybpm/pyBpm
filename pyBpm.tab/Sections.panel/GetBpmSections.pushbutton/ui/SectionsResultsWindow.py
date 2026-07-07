@@ -118,6 +118,11 @@ class SectionsResultsWindow(Windows.Window):
         # sync with self.filters (recomputed whenever the selection changes).
         self.filter_ids = self._compute_filter_ids(filters)
 
+        # Per-user section-creation defaults (Section Type / View Template),
+        # applied to future Create actions only. Loaded up front so a Create works
+        # with the saved defaults even if the user never opens Settings.
+        self.create_settings = sfs.load_create_settings(self.doc)
+
         self.active_page_background = Windows.Media.Brushes.LightBlue
 
         # sheet number -> its section views (for the lazy sheet pages, R2)
@@ -425,6 +430,23 @@ class SectionsResultsWindow(Windows.Window):
         self._reset_sheet_pages()
         self.enable_sheet_buttons()
         self.MainFrame.Content = self.home_page
+
+    def apply_create_settings(self, settings):
+        """Persist and activate new section-creation defaults (Section Type / View
+        Template) from the Settings page. Cheap: they affect only future Create
+        actions, so no cache reset / page rebuild is needed."""
+        sfs.save_create_settings(self.doc, settings)
+        self.create_settings = settings
+
+    def _resolve_create_type_id(self):
+        """The section VFT id to create with: the saved default if still valid,
+        otherwise the model default (get_type_id may prompt on the UI thread)."""
+        resolved = creator.resolve_section_type_id(
+            self.doc, self.create_settings.get("section_type_id")
+        )
+        if resolved is not None:
+            return resolved
+        return creator.get_type_id(self.doc)
 
     # ------------------------------------------------------------------
     # Details side-panel (S2)
@@ -799,7 +821,7 @@ class SectionsResultsWindow(Windows.Window):
                 targets = [row for row in rows if not row.exists]
                 if not targets:
                     return
-                type_id = creator.get_type_id(self.doc)  # may prompt (UI thread)
+                type_id = self._resolve_create_type_id()  # may prompt (UI thread)
                 self.Activate()
                 if not type_id:
                     return
@@ -938,6 +960,15 @@ class SectionsResultsWindow(Windows.Window):
             except Exception as ex:
                 print(ex)
             if new_view is not None:
+                # Apply the saved View Template (best-effort, same transaction).
+                try:
+                    creator.apply_view_template(
+                        self.doc,
+                        new_view,
+                        self.create_settings.get("view_template_id"),
+                    )
+                except Exception as ex:
+                    print(ex)
                 t.Commit()
                 return True
             t.RollBack()

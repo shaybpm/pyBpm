@@ -36,6 +36,10 @@ NO_FILTERS_MSG = u"לא נמצאו פילטרים לפי פורמט. פנה למ
 # Local per-user stores (persist across Revit sessions).
 SELECTION_FILE = "get_bpm_sections_filter_selection"
 SHEET_SCOPE_FILE = "get_bpm_sections_sheet_scope"
+# Section-creation defaults (Section Type / View Template). Keyed by the HOST
+# model guid alone - both settings are host-doc elements (unlike the filter
+# selection, which also depends on the comp model).
+CREATE_SETTINGS_FILE = "get_bpm_sections_create_settings"
 
 # Presentation order of discipline groups (values of discipline_dict).
 _DISCIPLINE_ORDER = ["A", "S", "P", "SP", "C", "H", "E", "G", "F"]
@@ -138,6 +142,23 @@ def load_sheet_scope(doc, comp_doc):
 def save_sheet_scope(doc, comp_doc, sheet_numbers):
     inputs = LocalUserInputs(SHEET_SCOPE_FILE)
     inputs.data[_selection_key(doc, comp_doc)] = sheet_numbers
+    inputs.save_inputs()
+
+
+def _host_key(doc):
+    return RevitUtils.get_model_info(doc)["modelGuid"]
+
+
+def load_create_settings(doc):
+    """Return this user's saved section-creation settings for the host model
+    ({'section_type_id', 'view_template_id'}), or an empty dict if never saved."""
+    inputs = LocalUserInputs(CREATE_SETTINGS_FILE)
+    return inputs.data.get(_host_key(doc)) or {}
+
+
+def save_create_settings(doc, settings):
+    inputs = LocalUserInputs(CREATE_SETTINGS_FILE)
+    inputs.data[_host_key(doc)] = settings
     inputs.save_inputs()
 
 

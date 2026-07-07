@@ -39,6 +39,7 @@ import os, sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import SectionsFilterSelection as sfs  # type: ignore
+import SectionsCreate as creator  # type: ignore
 from RevitUtils import getElementIdValue, getElementName
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsSettingsPage.xaml")
@@ -55,7 +56,13 @@ class SectionsSettingsPage(Windows.Controls.Page):
         # While a bulk change is in progress the per-child toggle handler skips
         # the indicator refresh (done once at the end) to avoid O(n) churn.
         self._suspend_indicator = False
+        # Same guard for the create-option combos (populate/sync fire
+        # SelectionChanged, which must not be read as a user edit).
+        self._suspend_create = False
         self.active_nav_bg = Windows.Media.Brushes.LightBlue
+        # Create options first: _build_groups ends with _update_save_enabled,
+        # which reads the create combos, so they must already be populated.
+        self._build_create_options()
         self._build_groups()
         self.show_filters()  # default sub-page
 
@@ -97,6 +104,98 @@ class SectionsSettingsPage(Windows.Controls.Page):
             self.show_create()
         except Exception:
             self.res_window.report_error(u"מעבר לדף יצירת חתך")
+
+    # ------------------------------------------------------------------
+    # Create options sub-page (Section Type / View Template)
+    # ------------------------------------------------------------------
+    def _add_combo_item(self, combo, label, id_value):
+        item = Windows.Controls.ComboBoxItem()
+        item.Content = label
+        item.Tag = id_value  # None (default / none) or an element-id int
+        combo.Items.Add(item)
+
+    def _build_create_options(self):
+        """Populate the Section Type + View Template combos from the host doc and
+        select the saved values. Wrapped in the suspend guard so the initial
+        selection does not register as a user edit."""
+        try:
+            doc = self.res_window.doc
+            self._suspend_create = True
+            try:
+                self.SectionTypeCombo.Items.Clear()
+                self._add_combo_item(
+                    self.SectionTypeCombo, u"ברירת מחדל של המודל", None
+                )
+                for vft in creator.get_all_section_viewFamilyTypes(doc):
+                    self._add_combo_item(
+                        self.SectionTypeCombo,
+                        getElementName(vft),
+                        getElementIdValue(doc, vft.Id),
+                    )
+
+                self.ViewTemplateCombo.Items.Clear()
+                self._add_combo_item(self.ViewTemplateCombo, u"ללא", None)
+                for vt in creator.get_section_view_templates(doc):
+                    self._add_combo_item(
+                        self.ViewTemplateCombo,
+                        getElementName(vt),
+                        getElementIdValue(doc, vt.Id),
+                    )
+
+                self.SectionTypeCombo.SelectionChanged += self._on_create_change
+                self.ViewTemplateCombo.SelectionChanged += self._on_create_change
+                self._select_saved_create()
+            finally:
+                self._suspend_create = False
+        except Exception:
+            self.res_window.report_error(u"טעינת הגדרות היצירה")
+
+    def _select_combo(self, combo, id_value):
+        for item in combo.Items:
+            if item.Tag == id_value:
+                combo.SelectedItem = item
+                return
+        if combo.Items.Count > 0:
+            combo.SelectedIndex = 0  # fall back to the default / none row
+
+    def _select_saved_create(self):
+        saved = self._saved_create_settings()
+        self._select_combo(self.SectionTypeCombo, saved["section_type_id"])
+        self._select_combo(self.ViewTemplateCombo, saved["view_template_id"])
+
+    def _combo_value(self, combo):
+        item = combo.SelectedItem
+        return item.Tag if item is not None else None
+
+    def _current_create_settings(self):
+        return {
+            "section_type_id": self._combo_value(self.SectionTypeCombo),
+            "view_template_id": self._combo_value(self.ViewTemplateCombo),
+        }
+
+    def _saved_create_settings(self):
+        """The window's persisted create settings, normalized to the two keys."""
+        saved = self.res_window.create_settings or {}
+        return {
+            "section_type_id": saved.get("section_type_id"),
+            "view_template_id": saved.get("view_template_id"),
+        }
+
+    def _on_create_change(self, sender, e):
+        if self._suspend_create:
+            return
+        try:
+            self._update_save_enabled()
+        except Exception:
+            pass
+
+    def _sync_create_to_saved(self):
+        """Re-select the combos to the saved values (discards unsaved edits)."""
+        self._suspend_create = True
+        try:
+            self._select_saved_create()
+        finally:
+            self._suspend_create = False
 
     # ------------------------------------------------------------------
     # Build (filters sub-page)
@@ -253,10 +352,17 @@ class SectionsSettingsPage(Windows.Controls.Page):
             if checkbox.IsChecked
         )
 
+    def _filters_dirty(self):
+        return self._current_checked_ids() != self._current_selected_ids()
+
+    def _create_dirty(self):
+        return self._current_create_settings() != self._saved_create_settings()
+
     def has_unsaved_changes(self):
-        """True when the checkbox selection differs from the saved selection."""
+        """True when the filters selection OR the create settings differ from the
+        saved state (the single 'שמור הגדרות' button covers both sub-pages)."""
         try:
-            return self._current_checked_ids() != self._current_selected_ids()
+            return self._filters_dirty() or self._create_dirty()
         except Exception:
             return False
 
@@ -291,25 +397,39 @@ class SectionsSettingsPage(Windows.Controls.Page):
             finally:
                 self._suspend_indicator = False
             self._refresh_indicators()
+            self._sync_create_to_saved()
             self._update_save_enabled()
             self.show_filters()
         except Exception:
             self.res_window.report_error(u"רענון ההגדרות")
 
     # ------------------------------------------------------------------
-    # Handlers (filters sub-page)
+    # Save (unified - covers both sub-pages)
     # ------------------------------------------------------------------
     def save_click(self, sender, e):
         try:
-            selected = [f for checkbox, f in self.all_pairs if checkbox.IsChecked]
-            if not selected:
-                self.res_window.notify(u"יש לבחור לפחות פילטר אחד.")
+            filters_changed = self._filters_dirty()
+            create_changed = self._create_dirty()
+            if not (filters_changed or create_changed):
                 return
-            self.res_window.apply_filter_selection(selected)
-            self.res_window.notify(
-                u"נשמרה בחירה של {} פילטרים. הגיליונות פתוחים לחישוב.".format(
-                    len(selected)
+            # Validate the filters selection before persisting anything.
+            selected = None
+            if filters_changed:
+                selected = [
+                    f for checkbox, f in self.all_pairs if checkbox.IsChecked
+                ]
+                if not selected:
+                    self.res_window.notify(u"יש לבחור לפחות פילטר אחד.")
+                    return
+            # Create settings are cheap (future creations only) - save first.
+            if create_changed:
+                self.res_window.apply_create_settings(
+                    self._current_create_settings()
                 )
-            )
+            # Filters change is heavy: resets the sheet cache + returns to Home.
+            if filters_changed:
+                self.res_window.apply_filter_selection(selected)
+            self._update_save_enabled()
+            self.res_window.notify(u"ההגדרות נשמרו.")
         except Exception:
             self.res_window.report_error(u"שמירת ההגדרות")

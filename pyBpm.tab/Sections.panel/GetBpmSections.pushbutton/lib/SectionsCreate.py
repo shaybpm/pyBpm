@@ -95,6 +95,50 @@ def get_type_id(doc):
     return selected_viewFamilyType.Id
 
 
+def get_section_view_templates(doc):
+    """Section-type view templates in the host doc (for the create settings)."""
+    from Autodesk.Revit.DB import ViewType
+
+    templates = []
+    for view in get_all_views(doc):
+        try:
+            if view.IsTemplate and view.ViewType == ViewType.Section:
+                templates.append(view)
+        except Exception:
+            pass
+    return templates
+
+
+def resolve_section_type_id(doc, type_id_int):
+    """Map a saved section-VFT id int back to its ElementId, but only if it still
+    is a Section ViewFamilyType. Returns None otherwise (caller falls back to the
+    model default)."""
+    if type_id_int is None:
+        return None
+    for viewFamilyType in get_all_section_viewFamilyTypes(doc):
+        if RevitUtils.getElementIdValue(doc, viewFamilyType.Id) == type_id_int:
+            return viewFamilyType.Id
+    return None
+
+
+def apply_view_template(doc, view, template_id_int):
+    """Best-effort: apply a saved section view template to a freshly created view.
+    A missing / incompatible template is silently ignored (the section is still
+    created). Must run inside the creating transaction."""
+    if template_id_int is None or view is None:
+        return
+    from Autodesk.Revit.DB import ElementId
+
+    try:
+        target = ElementId(template_id_int)
+        for valid_id in view.GetValidViewTemplates():
+            if valid_id == target:
+                view.ViewTemplateId = target
+                return
+    except Exception:
+        pass
+
+
 def create_section(doc, section, viewFamilyTypeId, transform):
     view_direction = -1 * transform.OfVector(section.ViewDirection)
     up_direction = transform.OfVector(section.UpDirection)

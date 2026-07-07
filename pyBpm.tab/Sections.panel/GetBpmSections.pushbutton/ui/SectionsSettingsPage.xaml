@@ -146,13 +146,21 @@
             </Border>
         </Grid>
 
-        <!-- ============ Sub-page: Section creation (placeholder) ============ -->
+        <!-- ============ Sub-page: Section creation ============ -->
         <Grid Grid.Row="1" x:Name="CreatePanel" Visibility="Collapsed">
             <StackPanel VerticalAlignment="Top">
-                <TextBlock FontSize="13" FontWeight="Bold" Margin="0,0,0,8"
-                    Text="יצירת חתך" />
-                <TextBlock Foreground="Gray" TextWrapping="Wrap"
-                    Text="אפשרויות יצירת החתך יתווספו כאן." />
+                <TextBlock FontSize="13" FontWeight="Bold" Margin="0,0,0,4"
+                    Text="הגדרות ליצירת חתכים חדשים" />
+                <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,14"
+                    Text="חלות רק על חתכים שייווצרו מכאן ואילך; אינן משנות חתכים קיימים." />
+
+                <TextBlock Text="סוג החתך (Section Type)" FontWeight="SemiBold"
+                    Margin="0,0,0,4" />
+                <ComboBox x:Name="SectionTypeCombo" Margin="0,0,0,16" />
+
+                <TextBlock Text="תבנית תצוגה (View Template)" FontWeight="SemiBold"
+                    Margin="0,0,0,4" />
+                <ComboBox x:Name="ViewTemplateCombo" />
             </StackPanel>
         </Grid>
 
