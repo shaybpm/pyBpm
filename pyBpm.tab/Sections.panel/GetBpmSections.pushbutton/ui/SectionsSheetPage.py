@@ -27,7 +27,14 @@ except:
     pass
 
 from System import Windows
-from System.ComponentModel import SortDescription, ListSortDirection
+from System.ComponentModel import SortDescription
+try:
+    from System.ComponentModel import ListSortDirection
+except ImportError:
+    # Revit 2025+ runs on .NET (Core), where ListSortDirection moved to an
+    # assembly IronPython does not reference by default.
+    clr.AddReference("System.ComponentModel.TypeConverter")
+    from System.ComponentModel import ListSortDirection
 from pyrevit.framework import wpf
 import os, sys, traceback
 
