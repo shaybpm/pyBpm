@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json, os
+from System.Net import WebException, HttpWebResponse
 from pyrevit import script
 from HttpRequest import get, patch, post
 from RevitUtils import get_model_info, get_comp_link, is_comp_doc, getElementIdValue
@@ -232,6 +233,21 @@ def get_comp_opening_sheets_data(doc):
             return {"status": "ERROR", "message": "No data found.", "data": None}
         data["modelTitle"] = comp_doc.Title
         return {"status": "OK", "message": message, "data": data}
+    except WebException as e:
+        # 404 means the server has no opening-sheet revisions for this compilation model
+        if (
+            e.Response is not None
+            and isinstance(e.Response, HttpWebResponse)
+            and int(e.Response.StatusCode) == 404
+        ):
+            return {
+                "status": "ERROR",
+                "message": u'לא נמצאו מהדורות של גיליונות פתחים עבור מודל הקומפילציה: "{}".\nיש לפנות לאחראי על מודל זה.'.format(
+                    comp_doc.Title
+                ),
+                "data": None,
+            }
+        return {"status": "ERROR", "message": str(e), "data": None}
     except Exception as e:
         return {"status": "ERROR", "message": str(e), "data": None}
 
