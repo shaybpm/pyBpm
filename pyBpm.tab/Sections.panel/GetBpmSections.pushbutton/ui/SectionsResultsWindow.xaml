@@ -1,0 +1,270 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="BPM - התאמת חתכים"
+    MinHeight="300"
+    MinWidth="520"
+    ResizeMode="CanResize"
+    WindowStartupLocation="CenterScreen"
+    Width="1100"
+    Height="750"
+    FlowDirection="LeftToRight">
+    <Window.Resources>
+        <!-- Flat, rounded button look with hover/pressed/disabled states. The
+             default WPF (Aero) chrome is replaced by a Border + ContentPresenter
+             so every action button in the details pane shares one designed style.
+             Neutral variant (icon + secondary text buttons). -->
+        <Style x:Key="FlatButtonBase" TargetType="Button">
+            <Setter Property="Foreground" Value="#2B2B2B" />
+            <Setter Property="Background" Value="#F4F5F7" />
+            <Setter Property="BorderBrush" Value="#CFD3DA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#E6F0FB" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#5B9BD5" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#CFE2F5" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#3A7CBD" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#F0F0F0" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#E2E2E2" />
+                                <Setter Property="Foreground" Value="#AAAAAA" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Icon-only square button (refresh / open / close). -->
+        <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+
+        <!-- Secondary text button - uniform height/padding. -->
+        <Style x:Key="TextButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- Primary call-to-action (filled accent) - used for "הצג תמונה". -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Background" Value="#2D7DD2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2468B2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1E568F" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#BFC4CB" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="4">
+        <Border Margin="4" BorderBrush="Gray" BorderThickness="2">
+            <Grid x:Name="RootGrid">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <!-- [3] details divider + [4] details pane: collapsed (0) until
+                         a "פרטים" click opens them (S2). Widths set from code. -->
+                    <ColumnDefinition Width="0" />
+                    <ColumnDefinition Width="0" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Header -->
+                <Border Grid.Row="0" Grid.ColumnSpan="5" BorderThickness="0,0,0,1"
+                    BorderBrush="Gray">
+                    <Grid Margin="8,6,8,6">
+                        <TextBlock x:Name="TitleTextBlock" FontWeight="Bold"
+                            FontSize="14" Text="BPM - התאמת חתכים"
+                            FlowDirection="RightToLeft" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Navigation column: fixed top (Home + Settings + separator),
+                     then a scrollable list of sheet buttons (D8). -->
+                <Grid Grid.Row="1" Grid.Column="0" MinWidth="180">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" x:Name="NavTopPanel" Margin="4">
+                        <!-- Home + Settings buttons + separator added in code -->
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Hidden">
+                        <StackPanel x:Name="NavSheetsPanel" Margin="4">
+                            <!-- One button per sheet added in code -->
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Vertical divider between nav and content -->
+                <Border Grid.Row="1" Grid.Column="1" Background="Gray" Width="1" />
+
+                <!-- Content host -->
+                <Grid Grid.Row="1" Grid.Column="2" Margin="4">
+                    <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"
+                        Navigated="MainFrame_Navigated" />
+                </Grid>
+
+                <!-- Details divider (column [3]) -->
+                <Border Grid.Row="1" Grid.Column="3" Background="Gray" Width="1" />
+
+                <!-- Details side-panel (column [4]) - reference systems of the
+                     clicked section + (S4) exported image. Collapsed until opened. -->
+                <Grid Grid.Row="1" Grid.Column="4" x:Name="DetailsPane"
+                    FlowDirection="RightToLeft" Margin="6,4,4,4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header + close -->
+                    <Grid Grid.Row="0" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="DetailsHeader" FontWeight="Bold"
+                            FontSize="13" TextTrimming="CharacterEllipsis"
+                            VerticalAlignment="Center" Text="פרטי חתך" />
+                        <Button Grid.Column="1" Content="&#x2715;" ToolTip="סגור"
+                            Click="CloseDetails_Click"
+                            Style="{StaticResource IconButton}" />
+                    </Grid>
+
+                    <!-- Hint shown when the host section does not exist yet: the
+                         toggle buttons are disabled until it is created (D2). -->
+                    <TextBlock Grid.Row="1" x:Name="DetailsExistsHint"
+                        Text="צור את החתך במודל שלך כדי להציג מערכות בו"
+                        Foreground="#B26A00" TextWrapping="Wrap"
+                        Margin="0,0,0,4" Visibility="Collapsed" />
+
+                    <!-- Reference systems (+ empty-state overlay in the same cell) -->
+                    <DataGrid x:Name="SystemsDataGrid" Grid.Row="2"
+                        AutoGenerateColumns="False" HeadersVisibility="Column"
+                        CanUserAddRows="False" CanUserDeleteRows="False"
+                        IsReadOnly="True" SelectionMode="Single"
+                        GridLinesVisibility="All">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="קטגוריה"
+                                Binding="{Binding category}" Width="*" />
+                            <DataGridTextColumn Header="% חפיפה"
+                                Binding="{Binding overlap_text}" Width="70" />
+                            <DataGridTextColumn Header="נקודות"
+                                Binding="{Binding points_text}" Width="60" />
+                            <DataGridTemplateColumn Header="פעולה" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <!-- Show/hide the system's solids in the host
+                                             section (S3). Enabled only when the host
+                                             section exists (D2). -->
+                                        <Button Content="{Binding display_text}"
+                                            IsEnabled="{Binding enabled}"
+                                            Click="ToggleSystemDisplay_Click"
+                                            ToolTip="הצג/נקה את המערכת בחתך המארח"
+                                            Style="{StaticResource TextButton}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Empty-state overlay (same cell as the grid) -->
+                    <TextBlock Grid.Row="2" x:Name="DetailsEmptyHint"
+                        Text="אין מערכות בחתך זה" Foreground="Gray"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="Collapsed" />
+
+                    <!-- Image area (S4): exported PNG of the compilation section. -->
+                    <Grid Grid.Row="3" Margin="0,6,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <!-- No image yet -> only "הצג תמונה" is shown. Once an image
+                             exists it hides and the icon-only open + refresh buttons
+                             appear (visibility toggled from _update_image_buttons). -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal"
+                            Margin="0,0,0,4">
+                            <Button x:Name="ShowImageButton" Content="הצג תמונה"
+                                Click="ShowImage_Click"
+                                Style="{StaticResource PrimaryButton}" />
+                            <Button x:Name="OpenImageButton" Content="&#x2922;"
+                                ToolTip="פתח בגדול" Click="ShowImageLarge_Click"
+                                Style="{StaticResource IconButton}"
+                                Visibility="Collapsed" />
+                            <Button x:Name="RefreshImageButton" Content="&#x21BB;"
+                                ToolTip="רענן תמונה" Click="RefreshImage_Click"
+                                Style="{StaticResource IconButton}"
+                                Visibility="Collapsed" />
+                        </StackPanel>
+                        <Border Grid.Row="1" BorderBrush="LightGray"
+                            BorderThickness="1" MinHeight="120">
+                            <Image x:Name="DetailsImage" Stretch="Uniform"
+                                MaxHeight="260" Margin="2" />
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
