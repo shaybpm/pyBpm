@@ -72,6 +72,13 @@ def run():
     items, sheets = scoring.get_candidate_sections_with_sheets(comp_doc)
 
     filters = _resolve_saved_filters(comp_doc)
+    if not filters:
+        # First run (or no valid saved selection): suggest the discipline group(s)
+        # matching the opening families loaded in this model - the code the "Load
+        # Opening Families" button stamped on their type Description. In-memory only
+        # (not persisted), so it stays a smart default that follows the model until
+        # the planner saves an explicit choice in Settings.
+        filters = sfs.suggest_filters_from_openings(doc, comp_doc) or None
 
     window = SectionsResultsWindow(
         uidoc, comp_link, comp_doc, filters, items, sheets
