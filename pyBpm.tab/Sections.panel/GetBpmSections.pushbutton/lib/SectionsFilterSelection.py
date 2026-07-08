@@ -113,6 +113,66 @@ def collect_discipline_filters(comp_doc):
     return groups
 
 
+def detect_opening_disciplines(doc):
+    """Read the discipline codes stamped on the host model's loaded opening
+    family *types*.
+
+    "Load Opening Families" writes the planner's discipline code into each opening
+    family type's "Description" parameter (ALL_MODEL_DESCRIPTION). Reading the
+    types - not placed instances - means this works even before any opening is
+    placed. Returns a set of non-empty codes ("A", "SP", ...); empty when no
+    opening families are loaded or none carry a discipline.
+    """
+    import RevitUtilsOpenings
+    from Autodesk.Revit.DB import (
+        FilteredElementCollector,
+        BuiltInCategory,
+        BuiltInParameter,
+    )
+
+    codes = set()
+    gm_types = (
+        FilteredElementCollector(doc)
+        .OfCategory(BuiltInCategory.OST_GenericModel)
+        .WhereElementIsElementType()
+        .ToElements()
+    )
+    for gmt in gm_types:
+        if getElementName(gmt) not in RevitUtilsOpenings.opening_names:
+            continue
+        param = gmt.get_Parameter(BuiltInParameter.ALL_MODEL_DESCRIPTION)
+        if not param:
+            continue
+        code = param.AsString()
+        if code:
+            codes.add(code.strip())
+    return codes
+
+
+def suggest_filters_from_openings(doc, comp_doc, groups=None):
+    """First-run default: pre-select the discipline group(s) that match the
+    opening families loaded in the host model.
+
+    Used only when the planner has no valid saved selection. Matches the code the
+    "Load Opening Families" button stamped on each opening family type against the
+    comp model's discipline filter groups, and returns every filter of the matched
+    groups (i.e. "mark the whole group"). Returns [] when nothing matches, so the
+    caller falls back to the locked state unchanged.
+    """
+    if groups is None:
+        groups = collect_discipline_filters(comp_doc)
+    if not groups:
+        return []
+    codes = detect_opening_disciplines(doc)
+    if not codes:
+        return []
+    suggested = []
+    for g in groups:
+        if g["code"] in codes:
+            suggested.extend(g["filters"])
+    return suggested
+
+
 def _selection_key(doc, comp_doc):
     this_guid = RevitUtils.get_model_info(doc)["modelGuid"]
     comp_guid = RevitUtils.get_model_info(comp_doc)["modelGuid"]
