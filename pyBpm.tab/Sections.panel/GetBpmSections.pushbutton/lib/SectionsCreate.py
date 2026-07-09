@@ -18,6 +18,7 @@ from Autodesk.Revit.DB import (
     XYZ,
     ElementTypeGroup,
     BuiltInParameter,
+    DisplayStyle,
 )
 from pyrevit import forms
 from pyrevit.forms import alert
@@ -213,4 +214,13 @@ def create_section(doc, section, viewFamilyTypeId, transform):
         num += 1
         new_section_name = target_section_name(section.Name) + "_" + str(num)
     new_section.Name = new_section_name
+
+    # Set the view to Shaded so the dc3d overlay's color actually shows (a
+    # Hidden Line / Wireframe view would not render the colored solids). Runs in
+    # the caller's transaction; best-effort - a failure here is not important.
+    try:
+        new_section.DisplayStyle = DisplayStyle.Shading
+    except Exception:
+        pass
+
     return new_section
