@@ -28,6 +28,7 @@ from Autodesk.Revit.DB import (
     XYZ,
     Solid,
     SolidUtils,
+    Transform,
     Options,
     ColorWithTransparency,
 )
@@ -43,8 +44,30 @@ import SectionsCreate as creator  # type: ignore
 # removes a leftover with the same id). Do NOT replace with Guid.NewGuid().
 SERVER_GUID = Guid("b7e2c1a4-3f5d-4e8a-9c2b-1a2b3c4d5e6f")
 
-# Semi-transparent cyan (r, g, b, transparency) - transparency 0=opaque..255=clear.
-DISPLAY_COLOR = ColorWithTransparency(0, 200, 255, 110)
+# Semi-transparent yellow (r, g, b, transparency) - transparency 0=opaque..255=clear.
+DISPLAY_COLOR = ColorWithTransparency(255, 255, 0, 110)
+
+# Uniform scale applied to each solid (about its own centroid) before meshing, so
+# the overlay sits slightly OUTSIDE the real geometry's faces and is not occluded
+# / does not z-fight with the model element it highlights. This is a highlight,
+# not a 1:1 copy - the drawn size is intentionally a few % larger than the source.
+DISPLAY_SCALE = 1.03
+
+
+def _scale_solid(solid, factor):
+    """Uniformly scale a solid by factor about its OWN centroid (never the project
+    origin - scaling about origin would fling the solid far from its location).
+    Returns the original solid unchanged if anything fails."""
+    try:
+        c = solid.ComputeCentroid()
+        # T(p) = c + factor*(p - c): move centroid to origin, scale, move back.
+        to_origin = Transform.CreateTranslation(c.Negate())
+        scale = Transform.Identity.ScaleBasis(factor)
+        back = Transform.CreateTranslation(c)
+        t = back.Multiply(scale).Multiply(to_origin)
+        return SolidUtils.CreateTransformed(solid, t)
+    except Exception:
+        return solid
 
 
 def _get_solids_from_geometry_element(geometry_element, transform=None):
@@ -138,6 +161,7 @@ class SectionsDisplay(object):
         host_doc = self.uidoc.Document
         meshes = []
         for solid in solids:
+            solid = _scale_solid(solid, DISPLAY_SCALE)
             # doc is only used for material lookup, bypassed because a color is
             # forced - so host_doc is fine. from_solid returns None on a bad face.
             mesh = dc3dserver.Mesh.from_solid(host_doc, solid, DISPLAY_COLOR)
