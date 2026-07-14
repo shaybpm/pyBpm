@@ -93,9 +93,14 @@ def print_table(output, columns, table_data):
 
 
 def start_process(path):
-    from System.Diagnostics.Process import Start  # type: ignore
+    from System.Diagnostics import Process, ProcessStartInfo  # type: ignore
 
-    Start(path)
+    # UseShellExecute=True lets Windows open the path with its associated app.
+    # On Revit 2025+ (.NET Core) the default is False, which tries to run a
+    # non-executable path directly and raises WindowsError [Errno 22].
+    psi = ProcessStartInfo(path)
+    psi.UseShellExecute = True
+    Process.Start(psi)
 
 
 class ModelQualityAutoChecksToggleIcon:

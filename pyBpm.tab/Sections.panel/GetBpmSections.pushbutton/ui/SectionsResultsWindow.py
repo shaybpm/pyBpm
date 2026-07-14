@@ -781,9 +781,15 @@ class SectionsResultsWindow(Windows.Window):
         try:
             path = self._current_image_path()
             if path and os.path.exists(path):
-                from System.Diagnostics import Process
+                from System.Diagnostics import Process, ProcessStartInfo
 
-                Process.Start(path)  # default Windows image viewer (D5)
+                # UseShellExecute=True is required so Windows opens the file with
+                # its associated app (default image viewer). On Revit 2025+ (.NET
+                # Core / CoreCLR) the default is False, which tries to run the
+                # .png itself as an executable and raises WindowsError [Errno 22].
+                psi = ProcessStartInfo(path)
+                psi.UseShellExecute = True
+                Process.Start(psi)
             else:
                 self.notify(u"אין תמונה להצגה - לחץ 'הצג תמונה' תחילה")
         except Exception:
