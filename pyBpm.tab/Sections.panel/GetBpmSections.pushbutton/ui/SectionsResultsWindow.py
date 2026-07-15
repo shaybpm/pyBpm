@@ -32,7 +32,12 @@ except:
 from System import Windows
 from pyrevit.framework import wpf
 from Autodesk.Revit.UI import IExternalEventHandler, ExternalEvent
-from Autodesk.Revit.DB import Transaction
+from Autodesk.Revit.DB import (
+    ElementId,
+    StartingViewSettings,
+    Transaction,
+    View,
+)
 import os, sys, traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
@@ -815,6 +820,73 @@ class SectionsResultsWindow(Windows.Window):
         self.Activate()
         return result
 
+    # --- Active-view guard (Revit refuses to delete the active view) ----------
+    # Mirrors GetLOISchedules' handle_active_view_want_to_be_deleted: move to any
+    # other open view of THIS document, else to the project's starting view.
+    def _delete_view_id_values(self, names):
+        """Id values of the section views about to be deleted in this batch - the
+        set the replacement view must not come from."""
+        values = set()
+        for name in names:
+            view = creator.find_existing_section(self.doc, name)
+            if view is not None:
+                values.add(RevitUtils.getElementIdValue(self.doc, view.Id))
+        return values
+
+    def _find_replacement_view(self, exclude_values):
+        """A view to activate instead of one being deleted, or None if there is
+        none. Read-only, so it is also safe to call from the UI thread."""
+        for ui_view in self.uidoc.GetOpenUIViews():
+            view_id = ui_view.ViewId
+            if RevitUtils.getElementIdValue(self.doc, view_id) in exclude_values:
+                continue
+            # GetElement returns None for a UIView of another open document.
+            view = self.doc.GetElement(view_id)
+            if view is None or not isinstance(view, View) or view.IsTemplate:
+                continue
+            return view
+        starting_view_id = StartingViewSettings.GetStartingViewSettings(self.doc).ViewId
+        if (
+            starting_view_id != ElementId.InvalidElementId
+            and RevitUtils.getElementIdValue(self.doc, starting_view_id)
+            not in exclude_values
+        ):
+            starting_view = self.doc.GetElement(starting_view_id)
+            if (
+                starting_view is not None
+                and isinstance(starting_view, View)
+                and not starting_view.IsTemplate
+            ):
+                return starting_view
+        return None
+
+    def _can_delete_names(self, names):
+        """UI-thread pre-check: False only when a target IS the active view and
+        nothing can replace it - so the user gets the note instead of a confirm
+        followed by a delete that Revit rejects."""
+        delete_values = self._delete_view_id_values(names)
+        active_view = self.doc.ActiveView
+        if active_view is None:
+            return True
+        if RevitUtils.getElementIdValue(self.doc, active_view.Id) not in delete_values:
+            return True
+        return self._find_replacement_view(delete_values) is not None
+
+    def _leave_active_view(self, names):
+        """API context: activate the replacement view if one of `names` is the
+        active view. Returns False when the delete must be skipped."""
+        delete_values = self._delete_view_id_values(names)
+        active_view = self.doc.ActiveView
+        if active_view is None:
+            return True
+        if RevitUtils.getElementIdValue(self.doc, active_view.Id) not in delete_values:
+            return True
+        replacement = self._find_replacement_view(delete_values)
+        if replacement is None:
+            return False
+        self.uidoc.ActiveView = replacement
+        return True
+
     def request_action(self, action, rows):
         """Enqueue a Create / Delete / Go-to for the given rows (SectionsRowItem)
         and raise the External Event. Any UI prompt (section type, delete confirm)
@@ -844,6 +916,13 @@ class SectionsResultsWindow(Windows.Window):
                 targets = [row for row in rows if row.exists]
                 if not targets:
                     return
+                names = [row.section_name for row in targets]
+                if not self._can_delete_names(names):
+                    self.notify(
+                        u"לא ניתן למחוק - החתך הוא המבט הפעיל ואין מבט אחר "
+                        u"לעבור אליו. פתח מבט נוסף ונסה שוב."
+                    )
+                    return
                 if len(targets) == 1:
                     prompt = u"למחוק את החתך '{}'?".format(
                         creator.target_section_name(targets[0].section_name)
@@ -853,8 +932,14 @@ class SectionsResultsWindow(Windows.Window):
                 if not self._confirm(prompt):  # one confirm for N rows (7.3)
                     return
                 for row in targets:
+                    # Carry the whole batch: the replacement view must not be one
+                    # that this same batch is about to delete.
                     self._pending.append(
-                        {"action": "delete", "name": row.section_name}
+                        {
+                            "action": "delete",
+                            "name": row.section_name,
+                            "batch": names,
+                        }
                     )
             elif action == "goto":
                 existing = [row for row in rows if row.exists]
@@ -983,6 +1068,14 @@ class SectionsResultsWindow(Windows.Window):
         if action == "delete":
             view = creator.find_existing_section(self.doc, name)
             if view is not None:
+                # Re-checked here (not only before the confirm): a coalesced
+                # Execute may have activated/deleted views since the click.
+                if not self._leave_active_view(request.get("batch") or [name]):
+                    self.notify(
+                        u"לא ניתן למחוק - החתך הוא המבט הפעיל ואין מבט אחר "
+                        u"לעבור אליו. פתח מבט נוסף ונסה שוב."
+                    )
+                    return False
                 t = Transaction(self.doc, "pyBpm | Delete Bpm Section")
                 t.Start()
                 try:
