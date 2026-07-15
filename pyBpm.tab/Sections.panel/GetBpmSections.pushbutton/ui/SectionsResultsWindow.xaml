@@ -2,7 +2,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="BPM - התאמת חתכים"
     MinHeight="300"
-    MinWidth="520"
+    MinWidth="600"
     ResizeMode="CanResize"
     WindowStartupLocation="CenterScreen"
     Width="1100"
