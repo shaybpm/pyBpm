@@ -80,24 +80,36 @@ class ApproveBySheetsDialog(Windows.Window):
 
                 revision_tree_view_item.Header = revision_tree_view_item_header_grid
 
-                revision_tree_view_item.Tag = revision_data.get("uniqueId", "NO_UID")
+                # Identify a revision by BOTH sheet and revision uniqueId: a Revit
+                # revision element is shared across every sheet it is applied to, so
+                # the revision uniqueId alone is NOT unique across sheets.
+                revision_tree_view_item.Tag = (
+                    sheet.get("uniqueId", "NO_SHEET_UID"),
+                    revision_data.get("uniqueId", "NO_UID"),
+                )
                 revision_tree_view_item.MouseDoubleClick += (
                     self.double_click_rev_tree_view_item
                 )
                 sheet_tree_view_item.Items.Add(revision_tree_view_item)
             self.tree_view.Items.Add(sheet_tree_view_item)
 
-    def get_openings_by_revision_uid(self, revision_uid):
+    def get_openings_by_sheet_and_revision_uid(self, sheet_uid, revision_uid):
         if not revision_uid or revision_uid == "NO_UID":
             return []
         for sheet in self.data.get("sheets", []):
+            if sheet.get("uniqueId") != sheet_uid:
+                continue
             for revision in sheet.get("revisions", []):
                 revision_data = revision.get("revisionData", {}) or {}
                 if revision_data.get("uniqueId") == revision_uid:
                     return revision.get("openings", [])
+        return []
 
     def double_click_rev_tree_view_item(self, sender, e):
-        openings = self.get_openings_by_revision_uid(sender.Tag)
+        sheet_uid, revision_uid = sender.Tag
+        openings = self.get_openings_by_sheet_and_revision_uid(
+            sheet_uid, revision_uid
+        )
         if not openings:
             Windows.MessageBox.Show(
                 "לא נמצאו פתחים במהדורה זו.",
