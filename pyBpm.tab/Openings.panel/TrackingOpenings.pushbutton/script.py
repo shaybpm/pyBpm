@@ -7,14 +7,30 @@ __author__ = "BPM"
 # ------------IMPORTS------------
 # -------------------------------
 
-from RevitUtils import get_link_types_status
-from ServerUtils import ServerPermissions
+import sys, os
+import traceback
+
 from pyrevit import forms
 
-import sys, os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
-from TrackingOpeningsDialog import TrackingOpeningsDialog  # type: ignore
+def alert_exception():
+    # pyRevit's output window sometimes renders exceptions as an empty window,
+    # so surface the real traceback in an alert instead.
+    forms.alert(
+        traceback.format_exc(),
+        title="Tracking Openings - Error",
+    )
+
+
+try:
+    from RevitUtils import get_link_types_status
+    from ServerUtils import ServerPermissions
+
+    sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
+    from TrackingOpeningsDialog import TrackingOpeningsDialog  # type: ignore
+except Exception:
+    alert_exception()
+    sys.exit()
 
 # -------------------------------
 # -------------MAIN--------------
@@ -77,4 +93,7 @@ def run():
     dialog.Show()
 
 
-run()
+try:
+    run()
+except Exception:
+    alert_exception()
