@@ -5,8 +5,9 @@ def get_env_mode():
     # TODO: IMPROVE!
     if "C:\Users\אייל סיני\BPM LTD 102181204\BPM - Status - General\Software_Development" in __file__:
         return "dev"
-    else:
-        return "prod"
+    if "D:\\BPM\\prext" in __file__:
+        return "dev"
+    return "prod"
 
 
 server_url = (
