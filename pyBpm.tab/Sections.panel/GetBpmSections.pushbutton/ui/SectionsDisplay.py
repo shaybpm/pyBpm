@@ -164,7 +164,14 @@ class SectionsDisplay(object):
             solid = _scale_solid(solid, DISPLAY_SCALE)
             # doc is only used for material lookup, bypassed because a color is
             # forced - so host_doc is fine. from_solid returns None on a bad face.
-            mesh = dc3dserver.Mesh.from_solid(host_doc, solid, DISPLAY_COLOR)
+            try:
+                mesh = dc3dserver.Mesh.from_solid(host_doc, solid, DISPLAY_COLOR)
+            except TypeError:
+                # Older pyRevit: from_solid(doc, solid) has no color parameter and
+                # DOES use doc for per-face material lookup - so it must be the
+                # comp doc (the solid's source). Faces render in their material
+                # colors instead of DISPLAY_COLOR; display + zoom still work.
+                mesh = dc3dserver.Mesh.from_solid(self.comp_doc, solid)
             if mesh is not None:
                 meshes.append(mesh)
         return meshes
