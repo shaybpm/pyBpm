@@ -2,7 +2,14 @@
 
 def get_env_mode():
     # return "prod" # uncomment this line to force production mode
-    # TODO: IMPROVE!
+    import os
+
+    # Explicit opt-in: set once per dev machine with `setx PYBPM_ENV dev`
+    # (Revit must be restarted to pick it up).
+    if os.environ.get("PYBPM_ENV", "").lower() == "dev":
+        return "dev"
+    # Legacy path-based detection, kept for a transition period until all
+    # dev machines have PYBPM_ENV set.
     if "C:\Users\אייל סיני\BPM LTD 102181204\BPM - Status - General\Software_Development" in __file__:
         return "dev"
     # Case-insensitive: pyRevit may report the drive letter as "d:" or "D:".

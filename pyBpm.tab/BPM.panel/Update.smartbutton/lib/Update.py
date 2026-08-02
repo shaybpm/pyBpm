@@ -91,6 +91,13 @@ def run(do_not_print=False, do_not_reload=False):
         )
         return
 
+    # Safety interlock, independent of env detection: a git working tree is
+    # never a client installation - refuse to touch it no matter what
+    # get_env_mode() said.
+    if os.path.exists(os.path.join(pyBpm_folder, ".git")):
+        _report_failure(do_not_print, "Refusing to update a git working tree.")
+        return
+
     zip_filename = os.path.join(extensions_folder, "pyBpm.zip")
     staging_folder = os.path.join(extensions_folder, "pyBpm_update_staging")
     # The backup name must NOT end with ".extension", so pyRevit never loads it.
