@@ -5,7 +5,8 @@ def get_env_mode():
     # TODO: IMPROVE!
     if "C:\Users\אייל סיני\BPM LTD 102181204\BPM - Status - General\Software_Development" in __file__:
         return "dev"
-    if "D:\\BPM\\prext" in __file__:
+    # Case-insensitive: pyRevit may report the drive letter as "d:" or "D:".
+    if "d:\\bpm\\prext" in __file__.lower():
         return "dev"
     return "prod"
 
