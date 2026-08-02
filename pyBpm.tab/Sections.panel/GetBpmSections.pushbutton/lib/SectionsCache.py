@@ -6,6 +6,8 @@ they are cached in a per-user local file (via LocalUserInputs -> get_data_file,
 persists across Revit sessions), keyed by (this modelGuid, comp modelGuid).
 
 Invalidation (section 4.7 / R2-5):
+  - ALGO_VERSION: scores written by a different scoring-rule version are
+    dropped (T-0291).
   - PRIMARY: the loaded comp document's version. We store
     Document.GetDocumentVersion(comp_doc).VersionGUID (+ NumberOfSaves); if the
     current comp VersionGUID differs, the whole cache entry is dropped and
@@ -35,11 +37,22 @@ import RevitUtils
 
 CACHE_FILE = "get_bpm_sections_scores_cache"
 
+# Scoring-algorithm version - part of the cache validity key. Bump when a
+# scoring-rule change makes previously cached scores incomparable (entries
+# written by another version are dropped and recomputed).
+#   2: T-0291 - location+size fallback for failed boolean ops + the
+#      along-view-direction rule on both sides.
+#   3: T-0291 - exact crop-loop view solid (rotated sections no longer count
+#      deep-projection elements as references).
+ALGO_VERSION = 3
+
 # S1: "systems" is a list of per-reference-system dicts
-# ({id, category, overlap, points, failed}) feeding the details panel. It is a
-# JSON-serializable list of primitives, so put() copies it like the scalar
-# fields. Records written before S1 lack it; the details-panel consumer treats a
-# missing "systems" as "needs recompute" (no cache-key change).
+# ({id, category, overlap, points, failed, estimated}) feeding the details
+# panel. It is a JSON-serializable list of primitives, so put() copies it like
+# the scalar fields. Records written before S1 lack it; the details-panel
+# consumer treats a missing "systems" as "needs recompute" (no cache-key
+# change). "estimated" (T-0291) counts fallback-estimated systems; consumers
+# read it with .get() so pre-T-0291 records stay valid.
 _RESULT_FIELDS = [
     "section_name",
     "section_id",
@@ -47,6 +60,7 @@ _RESULT_FIELDS = [
     "upper",
     "n",
     "failed",
+    "estimated",
     "systems",
 ]
 
@@ -97,6 +111,7 @@ class SectionsScoreCache:
 
     def _fresh_entry(self):
         return {
+            "algo": ALGO_VERSION,
             "version_guid": self.version_guid,
             "num_of_saves": self.num_of_saves,
             "date": self.today,
@@ -106,6 +121,8 @@ class SectionsScoreCache:
 
     def _is_valid(self, entry):
         if not entry:
+            return False
+        if entry.get("algo") != ALGO_VERSION:
             return False
         if entry.get("version_guid") != self.version_guid:
             return False
@@ -129,6 +146,7 @@ class SectionsScoreCache:
         self.entry["sections"][str(section_id)] = {"skipped": True}
 
     def save(self):
+        self.entry["algo"] = ALGO_VERSION
         self.entry["version_guid"] = self.version_guid
         self.entry["num_of_saves"] = self.num_of_saves
         self.entry["date"] = self.today

@@ -65,9 +65,11 @@ WINDOW_ENVVAR_KEY = "PYBPM_GETBPMSECTIONS_WINDOW"
 
 class SystemRowItem(object):
     """Bindable row for one reference system in the details panel (S2). Built from
-    a per-system record ({id, category, overlap, points, failed}) collected by
-    SectionsScoring in S1. overlap/points are None for a system whose boolean op
-    failed - shown as '?'. display_text is the toggle-button label (wired in S3)."""
+    a per-system record ({id, category, overlap, points, failed, estimated})
+    collected by SectionsScoring in S1. overlap/points are None for a system
+    whose boolean op failed - shown as '?'. A system scored by the T-0291
+    location+size fallback is prefixed with '≈'. display_text is the
+    toggle-button label (wired in S3)."""
 
     def __init__(self, record, enabled=False):
         self.system_id = int(record.get("id", -1))
@@ -76,14 +78,19 @@ class SystemRowItem(object):
         overlap = record.get("overlap")
         points = record.get("points")
         failed = record.get("failed")
+        estimated = record.get("estimated")
         if failed or overlap is None:
             self.overlap_text = u"?"
         else:
-            self.overlap_text = u"{:.0f}%".format(overlap * 100)
+            self.overlap_text = (u"≈" if estimated else u"") + u"{:.0f}%".format(
+                overlap * 100
+            )
         if failed or points is None:
             self.points_text = u"?"
         else:
-            self.points_text = u"{:.1f}".format(points)
+            self.points_text = (u"≈" if estimated else u"") + u"{:.1f}".format(
+                points
+            )
         # S3 toggles this between "הצג" / "נקה".
         self.display_text = u"הצג"
         # D2: the toggle button is enabled only when the host section exists.
