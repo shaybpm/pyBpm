@@ -1,31 +1,20 @@
 # -*- coding: utf-8 -*-
-""" Opening Explorer is a simple tool to help you navigate through the openings in the project. """
+""" RETIRED - Opening Explorer moved to BPMTools (BPM ribbon tab).
+
+The bundle is kept (icon + button) on purpose, so users who click the familiar
+button get an explanation instead of a missing button.
+See OPENINGS_MIGRATION_PLAN.md par.12 and OPENINGS_REMOVAL_INSTRUCTIONS.md par.3. """
 __title__ = "Opening\nExplorer"
 __author__ = "BPM"
 
-# -------------------------------
-# ------------IMPORTS------------
-# -------------------------------
+from pyrevit import forms
 
-import sys, os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
-from OpeningExplorerDialog import OpeningExplorerDialog  # type: ignore
-
-# -------------------------------
-# -------------MAIN--------------
-# -------------------------------
-
-uidoc = __revit__.ActiveUIDocument  # type: ignore
-
-# --------------------------------
-# -------------SCRIPT-------------
-# --------------------------------
-
-
-def run():
-    dialog = OpeningExplorerDialog(uidoc)
-    dialog.Show()
-
-
-run()
+forms.alert(
+    "This tool has moved to BPMTools.\n\n"
+    "Openings Tracking, Opening Set and Opening Explorer are now built into "
+    "BPMTools, under the BPM ribbon tab (the Explorer is a tab inside the "
+    "Openings Tracking pane).\n\n"
+    "Don't see them? Update BPMTools (BPM tab > Check For Updates), or install it from:\n"
+    "https://bondsstorageaccount.blob.core.windows.net/production/BPMTools/BPMTools.Installer.msi",
+    title="Moved to BPMTools",
+)

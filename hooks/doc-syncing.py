@@ -1,63 +1,8 @@
 # -*- coding: utf-8 -*-
-try:
-    from Autodesk.Revit.DB import Transaction
-    from Config import get_env_mode
-    from pyrevit import EXEC_PARAMS
+""" RETIRED 2026-08-04 - the Opening Set on-sync logic moved to BPMTools
+(AppExternal/Hooks.cs, OnDocumentSynchronizingWithCentral).
 
-    from PyRevitUtils import TempElementStorage
-    from Config import get_opening_set_temp_file_id, get_env_mode
-    from ServerUtils import ServerPermissions
-
-    import sys, os
-
-    sys.path.append(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "pyBpm.tab",
-            "Openings.panel",
-            "OpeningSet.pushbutton",
-            "lib",
-        )
-    )
-    from OpeningSet import Preprocessor, execute_all_functions_for_all_openings  # type: ignore
-
-    doc = EXEC_PARAMS.event_args.Document
-
-    def run():
-        if not doc.IsModelInCloud:
-            return
-        server_permissions = ServerPermissions(doc)
-        if not server_permissions.get_opening_set_by_synch_permission():
-            return
-
-        opening_set_temp_file_id = get_opening_set_temp_file_id(doc)
-        temp_storage = TempElementStorage(opening_set_temp_file_id, doc)
-        opening_ids = temp_storage.get_element_ids()
-
-        if len(opening_ids) > 0:
-            t = Transaction(doc, "BPM | Opening Set")
-            t.Start()
-
-            failOpt = t.GetFailureHandlingOptions()
-            preprocessor = Preprocessor()
-            failOpt.SetFailuresPreprocessor(preprocessor)
-            t.SetFailureHandlingOptions(failOpt)
-
-            openings = []
-            for opening_id in opening_ids:
-                opening = doc.GetElement(opening_id)
-                if not opening:
-                    temp_storage.remove_element(opening_id)
-                    continue
-                openings.append(opening)
-            results = execute_all_functions_for_all_openings(
-                doc, openings, get_env_mode() == "dev"
-            )
-
-            t.Commit()
-
-    run()
-except Exception as ex:
-    if get_env_mode() == "dev":
-        print(ex)
+The file is kept as an empty no-op on purpose: pyRevit discovers hooks by
+filename, so a missing file is a worse trap than an empty one, and whoever
+needs a doc-syncing hook for a future pyBpm feature just repopulates it.
+See OPENINGS_MIGRATION_PLAN.md par.12 and OPENINGS_REMOVAL_INSTRUCTIONS.md par.4. """
