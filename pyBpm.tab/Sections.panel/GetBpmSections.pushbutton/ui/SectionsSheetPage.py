@@ -128,6 +128,8 @@ class SectionsSheetPage(Windows.Controls.Page):
         try:
             if self._computed and not force_sections:
                 return True
+            if not self.res_window.ensure_live():  # T-0340
+                return False
             if not self.res_window.has_filters():
                 return False  # sheets locked without a selection (D9) - defensive
             self._compute(force_sections)
@@ -151,19 +153,20 @@ class SectionsSheetPage(Windows.Controls.Page):
 
     def _compute(self, force_sections=None):
         win = self.res_window
-        score_cache = cache.SectionsScoreCache(
-            win.doc, win.comp_doc, win.filter_ids
-        )
+        # Resolve the comp document ONCE for the whole pass: win.comp_doc is a
+        # live re-resolution (T-0340), and this loop runs per section.
+        comp_doc = win.comp_doc
+        score_cache = cache.SectionsScoreCache(win.doc, comp_doc, win.filter_ids)
 
         forced_ids = set()
         to_compute = []
         if force_sections:
             to_compute = list(force_sections)
             forced_ids = set(
-                scoring.section_id_value(win.comp_doc, s) for s in force_sections
+                scoring.section_id_value(comp_doc, s) for s in force_sections
             )
         for section in self.sections:
-            section_id = scoring.section_id_value(win.comp_doc, section)
+            section_id = scoring.section_id_value(comp_doc, section)
             if section_id in forced_ids:
                 continue
             if score_cache.get(section_id) is None:
@@ -181,6 +184,11 @@ class SectionsSheetPage(Windows.Controls.Page):
         EMPTY record (decision D7), not hidden."""
         win = self.res_window
         errors = []
+        # Resolved once for the whole run (see _compute).
+        host_doc = win.doc
+        comp_link = win.comp_link
+        comp_doc = win.comp_doc
+        filters = win.filters
 
         def work(progress_bar):
             progress_bar.pre_set_main_status(u"מחשב ציוני התאמה...")
@@ -192,11 +200,11 @@ class SectionsSheetPage(Windows.Controls.Page):
                 )
                 try:
                     result = scoring.score_section(
-                        win.doc,
-                        win.comp_link,
-                        win.comp_doc,
+                        host_doc,
+                        comp_link,
+                        comp_doc,
                         section,
-                        win.filters,
+                        filters,
                     )
                 except Exception:
                     # Transient failure - leave uncached so it retries next visit
@@ -259,9 +267,10 @@ class SectionsSheetPage(Windows.Controls.Page):
     def _build_items(self):
         win = self.res_window
         host_names = creator.get_host_view_names(win.doc)
+        comp_doc = win.comp_doc  # resolved once (T-0340), this loop is per section
         self.items = []
         for section in self.sections:
-            section_id = scoring.section_id_value(win.comp_doc, section)
+            section_id = scoring.section_id_value(comp_doc, section)
             record = self._score_cache.get(section_id)
             if record is None:
                 continue  # transient failure - not cached, retried next visit
@@ -504,6 +513,8 @@ class SectionsSheetPage(Windows.Controls.Page):
         """Force-(re)score the given sections into the cache and rebuild the grid,
         preserving the current sort + filters (initialize_data_grid keeps them)."""
         if not sections:
+            return
+        if not self.res_window.ensure_live():  # T-0340
             return
         if not self.res_window.has_filters():
             return
