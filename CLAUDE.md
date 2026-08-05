@@ -38,6 +38,15 @@ All scripts run on **IronPython 2.7**, NOT CPython 3. This is the single biggest
 - **If it is not clear which link or element is the right one — ASK. Do not decide by ID.**
 - A hardcoded ID silently makes a script "work on my model" and break for every client — doubly critical here, since this extension is customer-facing.
 
+## ⚠️ Element Lifetime — Hold `ElementId`s, Never Live References
+
+An `Element` / `Document` object is a **handle into Revit's memory, not a value**. Once Revit frees the underlying object the handle is dead and *any* access on it throws — this is the root cause of the whole `"The referenced object is not valid"` family of crashes.
+
+- **Store the `ElementId` and resolve the element at the point of use.** Applies anywhere the reference outlives a single operation: modeless windows, hooks, External Event inputs, module-level caches, UI state kept between button clicks.
+- When a live reference is unavoidable *within* one operation — **`IsValidObject` first, always.** Every other member throws on a dead handle, **`.Equals()` included**; `IsValidObject` returns `False` instead of throwing, on both `Element` and `Document`.
+- **`Document` is a live reference too** — a link's document dies on Reload/Unload, the host document on close. The `RevitLinkInstance` is the anchor: it is an element of the *host* model and survives a link reload, so keep **its** Id and call `GetLinkDocument()` again on every use. Ids harvested from inside the link re-resolve in the new document (a dead graph is repairable). Elements collected from a link — views, filters — die as one generation together with it.
+- **pyRevit scope teardown:** at the end of every script that does not set `__persistentengine__ = True`, pyRevit deletes all non-dunder globals of `script.py` (imported modules are untouched). So **any code that runs after the script returns** — modeless-window handlers, WPF callbacks, External Event handlers — **must live in an imported module** (`lib/`, `ui/`), never in `script.py`. The failure is silent: `NameError` inside the handler, swallowed by an `except` whose `traceback` was deleted too; the button simply does nothing.
+
 ## Environment Detection (`lib/Config.py`)
 
 Dev vs prod is decided by inspecting `__file__`: if the path contains the BPM `Software_Development` working-tree string it returns `"dev"` (→ localhost:5000), otherwise `"prod"` (→ Azure). A deployed client copy lives outside that path, so it resolves to prod automatically.
