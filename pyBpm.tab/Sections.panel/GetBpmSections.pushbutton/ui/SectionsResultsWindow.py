@@ -50,6 +50,7 @@ from pyrevit.revit import events
 import RevitUtils  # extension-level lib
 import SectionsFilterSelection as sfs  # type: ignore
 import SectionsCreate as creator  # type: ignore
+import SectionsScoring as scoring  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
 from SectionsSettingsPage import SectionsSettingsPage  # type: ignore
@@ -120,8 +121,16 @@ class SectionsResultsWindow(Windows.Window):
 
         self.uidoc = uidoc
         self.doc = uidoc.Document
-        self.comp_link = comp_link
-        self.comp_doc = comp_doc
+        # T-0340: the comp link and its document are NOT held as live references.
+        # A link reload destroys the link Document (and every element collected
+        # from it) while leaving the handles non-None, so the next property access
+        # raises "The referenced object is not valid". The RevitLinkInstance
+        # SURVIVES the reload (it lives in the host doc, verified), so its id is
+        # the anchor: comp_link / comp_doc are properties re-resolved per use.
+        self._comp_link_id = RevitUtils.getElementIdValue(self.doc, comp_link.Id)
+        # The comp-document generation the state below was built from. When this
+        # reference goes invalid, a reload happened -> ensure_live() heals.
+        self._comp_doc_ref = comp_doc
         self.filters = filters  # list of ParameterFilterElements, or None
         self.items = items  # [{'section', 'sheet'}], no scoring
         self.sheets = sheets  # sorted unique sheet numbers
@@ -233,6 +242,142 @@ class SectionsResultsWindow(Windows.Window):
     def has_filters(self):
         return bool(self.filters)
 
+    # ------------------------------------------------------------------
+    # Live model state (T-0340) - nothing that crosses into the compilation
+    # model is held; it is re-resolved from the link instance id on every use.
+    # ------------------------------------------------------------------
+    @property
+    def comp_link(self):
+        """The RevitLinkInstance, re-resolved from its id. None when it is gone."""
+        try:
+            link = self.doc.GetElement(
+                RevitUtils.getElementId(self.doc, self._comp_link_id)
+            )
+        except Exception:
+            return None
+        return link if RevitUtils.is_valid(link) else None
+
+    @property
+    def comp_doc(self):
+        """The CURRENT compilation-model Document (a reload returns a new one).
+        None when the link is unloaded or gone."""
+        link = self.comp_link
+        if link is None:
+            return None
+        try:
+            comp_doc = link.GetLinkDocument()
+        except Exception:
+            return None
+        return comp_doc if RevitUtils.is_valid(comp_doc) else None
+
+    def ensure_live(self):
+        """Gate for every operation that touches the model. True = go ahead.
+
+        False means the caller must abort QUIETLY: either the window was just
+        healed after a link reload (the planner was told to retry), or it can no
+        longer work at all. Never raises - it is called from modeless handlers.
+        """
+        try:
+            if self._closed:
+                return False
+            if not RevitUtils.is_valid(self.doc):
+                # The host model was closed - there is nothing to re-resolve from.
+                self.notify(u"המודל נסגר. החלון ייסגר - פתח את הכלי מחדש.")
+                try:
+                    self.Close()
+                except Exception:
+                    pass
+                return False
+            if self.comp_link is None:
+                self.notify(
+                    u"לינק מודל הקומפילציה אינו קיים עוד במודל. טען אותו ופתח "
+                    u"את הכלי מחדש."
+                )
+                return False
+            if self.comp_doc is None:
+                self.notify(
+                    u"מודל הקומפילציה אינו טעון (Unloaded). טען את הלינק ונסה שוב."
+                )
+                return False
+            # The held generation died but the link is loaded -> it was reloaded.
+            if not RevitUtils.is_valid(self._comp_doc_ref):
+                self._refresh_model_state()
+                return False
+            return True
+        except Exception:
+            self.report_error(u"בדיקת מצב המודל")
+            return False
+
+    def _refresh_model_state(self):
+        """Heal the window after the compilation link was reloaded.
+
+        Everything collected from the OLD comp document - the section views, the
+        discipline-filter elements, the sheet list - died with it. Their ids still
+        resolve in the new document, and the coordinator may have added/removed
+        sections meanwhile, so the graph is re-collected rather than forcing the
+        planner to close and reopen the tool."""
+        comp_doc = self.comp_doc
+        self._comp_doc_ref = comp_doc
+
+        self.close_details_pane()  # its row points at a dead section view
+
+        # Re-point the dc3d display instead of recreating it: the server has a
+        # FIXED guid and must stay a single instance (teardown+create would race).
+        if self._display is not None:
+            try:
+                self._display.comp_doc = comp_doc
+                self._display.comp_link = self.comp_link
+            except Exception:
+                pass
+
+        # The filter ELEMENTS died; their ids (the D6 cache key) survived.
+        self.filters = self._resolve_filters_by_ids(comp_doc, self.filter_ids)
+        if not self.filters:
+            # A filter was deleted in the new version - back to the D9 lock, the
+            # planner re-picks in Settings.
+            self.filter_ids = None
+
+        self.items, self.sheets = scoring.get_candidate_sections_with_sheets(
+            comp_doc
+        )
+        self._sections_by_sheet = {}
+        for it in self.items:
+            self._sections_by_sheet.setdefault(it["sheet"], []).append(
+                it["section"]
+            )
+        self._comp_key = self._compute_comp_key(comp_doc)
+
+        self._reset_sheet_pages()
+        self._rebuild_sheet_nav()
+        self.home_page.update_content()
+        self.MainFrame.Content = self.home_page
+        self.notify(
+            u"לינק מודל הקומפילציה נטען מחדש - הנתונים רועננו. בחר גיליון שוב."
+        )
+
+    def _resolve_filters_by_ids(self, comp_doc, filter_ids):
+        """Re-resolve the discipline filters in the CURRENT comp document from
+        their stored ids (ids survive a reload - verified). Returns None if any is
+        missing, so a partial selection can never score a sheet."""
+        if not filter_ids or comp_doc is None:
+            return None
+        from Autodesk.Revit.DB import ParameterFilterElement
+
+        resolved = []
+        try:
+            for filter_id in filter_ids:
+                element = comp_doc.GetElement(
+                    RevitUtils.getElementId(comp_doc, filter_id)
+                )
+                if element is None or not isinstance(
+                    element, ParameterFilterElement
+                ):
+                    return None
+                resolved.append(element)
+        except Exception:
+            return None
+        return resolved
+
     def _compute_filter_ids(self, filters):
         """The selected filters' element-id ints (for the D6 cache key), or None
         when no selection exists yet."""
@@ -296,6 +441,9 @@ class SectionsResultsWindow(Windows.Window):
         # Separator between the fixed top and the scrollable sheets (D8).
         self.NavTopPanel.Children.Add(self._make_separator())
 
+        self._add_sheet_buttons()
+
+    def _add_sheet_buttons(self):
         # One button per sheet, count = candidate sections on that sheet.
         counts = {}
         for it in self.items:
@@ -311,6 +459,18 @@ class SectionsResultsWindow(Windows.Window):
             self.NavSheetsPanel.Children.Add(btn)
             self.sheet_buttons.append((btn, sheet))
             self.nav_buttons.append(btn)
+
+    def _rebuild_sheet_nav(self):
+        """Rebuild the per-sheet nav buttons after the comp model was reloaded -
+        the coordinator may have added or removed sheets in the new version."""
+        for btn, sheet in self.sheet_buttons:
+            try:
+                self.nav_buttons.remove(btn)
+            except Exception:
+                pass
+        self.sheet_buttons = []
+        self.NavSheetsPanel.Children.Clear()
+        self._add_sheet_buttons()
 
     def enable_sheet_buttons(self):
         """Unlock the sheet buttons (D9). Called after a valid discipline-filter
@@ -371,6 +531,8 @@ class SectionsResultsWindow(Windows.Window):
         try:
             if not self._confirm_leave_settings():
                 return
+            if not self.ensure_live():  # T-0340
+                return
             self._on_navigate_away()  # D7
             page = self._sheet_pages.get(sheet)
             if page is None:
@@ -419,6 +581,8 @@ class SectionsResultsWindow(Windows.Window):
             # discard the user's unsaved edits).
             if self.MainFrame.Content is self.settings_page:
                 return
+            if not self.ensure_live():  # T-0340 - the page reads the comp model
+                return
             self._on_navigate_away()  # D7
             # Re-sync the checkboxes to the saved selection so a prior visit's
             # unsaved edits are discarded, then show the page.
@@ -432,6 +596,8 @@ class SectionsResultsWindow(Windows.Window):
         Settings page): save it, refresh the D6 cache key, drop computed sheet
         pages so they recompute with the new filters, unlock the sheet nav
         buttons (D9), and return to Home."""
+        if not self.ensure_live():  # T-0340 - `selected` came from the comp doc
+            return
         self._on_navigate_away()  # D7 - the filter change drops sheet pages too
         ids = [
             RevitUtils.getElementIdValue(self.comp_doc, f.Id) for f in selected
@@ -592,6 +758,8 @@ class SectionsResultsWindow(Windows.Window):
     def request_display(self, system_id, section_name):
         """Enqueue a 'show this system' request and raise the External Event."""
         try:
+            if not self.ensure_live():  # T-0340
+                return
             self._pending.append(
                 {
                     "action": "display",
@@ -685,9 +853,14 @@ class SectionsResultsWindow(Windows.Window):
         if self._details_row is None:
             return None
         section = getattr(self._details_row, "section", None)
-        if section is None:
+        # The section view dies with its comp document (T-0340) - a dead handle
+        # is not None, so validity is what decides here.
+        if not RevitUtils.is_valid(section):
             return None
-        section_id = RevitUtils.getElementIdValue(self.comp_doc, section.Id)
+        comp_doc = self.comp_doc
+        if comp_doc is None:
+            return None
+        section_id = RevitUtils.getElementIdValue(comp_doc, section.Id)
         return SectionsImage.deterministic_path(self._comp_key, section_id)
 
     def _load_image_into(self, path):
@@ -760,6 +933,8 @@ class SectionsResultsWindow(Windows.Window):
 
     def ShowImage_Click(self, sender, e):
         try:
+            if not self.ensure_live():  # T-0340 - export reads the comp model
+                return
             path = self._current_image_path()
             if path is None:
                 return
@@ -772,6 +947,8 @@ class SectionsResultsWindow(Windows.Window):
 
     def RefreshImage_Click(self, sender, e):
         try:
+            if not self.ensure_live():  # T-0340
+                return
             path = self._current_image_path()
             if path is None:
                 return
@@ -902,6 +1079,8 @@ class SectionsResultsWindow(Windows.Window):
         try:
             if not rows:
                 return
+            if not self.ensure_live():  # T-0340
+                return
             if action == "create":
                 targets = [row for row in rows if not row.exists]
                 if not targets:
@@ -970,6 +1149,9 @@ class SectionsResultsWindow(Windows.Window):
         if self._closed:
             # Window is closing/closed - never (re-)touch the model or register a
             # server from a late-firing Execute. Teardown is handled separately.
+            return
+        if not RevitUtils.is_valid(self.doc):
+            # T-0340: the model was closed between the click and this Execute.
             return
         changed = False
         for request in requests:

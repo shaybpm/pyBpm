@@ -14,6 +14,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "ui"))
 
+import RevitUtils  # extension-level lib
 import SectionsScoring as scoring  # type: ignore
 import SectionsFilterSelection as sfs  # type: ignore
 from SectionsResultsWindow import SectionsResultsWindow, WINDOW_ENVVAR_KEY  # type: ignore
@@ -45,16 +46,32 @@ def run():
     # Duplicate-window guard (section 6): a second window would create a second
     # dc3d server - never allow it. If one is already open and visible, just
     # activate it. A stale/invalid handle is cleared and we proceed.
+    #
+    # T-0340: "visible" is NOT enough. A window whose host document was closed
+    # (or that belongs to another open model) still reports IsVisible, so
+    # activating it handed the planner back the same dead handles and the error
+    # repeated on every click, with no way out. Reuse it only if it is alive AND
+    # belongs to THIS document.
     existing = script.get_envvar(WINDOW_ENVVAR_KEY)
     if existing is not None:
         try:
-            if existing.IsVisible:
+            reusable = (
+                existing.IsVisible
+                and not existing._closed
+                and RevitUtils.is_valid(existing.doc)
+                and existing.doc.Equals(doc)
+            )
+        except Exception:
+            reusable = False
+        if reusable:
+            try:
                 existing.Activate()
                 return
-        except Exception:
-            pass
-        # Not visible but a handle lingers (orphaned/half-closed). Close it so its
-        # own Closed handler tears down its dc3d server before we build a new one
+            except Exception:
+                pass
+        # Not reusable (hidden, half-closed, or bound to a document that is gone).
+        # Close it so its own Closed handler tears down its dc3d server before we
+        # build a new one
         # sharing the same fixed server GUID - otherwise the orphan's later
         # teardown could unregister the new window's server.
         try:

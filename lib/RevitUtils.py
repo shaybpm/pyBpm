@@ -1,6 +1,32 @@
 # -*- coding: utf-8 -*-
 
 
+class StaleRevitReference(Exception):
+    """A held Revit handle (Document / Element) is no longer valid."""
+
+
+def is_valid(obj):
+    """True when obj is a LIVE Revit handle (Element, Document, UIDocument...).
+
+    A dead handle raises "The referenced object is not valid, possibly because it
+    has been deleted from the database, or its creation was undone." on ANY
+    member access - including .Equals() - so IsValidObject must be probed FIRST
+    and alone. It is the one member that answers instead of throwing: verified
+    against a live model (T-0340) for both a deleted Element and the Document of
+    a reloaded link, which return False cleanly.
+
+    Handles die more often than it looks: a link Document (and EVERY element
+    collected from it) dies on a link reload, and the host Document dies when the
+    model is closed - in both cases the reference stays non-None.
+    """
+    if obj is None:
+        return False
+    try:
+        return bool(obj.IsValidObject)
+    except Exception:
+        return False
+
+
 def getRevitVersion(doc):
     return int(doc.Application.VersionNumber)
 
@@ -112,6 +138,13 @@ def get_comp_link(doc):
 
 
 def get_model_info(doc):
+    # T-0340: callers can hold a Document across a link reload / model close, and
+    # every property below would then raise the opaque "referenced object is not
+    # valid" instead of saying what happened. Gate on IsValidObject first.
+    if not is_valid(doc):
+        raise StaleRevitReference(
+            "Document handle is no longer valid (model closed or link reloaded)"
+        )
     if not doc.IsModelInCloud:
         raise Exception("Model is not in cloud")
     pathName = doc.PathName
