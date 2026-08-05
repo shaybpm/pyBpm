@@ -111,3 +111,29 @@ This extension **has** a version field: `extension.json` → `"version"`. The se
 - Keep changes small and follow existing patterns in the file — don't refactor surrounding code.
 - Comments in English, only where the WHY is non-obvious.
 - `.vscode`, `pybpmtests.tab`, and `fake-data` are gitignored.
+
+## חזק וברוך (סיום משימה)
+
+הביטוי **"חזק וברוך"** הוא האישור לכל השלבים כאן — אין לעצור לאישור נוסף על bump/commit/merge/push. הנוהל הכללי: skill `hazak-uvaruch`. ההנחיות כאן נקבעו ע"י אייל ב-2026-08-05 והן הסמכות.
+
+**הרצף:**
+
+1. **version bump** — `extension.json` → `"version"`, patch. זהו קובץ הגרסה היחיד בעץ, ו-`lib/Config.py` קורא אותו בזמן ריצה.
+2. **commit** — בסגנון הקיים: `Update version to 1.10.2: <מה שונה> (T-####)`
+3. **merge ל-`main`**
+4. **push**
+5. **TaskDeck → `done-dev`**, ולשאול את אייל: להעביר ל-`done` או להוציא מייל עדכונים?
+
+**אין שלב deploy נפרד** — ה-push ל-`main` הוא שמעמיד את הקוד ב-`main.zip`, ומשם כל מי שלוחץ `Update.smartbutton` מקבל אותו.
+
+**עדכון רגיל מול עדכון כפוי — שני מסלולים במכוון:**
+
+- **רגיל (ברירת המחדל):** המשתמש לוחץ `Update.smartbutton` מתי שנוח לו ומקבל את הגרסה האחרונה מ-`main`. זה מה ש"חזק וברוך" מייצר.
+- **כפוי:** כשיוצא עדכון חשוב שחייב להגיע לכולם — משנים את ה-flag ‏`v-update-required` ב-`pyBpm-server/src/routes/info/index.ts`, ואז העדכון נכפה על כל המשתמשים בפתיחת Revit.
+
+**"חזק וברוך" לא נוגע ב-flag.** הכפייה היא החלטה נפרדת של אייל לכל מקרה לגופו, ודורשת גם deploy של `pyBpm-server`. אם השינוי נראה לך כזה שמצדיק כפייה — לציין זאת בדוח הסיום ולתת לאייל להחליט.
+
+**כללי זהירות שנשארים בתוקף:**
+
+- בדיקה ידנית ב-Revit חי לפני ה-commit — זה השער היחיד, אין build, אין טסטים ואין CI.
+- אי אפשר לבדוק את מנגנון העדכון מקומית: `Update.py` מסרב לרוץ על עץ עבודה של git.
