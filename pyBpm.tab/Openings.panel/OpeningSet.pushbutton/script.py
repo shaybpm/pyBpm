@@ -7,13 +7,6 @@ See OPENINGS_MIGRATION_PLAN.md par.12 and OPENINGS_REMOVAL_INSTRUCTIONS.md par.3
 __title__ = "Opening\nSet"
 __author__ = "Ely Komm & Eyal Sinay"
 
-from pyrevit import forms
+from MovedToBpmTools import show_moved_to_bpmtools
 
-forms.alert(
-    "This tool has moved to BPMTools.\n\n"
-    "Openings Tracking, Opening Set and Opening Explorer are now built into "
-    "BPMTools, under the BPM ribbon tab.\n\n"
-    "Don't see them? Update BPMTools (BPM tab > Check For Updates), or install it from:\n"
-    "https://bondsstorageaccount.blob.core.windows.net/production/BPMTools/BPMTools.Installer.msi",
-    title="Moved to BPMTools",
-)
+show_moved_to_bpmtools()
