@@ -54,6 +54,7 @@ import SectionsScoring as scoring  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
 from SectionsSettingsPage import SectionsSettingsPage  # type: ignore
+import SectionsDisplay as display_module  # type: ignore
 from SectionsDisplay import SectionsDisplay  # type: ignore
 import SectionsImage  # type: ignore
 
@@ -785,6 +786,11 @@ class SectionsResultsWindow(Windows.Window):
         try:
             sys_row = sender.DataContext
             if sys_row is None:
+                return
+            # pyRevit < 4.8.14 has no dc3dserver - the rest of the tool works, the
+            # overlay simply is not available on that machine.
+            if not display_module.is_available():
+                self.notify(display_module.UNAVAILABLE_MESSAGE)
                 return
             # D2: display happens in the host section, so it must exist.
             if self._details_row is None or not getattr(
