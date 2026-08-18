@@ -33,7 +33,14 @@ from Autodesk.Revit.DB import (
     ColorWithTransparency,
 )
 
-from pyrevit.revit import dc3dserver
+try:
+    from pyrevit.revit import dc3dserver
+except ImportError:
+    # pyrevit.revit.dc3dserver exists only from pyRevit 4.8.14 (Jan 2024); client
+    # offices run whatever pyRevit they installed themselves. The overlay is an
+    # optional extra, so a missing module must NOT take the whole tool down -
+    # this module is imported at module level by SectionsResultsWindow.
+    dc3dserver = None
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 
@@ -52,6 +59,18 @@ DISPLAY_COLOR = ColorWithTransparency(255, 255, 0, 110)
 # / does not z-fight with the model element it highlights. This is a highlight,
 # not a 1:1 copy - the drawn size is intentionally a few % larger than the source.
 DISPLAY_SCALE = 1.03
+
+# Shown instead of the overlay when the host pyRevit has no dc3dserver module.
+UNAVAILABLE_MESSAGE = (
+    u"תצוגת המערכת דורשת pyRevit 4.8.14 ומעלה.\n"
+    u"יש לעדכן את pyRevit כדי להשתמש בכפתור 'הצג'."
+)
+
+
+def is_available():
+    """True if this pyRevit provides dc3dserver (4.8.14+). When False the whole
+    overlay feature is off and the caller must not offer it."""
+    return dc3dserver is not None
 
 
 def _scale_solid(solid, factor):
@@ -125,6 +144,10 @@ class SectionsDisplay(object):
         caller switches system by calling this directly (no preceding hide), so a
         silent early-return would leave the old overlay drawn while the UI claims
         the new one is shown (D8)."""
+        if dc3dserver is None:
+            # Old pyRevit - the caller (ToggleSystemDisplay_Click) already told the
+            # user; nothing was ever drawn, so there is nothing to clear either.
+            return
         server = self._ensure_server()
         meshes = self._build_meshes(system_id)
         if not meshes:
