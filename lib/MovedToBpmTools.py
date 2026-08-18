@@ -13,7 +13,9 @@ is exactly what happened when System.Uri failed to resolve on a client engine
 that goes wrong there degrades to a plain alert that still carries the URL.
 """
 
-INSTALLER_URL = "https://bondsstorageaccount.blob.core.windows.net/production/BPMTools/BPMTools.Installer.msi"
+# The how-to page, not the raw MSI: it covers removing the old Bonds as well
+# as installing BPM Tools, which is the order users actually need.
+HOW_TO_URL = "https://bonds-server.azurewebsites.net/how-to-do/remove-old-bonds-and-install-bpm-tools"
 
 
 def show_moved_to_bpmtools(extra_note=None):
@@ -21,7 +23,7 @@ def show_moved_to_bpmtools(extra_note=None):
     try:
         import MovedToBpmToolsUi
 
-        MovedToBpmToolsUi.show(INSTALLER_URL, extra_note)
+        MovedToBpmToolsUi.show(HOW_TO_URL, extra_note)
     except Exception as ex:
         _fallback_alert(extra_note, ex)
 
@@ -32,13 +34,14 @@ def _fallback_alert(extra_note, ex):
 
     lines = [
         "Openings Tracking, Opening Set and Opening Explorer are now built into "
-        "BPMTools, under the BPM ribbon tab.",
+        "BPM Tools.",
+        "BPM Tools sits under the BPM tab in the Revit ribbon.",
     ]
     if extra_note:
         lines.append(extra_note)
     lines.append(
-        "Already have BPMTools? Update it from the BPM tab > Check For Updates.\n"
-        "Otherwise install it from:\n" + INSTALLER_URL
+        "Already have BPM Tools? Update it from the BPM tab > Check For Updates.\n"
+        "Not installed yet? Removal and installation instructions:\n" + HOW_TO_URL
     )
 
     forms.alert(

@@ -45,8 +45,8 @@ def _brush(color):
 def _open_url(url):
     """Open a URL with the user's default browser (Revit 2025+ safe).
 
-    Two ways in, because reaching the installer is the entire point of this
-    window: System.Diagnostics may not resolve on every engine, and os.startfile
+    Two ways in, because reaching the instructions page is the entire point of
+    this window: System.Diagnostics may not resolve on every engine, and os.startfile
     goes through the shell without it.
     """
     try:
@@ -99,8 +99,12 @@ class MovedToBpmToolsWindow(Window):
         body.Children.Add(
             self._paragraph(
                 "Openings Tracking, Opening Set and Opening Explorer are now built "
-                "into BPMTools, under the BPM ribbon tab."
+                "into BPM Tools."
             )
+        )
+
+        body.Children.Add(
+            self._paragraph("BPM Tools sits under the BPM tab in the Revit ribbon.")
         )
 
         if self.extra_note:
@@ -108,17 +112,20 @@ class MovedToBpmToolsWindow(Window):
 
         body.Children.Add(
             self._paragraph(
-                "Already have BPMTools? Update it from the BPM tab > Check For Updates."
+                "Already have BPM Tools? Update it from the BPM tab > Check For Updates."
             )
         )
 
         body.Children.Add(
-            self._paragraph("Otherwise, install it - one click, no browser needed:")
+            self._paragraph(
+                "Not installed yet? The guide covers removing the old Bonds "
+                "and installing BPM Tools:"
+            )
         )
 
         # --- primary action ---
         download_btn = Button()
-        download_btn.Content = "Download BPMTools Installer"
+        download_btn.Content = "Open installation instructions"
         download_btn.FontSize = 14
         download_btn.FontWeight = FontWeights.SemiBold
         download_btn.Foreground = Brushes.White
@@ -222,7 +229,7 @@ class MovedToBpmToolsWindow(Window):
         from pyrevit import forms
 
         forms.alert(
-            "Could not open the download link automatically.\n\n"
+            "Could not open the link automatically.\n\n"
             "Please copy this address into your browser:\n" + self.url,
             title="Moved to BPMTools",
             sub_msg=str(ex),
