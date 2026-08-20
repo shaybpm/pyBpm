@@ -139,6 +139,7 @@
                 <Grid Grid.Row="1" Grid.Column="0" MinWidth="180">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -146,7 +147,13 @@
                         <!-- Home + Settings buttons + separator added in code -->
                     </StackPanel>
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                    <!-- Names the list below: the planners read the sheet numbers
+                         on the buttons without knowing what they were (T-0386). -->
+                    <TextBlock Grid.Row="1" Text="גיליונות" FontWeight="Bold"
+                        FlowDirection="RightToLeft" Margin="8,0,8,4"
+                        Foreground="#555555" />
+
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
                         HorizontalScrollBarVisibility="Hidden">
                         <StackPanel x:Name="NavSheetsPanel" Margin="4">
                             <!-- One button per sheet added in code -->

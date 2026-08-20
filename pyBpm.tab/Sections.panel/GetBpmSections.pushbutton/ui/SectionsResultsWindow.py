@@ -64,6 +64,10 @@ xaml_file = os.path.join(os.path.dirname(__file__), "SectionsResultsWindow.xaml"
 # checks it so a second click never spins up a second dc3d server (section 6).
 WINDOW_ENVVAR_KEY = "PYBPM_GETBPMSECTIONS_WINDOW"
 
+# Widest a sheet nav button may get (T-0386). The nav column is Width="Auto", so
+# without a cap a single long sheet name stretches it across the window.
+SHEET_BUTTON_MAX_WIDTH = 260
+
 
 class SystemRowItem(object):
     """Bindable row for one reference system in the details panel (S2). Built from
@@ -117,7 +121,9 @@ class SectionActionEventHandler(IExternalEventHandler):
 
 
 class SectionsResultsWindow(Windows.Window):
-    def __init__(self, uidoc, comp_link, comp_doc, filters, items, sheets):
+    def __init__(
+        self, uidoc, comp_link, comp_doc, filters, items, sheets, sheet_titles
+    ):
         wpf.LoadComponent(self, xaml_file)
 
         self.uidoc = uidoc
@@ -135,6 +141,9 @@ class SectionsResultsWindow(Windows.Window):
         self.filters = filters  # list of ParameterFilterElements, or None
         self.items = items  # [{'section', 'sheet'}], no scoring
         self.sheets = sheets  # sorted unique sheet numbers
+        # {sheet number: "<number> - <name>"} - display only (T-0386). The number
+        # stays the key; the title is what the planner reads.
+        self.sheet_titles = sheet_titles or {}
 
         # Selected discipline-filter id set - the D6 cache key component. Kept in
         # sync with self.filters (recomputed whenever the selection changes).
@@ -338,9 +347,11 @@ class SectionsResultsWindow(Windows.Window):
             # planner re-picks in Settings.
             self.filter_ids = None
 
-        self.items, self.sheets = scoring.get_candidate_sections_with_sheets(
-            comp_doc
-        )
+        (
+            self.items,
+            self.sheets,
+            self.sheet_titles,
+        ) = scoring.get_candidate_sections_with_sheets(comp_doc)
         self._sections_by_sheet = {}
         for it in self.items:
             self._sections_by_sheet.setdefault(it["sheet"], []).append(
@@ -444,6 +455,41 @@ class SectionsResultsWindow(Windows.Window):
 
         self._add_sheet_buttons()
 
+    def sheet_title(self, sheet):
+        """The sheet's display title ("<number> - <name>", T-0386), falling back
+        to the bare number when the ViewSheet was not found."""
+        if not sheet:
+            return u"-"
+        return self.sheet_titles.get(sheet) or sheet
+
+    def _make_sheet_button_content(self, title, count):
+        """Title + count as a 2-column grid, so a long sheet name is ellipsized
+        (TextTrimming) instead of pushing the whole nav column wider, while the
+        count never gets trimmed away."""
+        grid = Windows.Controls.Grid()
+        col_title = Windows.Controls.ColumnDefinition()
+        col_title.Width = Windows.GridLength(1, Windows.GridUnitType.Star)
+        col_count = Windows.Controls.ColumnDefinition()
+        col_count.Width = Windows.GridLength.Auto
+        grid.ColumnDefinitions.Add(col_title)
+        grid.ColumnDefinitions.Add(col_count)
+
+        title_block = Windows.Controls.TextBlock()
+        title_block.Text = title
+        title_block.TextTrimming = Windows.TextTrimming.CharacterEllipsis
+        title_block.VerticalAlignment = Windows.VerticalAlignment.Center
+        Windows.Controls.Grid.SetColumn(title_block, 0)
+        grid.Children.Add(title_block)
+
+        count_block = Windows.Controls.TextBlock()
+        count_block.Text = u"({})".format(count)
+        count_block.Margin = Windows.Thickness(6, 0, 0, 0)
+        count_block.Foreground = Windows.Media.Brushes.Gray
+        count_block.VerticalAlignment = Windows.VerticalAlignment.Center
+        Windows.Controls.Grid.SetColumn(count_block, 1)
+        grid.Children.Add(count_block)
+        return grid
+
     def _add_sheet_buttons(self):
         # One button per sheet, count = candidate sections on that sheet.
         counts = {}
@@ -452,10 +498,18 @@ class SectionsResultsWindow(Windows.Window):
 
         enabled = self.has_filters()
         for sheet in self.sheets:
-            label = u"{} ({})".format(
-                sheet if sheet else u"-", counts.get(sheet, 0)
+            title = self.sheet_title(sheet)
+            count = counts.get(sheet, 0)
+            # Button.Content takes any object - the nav-button helper assigns it
+            # as-is, so the 2-column grid goes in where a plain string used to.
+            btn = self._make_nav_button(
+                self._make_sheet_button_content(title, count),
+                self._make_sheet_handler(sheet),
             )
-            btn = self._make_nav_button(label, self._make_sheet_handler(sheet))
+            # Cap the width so one long sheet name cannot widen the nav column
+            # for every sheet; the full title stays readable in the tooltip.
+            btn.MaxWidth = SHEET_BUTTON_MAX_WIDTH
+            btn.ToolTip = u"גיליון {}\n{} חתכים בגיליון".format(title, count)
             btn.IsEnabled = enabled  # D9: locked until a valid selection exists
             self.NavSheetsPanel.Children.Add(btn)
             self.sheet_buttons.append((btn, sheet))
