@@ -34,6 +34,7 @@ the DEV.extension RevitUtils (the SecReport source). IronPython 2.7. """
 from Autodesk.Revit.DB import (
     FilteredElementCollector,
     View,
+    ViewSheet,
     ViewType,
     BuiltInParameter,
     BuiltInCategory,
@@ -706,13 +707,42 @@ def _section_sheet_number(section, views_by_name):
     return None
 
 
+def _sheet_display_title(sheet):
+    """'<number> - <name>' for a ViewSheet, or None when it has no number.
+
+    Composed here rather than taken from ViewSheet.Title: Title returns
+    'Sheet: 0002 - <name>' (verified live), and that English prefix means nothing
+    to the planner. The sheet NAME is what carries the level, which is the whole
+    point of showing the title instead of the bare number (T-0386)."""
+    try:
+        number = sheet.SheetNumber
+        name = sheet.Name
+    except Exception:
+        return None
+    if not number:
+        return None
+    if not name:
+        return number
+    return u"{} - {}".format(number, name)
+
+
 def get_candidate_sections_with_sheets(comp_doc):
-    """Return (items, sheets): items = [{'section', 'sheet'}] for every candidate
-    SU section, and sheets = the sorted unique sheet numbers present."""
+    """Return (items, sheets, sheet_titles): items = [{'section', 'sheet'}] for
+    every candidate SU section, sheets = the sorted unique sheet numbers present,
+    and sheet_titles = {number: '<number> - <name>'} for display (T-0386).
+
+    The NUMBER stays the key everything groups/sorts by (stable, short); the
+    title is display-only, so a coordinator renaming a sheet cannot break the
+    grouping."""
     sections = collect_candidate_sections(comp_doc)
     views_by_name = {}
+    sheet_titles = {}
     for v in FilteredElementCollector(comp_doc).OfClass(View).ToElements():
         views_by_name[v.Name] = v
+        if isinstance(v, ViewSheet):
+            title = _sheet_display_title(v)
+            if title:
+                sheet_titles[v.SheetNumber] = title
     items = []
     sheets_set = set()
     for section in sections:
@@ -720,7 +750,7 @@ def get_candidate_sections_with_sheets(comp_doc):
         items.append({"section": section, "sheet": sheet})
         if sheet:
             sheets_set.add(sheet)
-    return items, sorted(sheets_set)
+    return items, sorted(sheets_set), sheet_titles
 
 
 def section_id_value(comp_doc, section):

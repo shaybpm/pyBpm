@@ -86,7 +86,9 @@ def run():
         return
 
     # Candidate sections + sheets only - cheap, NO scoring (decision D1).
-    items, sheets = scoring.get_candidate_sections_with_sheets(comp_doc)
+    items, sheets, sheet_titles = scoring.get_candidate_sections_with_sheets(
+        comp_doc
+    )
 
     filters = _resolve_saved_filters(comp_doc)
     if not filters:
@@ -98,7 +100,7 @@ def run():
         filters = sfs.suggest_filters_from_openings(doc, comp_doc) or None
 
     window = SectionsResultsWindow(
-        uidoc, comp_link, comp_doc, filters, items, sheets
+        uidoc, comp_link, comp_doc, filters, items, sheets, sheet_titles
     )
     script.set_envvar(WINDOW_ENVVAR_KEY, window)
     window.Show()

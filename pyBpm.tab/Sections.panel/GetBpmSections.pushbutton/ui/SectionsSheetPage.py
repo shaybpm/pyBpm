@@ -110,7 +110,11 @@ class SectionsSheetPage(Windows.Controls.Page):
         self._score_cache = None
 
         wpf.LoadComponent(self, xaml_file)
-        self.Title = sheet if sheet else u"-"
+        # "<number> - <name>" (T-0386) - the name is what tells the planner which
+        # level this sheet is.
+        self.sheet_title = res_window.sheet_title(sheet)
+        self.Title = self.sheet_title
+        self.SheetHeaderTextBlock.Text = u"גיליון {}".format(self.sheet_title)
 
     # ------------------------------------------------------------------
     # Lazy compute (decision D5) + cache (decision D6 key set on the window)

@@ -36,11 +36,14 @@ class SectionsHomePage(Windows.Controls.Page):
         self.CountsTextBlock.Text = u"נמצאו {} גיליונות ו-{} חתכים.".format(
             len(sheets), len(items)
         )
+        # T-0386: spell out what the list on the side is - the planners read the
+        # numbers there without realising they were sheet numbers.
         if self.res_window.has_filters():
             self.HintTextBlock.Text = (
-                u"בחר גיליון מהתפריט בצד כדי לחשב את ההתאמה שלו."
+                u"ברשימת הגיליונות שבצד מופיע מספר הגיליון ושמו, "
+                u"ולצדם מספר החתכים שבו. בחר גיליון כדי לחשב את ההתאמה שלו."
             )
         else:
             self.HintTextBlock.Text = (
-                u"בחר פילטרים בעמוד ההגדרות כדי לפתוח את הגיליונות."
+                u"בחר פילטרים בעמוד ההגדרות כדי לפתוח את רשימת הגיליונות שבצד."
             )
