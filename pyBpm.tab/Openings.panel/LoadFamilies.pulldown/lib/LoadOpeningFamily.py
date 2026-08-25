@@ -30,7 +30,9 @@ def get_discipline_from_user():
 
 def get_family_path(family_name):
     """Returns the full path of the family file."""
-    return os.path.join(os.path.dirname(__file__), family_name + ".rfa")
+    # The .rfa files live in the pulldown's bin/ folder, beside this lib/ folder.
+    bin_dir = os.path.join(os.path.dirname(__file__), "..", "bin")
+    return os.path.abspath(os.path.join(bin_dir, family_name + ".rfa"))
 
 
 def run(doc, family_names):
