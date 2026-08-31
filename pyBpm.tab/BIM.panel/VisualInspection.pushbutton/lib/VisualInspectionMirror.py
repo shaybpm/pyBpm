@@ -249,19 +249,31 @@ def _apply_crop(view, low, high):
         pass
 
 
-def _placed_on_sheet(doc, view):
-    """Is this view sitting in a viewport somewhere? Then it is not ours to delete."""
+def sheet_placed_on(doc, view):
+    """The number of the sheet this view sits on, or None if it sits on none.
+
+    The number rather than a yes/no, because everywhere this matters the
+    planner is about to be told something about their view and "on sheet A-101"
+    is the difference between a warning they can act on and one they cannot.
+    """
     for viewport in (
         FilteredElementCollector(doc)
         .OfCategory(BuiltInCategory.OST_Viewports)
         .WhereElementIsNotElementType()
     ):
         try:
-            if viewport.ViewId == view.Id:
-                return True
+            if viewport.ViewId != view.Id:
+                continue
+            sheet = doc.GetElement(viewport.SheetId)
+            return sheet.SheetNumber if sheet is not None else u"?"
         except Exception:
             continue
-    return False
+    return None
+
+
+def _placed_on_sheet(doc, view):
+    """Is this view in a viewport somewhere? Then it is not ours to delete."""
+    return sheet_placed_on(doc, view) is not None
 
 
 # --- THE GEOMETRY -------------------------------------------------------------

@@ -62,6 +62,40 @@
             <Setter Property="FontSize" Value="12" />
         </Style>
 
+        <!-- Destructive, and dressed like it: red on hover only, so the column
+             does not read as a row of alarms while nothing is happening. -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="10,0,10,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="#B3261E" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="#F4F5F7" BorderBrush="#E0C4C2"
+                            BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#B3261E" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#8C1D18" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#8C1D18" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Foreground" Value="#FFFFFF" />
             <Setter Property="Background" Value="#2D7DD2" />
@@ -185,7 +219,7 @@
                 <DataGridTextColumn Header="תבנית" Binding="{Binding template_text}"
                                     Width="110" />
 
-                <DataGridTemplateColumn Header="פעולות" Width="250">
+                <DataGridTemplateColumn Header="פעולות" Width="330">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
@@ -221,6 +255,19 @@
                                         ToolTip="פותח את המבט הזה במודל שלך ועובר אליו. החלון נשאר פתוח.">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource TextButton}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding exists}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="מחק" Click="Delete_Click"
+                                        ToolTip="מוחק את המבט הזה מהמודל שלך, יחד עם כל מה שציירת בתוכו. תישאל לפני. המבט בקומפילציה אינו מושפע, ותמיד אפשר ליצור אותו כאן מחדש.">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding exists}" Value="True">

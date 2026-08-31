@@ -230,5 +230,11 @@ class VisualInspectionRowPage(Windows.Controls.Page):
     def Open_Click(self, sender, e):
         self.window.open_view(sender.DataContext)
 
+    def Delete_Click(self, sender, e):
+        # Straight to the window, not queued here: it warns first, and the
+        # warning needs the model (is this view on a sheet? is it the one open
+        # right now?), which the page has no business reaching into.
+        self.window.delete_view(sender.DataContext)
+
     def TemplateInfo_Click(self, sender, e):
         self.window.show_template_differences(sender.DataContext)

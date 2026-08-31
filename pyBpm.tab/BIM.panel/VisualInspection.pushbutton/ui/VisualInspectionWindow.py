@@ -365,6 +365,8 @@ class VisualInspectionWindow(Windows.Window):
             for item in pending:
                 if item.get("kind") == "template":
                     ok, message = self._replace_template(item, comp_doc)
+                elif item.get("kind") == "delete":
+                    ok, message = self._delete_view(item)
                 else:
                     ok, message = self._run_one(item, comp_doc, transform)
                 if ok:
@@ -483,6 +485,81 @@ class VisualInspectionWindow(Windows.Window):
             self.set_status(u"עברת למבט '{0}'.".format(view.Name), GREEN)
         except Exception as ex:
             self.set_status(u"לא ניתן לפתוח את המבט: {0}".format(ex), RED)
+
+    def delete_view(self, item):
+        """Delete the planner's own copy of a view, after saying what goes.
+
+        The warning is not a formality. The view is the planner's - they may
+        have dimensioned or annotated it since it was mirrored - and none of
+        that is recoverable from the compilation, which only knows where the
+        cut was. So the dialog names what is about to be lost rather than
+        asking "are you sure".
+        """
+        view = mirror.find_mirrored_view(self.doc, item.view_name)
+        if view is None:
+            self.set_status(
+                u"המבט '{0}' כבר אינו קיים אצלך.".format(item.view_name), GRAY
+            )
+            return
+
+        # Revit refuses to delete the view you are standing in, and the switch
+        # away cannot happen inside the transaction that does the deleting -
+        # so this is caught here, where it can still be said plainly.
+        try:
+            if self.uidoc.ActiveView.Id == view.Id:
+                self.set_status(
+                    u"'{0}' הוא המבט הפתוח כרגע ואי אפשר למחוק מבט פעיל. "
+                    u"עבור למבט אחר ונסה שוב.".format(view.Name),
+                    RED,
+                )
+                return
+        except Exception:
+            pass
+
+        from pyrevit import forms
+
+        sheet = mirror.sheet_placed_on(self.doc, view)
+        warning = (
+            u"למחוק את המבט '{0}' מהמודל שלך?\n\n"
+            u"כל מה שציירת בתוך המבט — מידות, הערות וסימונים — יימחק יחד "
+            u"איתו.".format(view.Name)
+        )
+        if sheet:
+            warning += u"\nהמבט מונח על גיליון {0}, וגם ה-Viewport שם יוסר.".format(
+                sheet
+            )
+        warning += (
+            u"\n\nהמבט בקומפילציה אינו מושפע, ותמיד אפשר ליצור אותו כאן מחדש "
+            u"בלחיצה על 'צור אצלי'. אם התחרטת מיד — Ctrl+Z מחזיר."
+        )
+
+        delete = u"מחק את המבט"
+        if forms.alert(warning, title=u"מחיקת מבט", options=[delete, u"ביטול"]) != delete:
+            return
+
+        self._pending.append(
+            {
+                "kind": "delete",
+                "view_id": item.view_id,
+                "view_name": item.view_name,
+            }
+        )
+        self.set_status(u"מוחק את '{0}'...".format(item.view_name), GRAY)
+        self._event.Raise()
+
+    def _delete_view(self, item):
+        """(succeeded, message) for one queued deletion. Inside a transaction."""
+        view = mirror.find_mirrored_view(self.doc, item["view_name"])
+        if view is None:
+            return False, u"המבט '{0}' כבר אינו קיים אצלך.".format(
+                item["view_name"]
+            )
+        name = view.Name
+        try:
+            self.doc.Delete(view.Id)
+        except Exception as ex:
+            return False, u"לא ניתן למחוק את '{0}': {1}".format(name, ex)
+        return True, u"המבט '{0}' נמחק מהמודל שלך.".format(name)
 
     def show_template_differences(self, item):
         """Spell out how the local template differs, and offer to fix it.
