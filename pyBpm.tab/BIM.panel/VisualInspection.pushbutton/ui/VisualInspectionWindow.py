@@ -486,6 +486,33 @@ class VisualInspectionWindow(Windows.Window):
         except Exception as ex:
             self.set_status(u"לא ניתן לפתוח את המבט: {0}".format(ex), RED)
 
+    def ask(self, message, title, options=None):
+        """forms.alert, with the dashboard given the focus back afterwards.
+
+        EVERY dialog this window raises goes through here, and that is the
+        whole point of it existing. A modal dialog takes the foreground and
+        does not hand it back to a MODELESS window when it closes: the
+        dashboard drops behind the Revit window and the planner has to go
+        hunting for it after every confirmation. Doing the re-activation in one
+        place - in a finally, so it also happens when the dialog is dismissed
+        or throws - is what stops it being re-forgotten at the next dialog
+        someone adds.
+        """
+        from pyrevit import forms
+
+        try:
+            return forms.alert(message, title=title, options=options)
+        finally:
+            self.take_focus()
+
+    def take_focus(self):
+        """Bring the dashboard back in front. Never worth failing a click over."""
+        try:
+            self.Activate()
+            self.Focus()
+        except Exception:
+            pass
+
     def delete_view(self, item):
         """Delete the planner's own copy of a view, after saying what goes.
 
@@ -516,8 +543,6 @@ class VisualInspectionWindow(Windows.Window):
         except Exception:
             pass
 
-        from pyrevit import forms
-
         sheet = mirror.sheet_placed_on(self.doc, view)
         warning = (
             u"למחוק את המבט '{0}' מהמודל שלך?\n\n"
@@ -534,7 +559,7 @@ class VisualInspectionWindow(Windows.Window):
         )
 
         delete = u"מחק את המבט"
-        if forms.alert(warning, title=u"מחיקת מבט", options=[delete, u"ביטול"]) != delete:
+        if self.ask(warning, u"מחיקת מבט", [delete, u"ביטול"]) != delete:
             return
 
         self._pending.append(
@@ -572,22 +597,20 @@ class VisualInspectionWindow(Windows.Window):
         if not item.template_differences:
             self.set_status(u"אין הבדלים ב-View Template.", GREEN)
             return
-        from pyrevit import forms
-
         name = item.template_name
         local = templates.find_template_by_name(self.doc, name)
         followers = len(templates.views_using(self.doc, local))
 
         replace = u"החלף את התבנית שלי בזו של הקומפילציה"
-        answer = forms.alert(
+        answer = self.ask(
             u"ההבדלים בין ה-View Template '{0}' שאצלך לזה שבמודל הקומפילציה:"
             u"\n\n".format(name)
             + u"\n".join(u"• " + d for d in item.template_differences)
             + u"\n\nהחלפה תביא את התבנית מהקומפילציה במקום שלך, תחת אותו שם. "
             u"{0} מבטים במודל שלך נמצאים כרגע על התבנית הזו ויעברו יחד איתה — "
             u"גם כאלה שאינם קשורים לבדיקה הויזואלית.".format(followers),
-            title=u"View Template",
-            options=[replace, u"סגור"],
+            u"View Template",
+            [replace, u"סגור"],
         )
         if answer != replace:
             return
