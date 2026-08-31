@@ -93,7 +93,7 @@ class ViewEntry(object):
     def __init__(self, view_id, name, kind, detail_number, score, run_date):
         self.view_id = view_id
         self.name = name
-        # "תנוחה" / "חתך" / "מבט" - from the view's class, not its name.
+        # "תכנית" / "חתך" / "מבט" - from the view's class, not its name.
         self.kind = kind
         self.detail_number = detail_number
         self.score = score
@@ -229,7 +229,7 @@ def _is_inspection_view(view):
 
 def _kind_of(view):
     if isinstance(view, ViewPlan):
-        return u"תנוחה"
+        return u"תכנית"
     if isinstance(view, ViewSection):
         return u"חתך"
     return u"מבט"

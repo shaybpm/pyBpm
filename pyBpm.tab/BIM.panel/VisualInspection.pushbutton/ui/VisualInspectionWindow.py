@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-"""The planner-facing Visual Inspection dashboard.
+"""The planner-facing Visual Inspection dashboard - shell, navigation, writes.
 
-Shows how the coordinator's Arc-Const inspection scored this project, sheet by
-sheet and view by view, and lets the planner rebuild any of those views in
-their own model so they can go and fix what scored badly.
+Shows how the coordinator's Arc-Const inspection scored this project and lets
+the planner rebuild any of those views in their own model, drawn the way the
+compilation drew them, so they can go and fix what scored badly.
 
-Ordered WORST FIRST throughout. The dashboard exists to find gaps; a list that
-opens on the levels already passing makes a planner scroll past their own good
-news to reach the work.
+Structure follows GetBpmSections: a header, a left navigation column with one
+button per inspection ROW, and a <Frame> hosting one page per row. A row is a
+sheet's worth of views, and each page is a DataGrid of them. Ordered WORST
+FIRST throughout, both the nav buttons and the rows inside a page.
 
 Modeless, so the planner can keep working with it open - which is also why
 every model write goes through an ExternalEvent: a modeless window is not in
@@ -16,20 +17,31 @@ Revit's API context and calling the API from a WPF handler would throw.
 Element lifetime (see the revit-element-lifetime rule): nothing here holds a
 live Element or Document across a click. The comp link's ElementId is the
 anchor - it lives in the HOST document and survives a link reload - and the
-comp Document, the comp views and the report are all re-resolved from it. The
-report is data, not handles: it is read afresh on every refresh.
+comp Document, the comp views and the report are all re-resolved from it.
 """
 
 import os
+import sys
 
 from pyrevit.framework import wpf
 from System import Windows
 
+from Autodesk.Revit.DB import Transaction
 from Autodesk.Revit.UI import IExternalEventHandler, ExternalEvent
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
+sys.path.append(os.path.dirname(__file__))
 
 import RevitUtils  # extension-level lib
 import VisualInspectionRead as read  # type: ignore
 import VisualInspectionMirror as mirror  # type: ignore
+import VisualInspectionTemplate as templates  # type: ignore
+from VisualInspectionRowPage import (  # type: ignore
+    VisualInspectionRowPage,
+    ViewRowItem,
+    score_brush,
+    score_text,
+)
 
 
 xaml_file = os.path.join(os.path.dirname(__file__), "VisualInspectionWindow.xaml")
@@ -39,34 +51,16 @@ WINDOW_ENVVAR_KEY = "bpm_visual_inspection_window"
 GRAY = Windows.Media.Brushes.Gray
 BLACK = Windows.Media.Brushes.Black
 RED = Windows.Media.Brushes.Firebrick
-ORANGE = Windows.Media.Brushes.DarkOrange
 GREEN = Windows.Media.Brushes.SeaGreen
 
-# Where a score stops being a warning and starts being a problem. Deliberately
-# coarse: the number is a similarity measure, not a grade, and pretending to
-# finer resolution than that would be false precision.
-SCORE_BAD = 60.0
-SCORE_GOOD = 85.0
-
-
-def score_brush(score):
-    if score is None:
-        return GRAY
-    if score < SCORE_BAD:
-        return RED
-    if score < SCORE_GOOD:
-        return ORANGE
-    return GREEN
-
-
-def score_text(score):
-    if score is None:
-        return u"—"
-    return u"{0:.0f}".format(score)
+ACTIVE_NAV_BACKGROUND = Windows.Media.SolidColorBrush(
+    Windows.Media.Color.FromRgb(207, 226, 245)
+)
+NAV_BUTTON_MAX_WIDTH = 260
 
 
 class ActionEventHandler(IExternalEventHandler):
-    """Runs the queued create / sync on Revit's API context."""
+    """Runs the queued create / sync work on Revit's API context."""
 
     def __init__(self, window):
         self.window = window
@@ -92,8 +86,12 @@ class VisualInspectionWindow(Windows.Window):
 
         # A QUEUE, not a slot: Revit coalesces rapid Raise() calls into a single
         # Execute, so a single slot would silently drop the earlier request.
+        # "Create all" pushes a whole row's worth at once and relies on it.
         self._pending = []
         self._event = ExternalEvent.Create(ActionEventHandler(self))
+
+        self._nav_buttons = []
+        self._pages = {}
 
         self.Closed += self._on_closed
         self.reload()
@@ -117,21 +115,69 @@ class VisualInspectionWindow(Windows.Window):
             return None
         return link.GetLinkDocument()
 
-    # --- BUILDING THE LIST ----------------------------------------------------
+    # --- READING AND BUILDING -------------------------------------------------
 
     def reload(self):
-        """Read the compilation model again and rebuild the whole list."""
-        self.rows_panel.Children.Clear()
+        """Read the compilation model again and rebuild the whole dashboard."""
+        remembered = self._active_key()
+
+        self.nav_panel.Children.Clear()
+        self._nav_buttons = []
+        self._pages = {}
+        self.main_frame.Content = None
 
         comp_doc = self.comp_doc
         if comp_doc is None:
-            self.comp_model_text.Text = read.COMP_LINK_BROKEN_MSG
+            self._show_empty(read.COMP_LINK_BROKEN_MSG)
             self.model_score_text.Text = u"—"
+            self.comp_model_text.Text = read.COMP_LINK_BROKEN_MSG
             return
 
         report = read.read_inspection(comp_doc)
-        existing = mirror.mirrored_names(self.doc)
+        self._render_header(report, comp_doc)
 
+        if report.is_empty:
+            self._show_empty(
+                u"לא נמצאו מבטים של בדיקה ויזואלית במודל הקומפילציה. "
+                u"ייתכן שהבדיקה עדיין לא הורצה על הפרויקט הזה."
+            )
+            return
+
+        existing = mirror.mirrored_names(self.doc)
+        # One cache for the whole rebuild: every section of a row shares a
+        # template, and comparing one means walking all of its filters.
+        template_cache = {}
+
+        groups = []
+        for sheet in report.sheets:
+            groups.append((sheet, sheet.views))
+        if report.loose_views:
+            groups.append((_LooseGroup(report.loose_views), report.loose_views))
+
+        for sheet, entries in groups:
+            items = [
+                self._row_item(entry, existing, comp_doc, template_cache)
+                for entry in entries
+            ]
+            self._add_nav_button(sheet, items)
+
+        self.empty_hint.Visibility = Windows.Visibility.Collapsed
+        self._restore_or_open_first(remembered)
+
+    def _row_item(self, entry, existing, comp_doc, template_cache):
+        name, state, differences = None, templates.STATE_NONE, []
+        comp_view = comp_doc.GetElement(
+            RevitUtils.getElementId(comp_doc, entry.view_id)
+        )
+        if comp_view is not None:
+            name, state, differences = templates.template_status(
+                self.doc, comp_view, template_cache
+            )
+        return ViewRowItem(
+            entry, entry.name in existing, state, differences, name
+        )
+
+    def _render_header(self, report, comp_doc):
         self.comp_model_text.Text = u"מודל הקומפילציה: {0}".format(comp_doc.Title)
         self.model_score_text.Text = score_text(report.model_score)
         self.model_score_text.Foreground = score_brush(report.model_score)
@@ -141,30 +187,6 @@ class VisualInspectionWindow(Windows.Window):
             else u"אין תאריך בדיקה"
         )
         self.source_note_text.Text = self._source_note(report)
-
-        if report.is_empty:
-            self.rows_panel.Children.Add(
-                self._note(
-                    u"לא נמצאו מבטים של בדיקה ויזואלית במודל הקומפילציה. "
-                    u"ייתכן שהבדיקה עדיין לא הורצה על הפרויקט הזה."
-                )
-            )
-            return
-
-        for sheet in report.sheets:
-            self.rows_panel.Children.Add(self._sheet_header(sheet))
-            for view in sheet.views:
-                self.rows_panel.Children.Add(self._view_row(view, existing))
-
-        if report.loose_views:
-            self.rows_panel.Children.Add(
-                self._note(
-                    u"מבטים שאינם על גיליון ({0}) — נוצרו אך טרם שובצו."
-                    .format(len(report.loose_views))
-                )
-            )
-            for view in report.loose_views:
-                self.rows_panel.Children.Add(self._view_row(view, existing))
 
     def _source_note(self, report):
         if report.source == "revision":
@@ -177,97 +199,152 @@ class VisualInspectionWindow(Windows.Window):
             return u"לא נמצא ציון במודל הקומפילציה."
         return u""
 
-    # --- ROWS -----------------------------------------------------------------
+    def _show_empty(self, message):
+        self.empty_hint.Text = message
+        self.empty_hint.Visibility = Windows.Visibility.Visible
 
-    def _sheet_header(self, sheet):
-        border = Windows.Controls.Border()
-        border.Background = Windows.Media.Brushes.WhiteSmoke
-        border.BorderBrush = GRAY
-        border.BorderThickness = Windows.Thickness(0, 0, 0, 1)
-        border.Padding = Windows.Thickness(8, 6, 8, 6)
-        border.Margin = Windows.Thickness(0, 10, 0, 0)
+    # --- NAVIGATION -----------------------------------------------------------
 
-        grid = self._grid([70, 110, 300, 130])
-        grid.Children.Add(
-            self._cell(score_text(sheet.score), 0, bold=True, brush=score_brush(sheet.score))
-        )
-        grid.Children.Add(self._cell(sheet.number or u"—", 1, bold=True))
-        grid.Children.Add(self._cell(sheet.name or u"", 2, bold=True))
-        grid.Children.Add(self._cell(sheet.run_date or u"", 3, brush=GRAY))
-        border.Child = grid
-        return border
-
-    def _view_row(self, view, existing):
-        grid = self._grid([70, 110, 300, 130, 110])
-        grid.Margin = Windows.Thickness(0, 2, 0, 2)
-
-        grid.Children.Add(
-            self._cell(score_text(view.score), 0, brush=score_brush(view.score))
-        )
-        grid.Children.Add(self._cell(view.kind, 1, brush=GRAY))
-        grid.Children.Add(self._cell(view.name or u"", 2))
-        grid.Children.Add(self._cell(view.detail_number or u"", 3, brush=GRAY))
-
-        is_here = view.name in existing
+    def _add_nav_button(self, sheet, items):
         button = Windows.Controls.Button()
-        button.Content = u"סנכרן" if is_here else u"צור אצלי"
-        button.Padding = Windows.Thickness(6, 2, 6, 2)
-        button.Tag = (view.view_id, view.name, is_here)
-        button.Click += self._action_click
-        if view.kind != u"חתך":
-            # Plans are shown - the planner should see their score - but they
-            # cannot be rebuilt yet, and a button that always fails is worse
-            # than one that says so up front.
-            button.IsEnabled = False
-            button.ToolTip = mirror.MIRROR_UNSUPPORTED_PLAN
-        Windows.Controls.Grid.SetColumn(button, 4)
-        grid.Children.Add(button)
-        return grid
+        button.Content = self._nav_content(sheet, items)
+        button.Margin = Windows.Thickness(0, 0, 0, 3)
+        button.Padding = Windows.Thickness(8, 5, 8, 5)
+        button.HorizontalContentAlignment = Windows.HorizontalAlignment.Stretch
+        button.Background = Windows.Media.Brushes.Transparent
+        button.BorderBrush = Windows.Media.Brushes.LightGray
+        button.Cursor = Windows.Input.Cursors.Hand
+        button.MaxWidth = NAV_BUTTON_MAX_WIDTH
+        button.ToolTip = self._nav_tooltip(sheet, items)
+        # Tag carries the page once built, so MainFrame_Navigated can tell which
+        # button to highlight without a parallel lookup table.
+        button.Tag = None
+        button.Click += self._make_nav_handler(sheet, items, button)
 
-    def _grid(self, widths):
+        self.nav_panel.Children.Add(button)
+        self._nav_buttons.append((button, self._key_of(sheet)))
+
+    def _nav_content(self, sheet, items):
         grid = Windows.Controls.Grid()
-        for width in widths:
+        for width, star in ((0, True), (0, False)):
             column = Windows.Controls.ColumnDefinition()
-            column.Width = Windows.GridLength(width)
+            column.Width = (
+                Windows.GridLength(1, Windows.GridUnitType.Star)
+                if star
+                else Windows.GridLength.Auto
+            )
             grid.ColumnDefinitions.Add(column)
+
+        title = Windows.Controls.TextBlock()
+        title.Text = sheet.name or sheet.number or u"—"
+        title.TextTrimming = Windows.TextTrimming.CharacterEllipsis
+        title.VerticalAlignment = Windows.VerticalAlignment.Center
+        Windows.Controls.Grid.SetColumn(title, 0)
+        grid.Children.Add(title)
+
+        score = Windows.Controls.TextBlock()
+        score.Text = score_text(sheet.score)
+        score.FontWeight = Windows.FontWeights.Bold
+        score.Foreground = score_brush(sheet.score)
+        score.Margin = Windows.Thickness(8, 0, 0, 0)
+        score.VerticalAlignment = Windows.VerticalAlignment.Center
+        Windows.Controls.Grid.SetColumn(score, 1)
+        grid.Children.Add(score)
         return grid
 
-    def _cell(self, text, column, bold=False, brush=None):
-        block = Windows.Controls.TextBlock()
-        block.Text = text
-        block.Margin = Windows.Thickness(4, 2, 4, 2)
-        block.VerticalAlignment = Windows.VerticalAlignment.Center
-        block.TextTrimming = Windows.TextTrimming.CharacterEllipsis
-        if bold:
-            block.FontWeight = Windows.FontWeights.Bold
-        block.Foreground = brush or BLACK
-        Windows.Controls.Grid.SetColumn(block, column)
-        return block
+    def _nav_tooltip(self, sheet, items):
+        here = len([i for i in items if i.exists])
+        return (
+            u"{0}\nגיליון {1}\n{2} מבטים, {3} כבר קיימים אצלך\nציון השורה: {4}"
+        ).format(
+            sheet.name or u"—",
+            sheet.number or u"—",
+            len(items),
+            here,
+            score_text(sheet.score),
+        )
 
-    def _note(self, text):
-        block = Windows.Controls.TextBlock()
-        block.Text = text
-        block.TextWrapping = Windows.TextWrapping.Wrap
-        block.Foreground = GRAY
-        block.Margin = Windows.Thickness(4, 12, 4, 4)
-        return block
+    def _key_of(self, sheet):
+        return sheet.number or sheet.name or u"?"
+
+    def _make_nav_handler(self, sheet, items, button):
+        def handler(sender, e):
+            self._open_page(sheet, items, button)
+
+        return handler
+
+    def _open_page(self, sheet, items, button):
+        key = self._key_of(sheet)
+        page = self._pages.get(key)
+        if page is None:
+            page = VisualInspectionRowPage(self, sheet, items)
+            self._pages[key] = page
+        button.Tag = page
+        self.main_frame.Navigate(page)
+
+    def _restore_or_open_first(self, remembered):
+        """Reopen the row the planner was on, else the worst-scoring one.
+
+        Without this a refresh - which every create and sync triggers - would
+        throw them back to the top of the list after every single click.
+        """
+        target = None
+        for button, key in self._nav_buttons:
+            if key == remembered:
+                target = button
+                break
+        if target is None and self._nav_buttons:
+            target = self._nav_buttons[0][0]
+        if target is not None:
+            target.RaiseEvent(
+                Windows.RoutedEventArgs(Windows.Controls.Button.ClickEvent)
+            )
+
+    def _active_key(self):
+        page = self.main_frame.Content if hasattr(self, "main_frame") else None
+        if page is None:
+            return None
+        for button, key in self._nav_buttons:
+            if button.Tag is page:
+                return key
+        return None
+
+    def main_frame_Navigated(self, sender, e):
+        current = self.main_frame.Content
+        for button, _key in self._nav_buttons:
+            button.Background = (
+                ACTIVE_NAV_BACKGROUND
+                if button.Tag is not None and button.Tag is current
+                else Windows.Media.Brushes.Transparent
+            )
 
     # --- ACTIONS --------------------------------------------------------------
 
-    def _action_click(self, sender, e):
-        view_id, view_name, is_here = sender.Tag
-        self._pending.append(
-            {"view_id": view_id, "view_name": view_name, "sync": is_here}
-        )
+    def queue_many(self, items, sync):
+        """Queue create/sync for a set of rows and wake the External Event."""
+        actionable = [i for i in items if i.can_create]
+        if not actionable:
+            self.set_status(mirror.MIRROR_UNSUPPORTED_PLAN, GRAY)
+            return
+        for item in actionable:
+            self._pending.append(
+                {
+                    "kind": "view",
+                    "view_id": item.view_id,
+                    "view_name": item.view_name,
+                    "sync": bool(sync),
+                }
+            )
         self.set_status(
-            u"מסנכרן..." if is_here else u"יוצר את המבט אצלך...", GRAY
+            u"מסנכרן {0} מבטים...".format(len(actionable))
+            if sync
+            else u"יוצר אצלך {0} מבטים...".format(len(actionable)),
+            GRAY,
         )
         self._event.Raise()
 
     def execute_pending(self, uiapp):
-        """Runs on Revit's API context. Drains the whole queue."""
-        from Autodesk.Revit.DB import Transaction
-
+        """Runs on Revit's API context. Drains the whole queue in one go."""
         pending, self._pending = self._pending, []
         if not pending:
             return
@@ -279,14 +356,23 @@ class VisualInspectionWindow(Windows.Window):
             return
         transform = comp_link.GetTotalTransform()
 
-        done = []
+        done = 0
+        notes = []
         failed = []
-        transaction = Transaction(self.doc, "pyBpm | Visual Inspection - mirror view")
+        transaction = Transaction(self.doc, "pyBpm | Visual Inspection - mirror views")
         transaction.Start()
         try:
             for item in pending:
-                ok, message = self._run_one(item, comp_doc, transform)
-                (done if ok else failed).append(message)
+                if item.get("kind") == "template":
+                    ok, message = self._replace_template(item, comp_doc)
+                else:
+                    ok, message = self._run_one(item, comp_doc, transform)
+                if ok:
+                    done += 1
+                    if message:
+                        notes.append(message)
+                else:
+                    failed.append(message)
             transaction.Commit()
         except Exception:
             if transaction.HasStarted() and not transaction.HasEnded():
@@ -294,13 +380,27 @@ class VisualInspectionWindow(Windows.Window):
             raise
 
         self.reload()
+        self._report(done, notes, failed)
+
+    def _report(self, done, notes, failed):
+        parts = []
+        if done:
+            parts.append(u"בוצעו {0} פעולות.".format(done))
+        # Deduplicated, because only three notes fit and a whole row's worth of
+        # views shares one template: without this, syncing 13 views spends all
+        # three slots on three copies of the same template sentence and buries
+        # anything that was actually about a view.
+        seen = set()
+        unique = [n for n in notes if not (n in seen or seen.add(n))]
+        parts.extend(unique[:3])
+        if len(unique) > 3:
+            parts.append(u"(ועוד {0} הערות)".format(len(unique) - 3))
         if failed:
-            self.set_status(u" · ".join(failed), RED)
-        else:
-            self.set_status(u" · ".join(done), GREEN)
+            parts.append(u"נכשלו {0}: {1}".format(len(failed), failed[0]))
+        self.set_status(u"  ".join(parts) or u"", RED if failed else GREEN)
 
     def _run_one(self, item, comp_doc, transform):
-        """(succeeded, message) for one queued action."""
+        """(succeeded, message) for one queued action. Inside a transaction."""
         comp_view = comp_doc.GetElement(
             RevitUtils.getElementId(comp_doc, item["view_id"])
         )
@@ -309,26 +409,147 @@ class VisualInspectionWindow(Windows.Window):
                 item["view_name"]
             )
 
+        view = None
+        rebuilt = False
         if item["sync"]:
-            existing = mirror.find_mirrored_view(self.doc, item["view_name"])
-            if existing is None:
-                # It was there when the list was drawn and is not there now.
-                # Creating it instead is what the planner wanted either way.
+            view = mirror.find_mirrored_view(self.doc, item["view_name"])
+            if view is None:
+                # It was there when the list was drawn and is not now. Creating
+                # it is what the planner wanted either way.
                 item["sync"] = False
             else:
-                ok, error = mirror.resync_section(
-                    self.doc, existing, comp_view, transform
+                view, rebuilt, error = mirror.resync_section(
+                    self.doc, view, comp_view, transform
                 )
-                if not ok:
+                if error:
                     return False, error
-                return True, u"'{0}' סונכרן למיקום שבקומפילציה.".format(
-                    item["view_name"]
-                )
 
-        view, error = mirror.mirror_section(self.doc, comp_view, transform)
+        if not item["sync"]:
+            view, error = mirror.mirror_section(self.doc, comp_view, transform)
+            if error:
+                return False, error
+
+        note = self._carry_template(view, comp_view, comp_doc)
+        if rebuilt:
+            # Not a warning and not a failure - but the planner should hear
+            # that the view in front of them is a new one, because anything
+            # they had drawn inside the old one went with it.
+            remade = (
+                u"'{0}': הכיוון או המישור של החתך בקומפילציה השתנו, ולכן המבט "
+                u"נוצר מחדש (סימונים שציירת בתוכו לא נשמרו)."
+            ).format(view.Name)
+            note = u"{0} {1}".format(remade, note) if note else remade
+        return True, note
+
+    def _carry_template(self, view, comp_view, comp_doc):
+        """Give the new view the compilation's graphics. Returns a note or None.
+
+        The whole point of mirroring: a view cut in the right place but drawn
+        under different graphics is not the view that was scored. Failure here
+        is reported as a NOTE rather than as a failure - the view itself was
+        created correctly and is still worth having.
+        """
+        if view is None:
+            return None
+        template, differences, error = templates.ensure_template(
+            self.doc, comp_doc, comp_view
+        )
+        if error:
+            return u"'{0}': {1}".format(view.Name, error)
+
+        _applied, apply_error = templates.apply_template(view, template)
+        if apply_error:
+            return u"'{0}': {1}".format(view.Name, apply_error)
+        if differences:
+            return (
+                u"שים לב: ה-View Template '{0}' שאצלך שונה מזה שבקומפילציה "
+                u"({1} הבדלים). לחיצה על ⓘ בשורה מציגה במה, ומאפשרת להחליף."
+            ).format(template.Name, len(differences))
+        return None
+
+    def open_view(self, item):
+        """Go to the planner's own copy of this view. No transaction needed."""
+        view = mirror.find_mirrored_view(self.doc, item.view_name)
+        if view is None:
+            self.set_status(
+                u"המבט '{0}' אינו קיים אצלך — יש ליצור אותו קודם.".format(
+                    item.view_name
+                ),
+                RED,
+            )
+            return
+        try:
+            self.uidoc.ActiveView = view
+            self.set_status(u"עברת למבט '{0}'.".format(view.Name), GREEN)
+        except Exception as ex:
+            self.set_status(u"לא ניתן לפתוח את המבט: {0}".format(ex), RED)
+
+    def show_template_differences(self, item):
+        """Spell out how the local template differs, and offer to fix it.
+
+        The dialog reads the model to count the views that would come along.
+        That is a read, which is legal from a modeless window; the replacement
+        itself is a write and goes through the External Event like everything
+        else.
+        """
+        if not item.template_differences:
+            self.set_status(u"אין הבדלים ב-View Template.", GREEN)
+            return
+        from pyrevit import forms
+
+        name = item.template_name
+        local = templates.find_template_by_name(self.doc, name)
+        followers = len(templates.views_using(self.doc, local))
+
+        replace = u"החלף את התבנית שלי בזו של הקומפילציה"
+        answer = forms.alert(
+            u"ההבדלים בין ה-View Template '{0}' שאצלך לזה שבמודל הקומפילציה:"
+            u"\n\n".format(name)
+            + u"\n".join(u"• " + d for d in item.template_differences)
+            + u"\n\nהחלפה תביא את התבנית מהקומפילציה במקום שלך, תחת אותו שם. "
+            u"{0} מבטים במודל שלך נמצאים כרגע על התבנית הזו ויעברו יחד איתה — "
+            u"גם כאלה שאינם קשורים לבדיקה הויזואלית.".format(followers),
+            title=u"View Template",
+            options=[replace, u"סגור"],
+        )
+        if answer != replace:
+            return
+
+        self._pending.append(
+            {
+                "kind": "template",
+                "view_id": item.view_id,
+                "view_name": item.view_name,
+                "template_name": name,
+            }
+        )
+        self.set_status(u"מחליף את ה-View Template '{0}'...".format(name), GRAY)
+        self._event.Raise()
+
+    def _replace_template(self, item, comp_doc):
+        """(succeeded, message) for one queued replacement. In a transaction."""
+        comp_view = comp_doc.GetElement(
+            RevitUtils.getElementId(comp_doc, item["view_id"])
+        )
+        if comp_view is None:
+            return False, u"המבט '{0}' כבר אינו קיים בקומפילציה.".format(
+                item["view_name"]
+            )
+
+        template, moved, remaining, error = templates.replace_template(
+            self.doc, comp_doc, comp_view
+        )
         if error:
             return False, error
-        return True, u"נוצר אצלך המבט '{0}'.".format(view.Name)
+
+        message = (
+            u"ה-View Template '{0}' הוחלף בזה של הקומפילציה, ו-{1} מבטים "
+            u"אצלך עברו אליו."
+        ).format(template.Name, moved)
+        reason = templates.remaining_reason(remaining)
+        if reason:
+            message = u"{0} {1}".format(message, reason)
+        return True, message
 
     # --- CHROME ---------------------------------------------------------------
 
@@ -345,3 +566,20 @@ class VisualInspectionWindow(Windows.Window):
 
     def _on_closed(self, sender, e):
         self._closed = True
+
+
+class _LooseGroup(object):
+    """Views that carry a score but sit on no sheet.
+
+    Not an error - a coordinator may create views before building the sheets -
+    but they would otherwise have no page to live on and would vanish from the
+    dashboard entirely.
+    """
+
+    def __init__(self, views):
+        self.number = None
+        self.name = u"מבטים שאינם על גיליון"
+        self.run_date = None
+        scored = [v.score for v in views if v.score is not None]
+        self.score = min(scored) if scored else None
+        self.views = views
