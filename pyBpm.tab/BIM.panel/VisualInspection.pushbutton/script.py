@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-""" Visual Inspection.
+""" Arc-Const Visual Inspection.
 
-Shows how the coordinator's architecture-structure visual inspection scored
-this project - the model's score, then every inspection sheet and view with its
-own score, worst first - read straight out of the compilation model. From any
-section you can rebuild the same view in your own model, cut exactly where the
-coordinator cut it, so you can go and fix what scored badly. """
-__title__ = "Visual\nInspection"
+Shows how the coordinator's Arc-Const (architecture against structure) visual
+inspection scored this project - the model's score, then every inspection sheet
+and view with its own score, worst first - read straight out of the compilation
+model. From any section you can rebuild the same view in your own model, cut
+exactly where the coordinator cut it, so you can go and fix what scored
+badly. """
+__title__ = "Arc-Const\nInspection"
 __author__ = "Eyal Sinay"
 
 import os
