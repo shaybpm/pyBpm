@@ -45,6 +45,8 @@ SCORE_BAD = 60.0
 SCORE_GOOD = 85.0
 
 KIND_SECTION = u"חתך"
+KIND_PLAN = u"תכנית"
+MIRRORABLE_KINDS = (KIND_SECTION, KIND_PLAN)
 
 TEMPLATE_LABELS = {
     templates.STATE_NONE: u"—",
@@ -110,10 +112,8 @@ class ViewRowItem(object):
         self.template_name = template_name
         self.template_text = TEMPLATE_LABELS.get(template_state, u"—")
 
-        # Only sections can be rebuilt; a plan would have to be matched to a
-        # level in this model, and level names need not agree between models.
-        self.can_create = self.kind == KIND_SECTION
-        if self.can_create:
+        self.can_create = self.kind in MIRRORABLE_KINDS
+        if self.kind == KIND_SECTION:
             self.create_tooltip = (
                 u"יוצר את המבט הזה במודל שלך, במקום המדויק שבו הוא נחתך "
                 u"בקומפילציה, ומחיל עליו את ה-View Template של הקומפילציה "
@@ -125,9 +125,26 @@ class ViewRowItem(object):
                 u"אם החתך בקומפילציה הועבר למישור אחר או סובב — המבט ייווצר "
                 u"מחדש, וסימונים שציירת בתוכו לא יישמרו."
             )
+        elif self.kind == KIND_PLAN:
+            # The level is worth naming in both tooltips. It is the one thing
+            # about a plan that this tool cannot read off the compilation - it
+            # has to find the planner's own level at the same HEIGHT, since
+            # level names need not agree between two models - and so it is the
+            # one thing the planner may be asked about.
+            self.create_tooltip = (
+                u"יוצר את התכנית הזו במודל שלך: מאתר אצלך את הקומה שבאותו "
+                u"גובה כמו בקומפילציה, מעתיק את גבהי החיתוך ואת מסגרת החיתוך, "
+                u"ומחיל את ה-View Template של הקומפילציה. אם יש אצלך יותר "
+                u"מקומה אחת באותו גובה — תישאל באיזו לבחור."
+            )
+            self.sync_tooltip = (
+                u"מחזיר את התכנית שלך לגבהי החיתוך ולמסגרת שיש לה כרגע "
+                u"בקומפילציה. שם המבט לא משתנה, והמבט עצמו נשמר — תכנית "
+                u"נוצרת מחדש רק אם הקומה שהותאמה לה השתנתה."
+            )
         else:
-            self.create_tooltip = mirror.MIRROR_UNSUPPORTED_PLAN
-            self.sync_tooltip = mirror.MIRROR_UNSUPPORTED_PLAN
+            self.create_tooltip = mirror.MIRROR_UNSUPPORTED_KIND
+            self.sync_tooltip = mirror.MIRROR_UNSUPPORTED_KIND
 
         self.template_info_visibility = (
             Windows.Visibility.Visible

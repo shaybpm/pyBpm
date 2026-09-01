@@ -37,6 +37,7 @@ import VisualInspectionRead as read  # type: ignore
 import VisualInspectionMirror as mirror  # type: ignore
 import VisualInspectionTemplate as templates  # type: ignore
 from VisualInspectionRowPage import (  # type: ignore
+    KIND_PLAN,
     VisualInspectionRowPage,
     ViewRowItem,
     score_brush,
@@ -92,6 +93,13 @@ class VisualInspectionWindow(Windows.Window):
 
         self._nav_buttons = []
         self._pages = {}
+
+        # comp level id -> the planner's level id, for the levels where the
+        # elevation match was ambiguous and they had to choose. Window-scoped
+        # on purpose: it is a working session's answer, not a project setting,
+        # and a stale mapping remembered across weeks would be worse than the
+        # question.
+        self._level_choice = {}
 
         self.Closed += self._on_closed
         self.reload()
@@ -324,24 +332,106 @@ class VisualInspectionWindow(Windows.Window):
         """Queue create/sync for a set of rows and wake the External Event."""
         actionable = [i for i in items if i.can_create]
         if not actionable:
-            self.set_status(mirror.MIRROR_UNSUPPORTED_PLAN, GRAY)
+            self.set_status(mirror.MIRROR_UNSUPPORTED_KIND, GRAY)
             return
+        comp_doc = self.comp_doc
+        if comp_doc is None:
+            self.set_status(read.COMP_LINK_BROKEN_MSG, RED)
+            return
+        transform = self.comp_link.GetTotalTransform()
+
+        queued = 0
+        skipped = []
         for item in actionable:
-            self._pending.append(
-                {
-                    "kind": "view",
-                    "view_id": item.view_id,
-                    "view_name": item.view_name,
-                    "sync": bool(sync),
-                }
-            )
-        self.set_status(
-            u"מסנכרן {0} מבטים...".format(len(actionable))
+            entry = {
+                "kind": "view",
+                "view_id": item.view_id,
+                "view_name": item.view_name,
+                "sync": bool(sync),
+            }
+            # A plan needs a level in THIS model, and settling which one can
+            # mean asking. That has to happen here, on the UI thread, before
+            # anything is queued: the queue is drained inside an open
+            # transaction, and putting a dialog in there is how a model ends up
+            # half-written while a planner is away from their desk.
+            if item.kind == KIND_PLAN:
+                level, problem = self._level_for(item, comp_doc, transform)
+                if level is None:
+                    skipped.append(problem)
+                    continue
+                entry["level_id"] = RevitUtils.getElementIdValue(self.doc, level.Id)
+            self._pending.append(entry)
+            queued += 1
+
+        if not queued:
+            self.set_status(skipped[0] if skipped else u"אין מה לבצע.", RED)
+            return
+
+        message = (
+            u"מסנכרן {0} מבטים...".format(queued)
             if sync
-            else u"יוצר אצלך {0} מבטים...".format(len(actionable)),
-            GRAY,
+            else u"יוצר אצלך {0} מבטים...".format(queued)
         )
+        if skipped:
+            message = u"{0} ({1} דולגו: {2})".format(
+                message, len(skipped), skipped[0]
+            )
+        self.set_status(message, GRAY)
         self._event.Raise()
+
+    def _level_for(self, item, comp_doc, transform):
+        """The planner's level for a comp plan. (level, problem).
+
+        Remembered for the life of the window: a row is a level, so without the
+        cache a "create all" over eight plans on the same storey would ask the
+        same question eight times.
+        """
+        comp_view = comp_doc.GetElement(
+            RevitUtils.getElementId(comp_doc, item.view_id)
+        )
+        if comp_view is None:
+            return None, u"המבט '{0}' כבר אינו קיים בקומפילציה.".format(
+                item.view_name
+            )
+
+        level, options, error = mirror.resolve_level(self.doc, comp_view, transform)
+        if error:
+            return None, u"'{0}': {1}".format(item.view_name, error)
+        if level is not None:
+            return level, None
+
+        comp_level = comp_view.GenLevel
+        key = RevitUtils.getElementIdValue(comp_doc, comp_level.Id)
+        if key in self._level_choice:
+            chosen = self.doc.GetElement(
+                RevitUtils.getElementId(self.doc, self._level_choice[key])
+            )
+            if chosen is not None:
+                return chosen, None
+
+        chosen = self._ask_for_level(comp_level, options)
+        if chosen is None:
+            return None, u"'{0}': לא נבחרה קומה.".format(item.view_name)
+        self._level_choice[key] = RevitUtils.getElementIdValue(self.doc, chosen.Id)
+        return chosen, None
+
+    def _ask_for_level(self, comp_level, options):
+        """Let the planner pick between levels sitting at the same height."""
+        from pyrevit import forms
+
+        by_label = {}
+        for level in options:
+            by_label[level.Name] = level
+        try:
+            picked = forms.SelectFromList.show(
+                sorted(by_label.keys()),
+                title=u"איזו קומה אצלך מקבילה ל-'{0}'?".format(comp_level.Name),
+                button_name=u"בחר",
+                multiselect=False,
+            )
+        finally:
+            self.take_focus()
+        return by_label.get(picked)
 
     def execute_pending(self, uiapp):
         """Runs on Revit's API context. Drains the whole queue in one go."""
@@ -411,6 +501,19 @@ class VisualInspectionWindow(Windows.Window):
                 item["view_name"]
             )
 
+        # A plan's level was settled on the UI thread, before this queue was
+        # raised, precisely so that nothing here has to ask a question inside
+        # an open transaction.
+        level = None
+        if item.get("level_id") is not None:
+            level = self.doc.GetElement(
+                RevitUtils.getElementId(self.doc, item["level_id"])
+            )
+            if level is None:
+                return False, u"הקומה שנבחרה עבור '{0}' כבר אינה קיימת.".format(
+                    item["view_name"]
+                )
+
         view = None
         rebuilt = False
         if item["sync"]:
@@ -419,6 +522,12 @@ class VisualInspectionWindow(Windows.Window):
                 # It was there when the list was drawn and is not now. Creating
                 # it is what the planner wanted either way.
                 item["sync"] = False
+            elif level is not None:
+                view, rebuilt, error = mirror.resync_plan(
+                    self.doc, view, comp_view, transform, level
+                )
+                if error:
+                    return False, error
             else:
                 view, rebuilt, error = mirror.resync_section(
                     self.doc, view, comp_view, transform
@@ -427,7 +536,12 @@ class VisualInspectionWindow(Windows.Window):
                     return False, error
 
         if not item["sync"]:
-            view, error = mirror.mirror_section(self.doc, comp_view, transform)
+            if level is not None:
+                view, error = mirror.mirror_plan(
+                    self.doc, comp_view, transform, level
+                )
+            else:
+                view, error = mirror.mirror_section(self.doc, comp_view, transform)
             if error:
                 return False, error
 
@@ -436,10 +550,15 @@ class VisualInspectionWindow(Windows.Window):
             # Not a warning and not a failure - but the planner should hear
             # that the view in front of them is a new one, because anything
             # they had drawn inside the old one went with it.
+            reason = (
+                u"הקומה של התכנית השתנתה"
+                if level is not None
+                else u"הכיוון או המישור של החתך בקומפילציה השתנו"
+            )
             remade = (
-                u"'{0}': הכיוון או המישור של החתך בקומפילציה השתנו, ולכן המבט "
-                u"נוצר מחדש (סימונים שציירת בתוכו לא נשמרו)."
-            ).format(view.Name)
+                u"'{0}': {1}, ולכן המבט נוצר מחדש (סימונים שציירת בתוכו לא "
+                u"נשמרו)."
+            ).format(view.Name, reason)
             note = u"{0} {1}".format(remade, note) if note else remade
         return True, note
 
