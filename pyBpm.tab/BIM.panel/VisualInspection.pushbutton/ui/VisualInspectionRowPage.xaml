@@ -1,0 +1,292 @@
+<Page xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="שורה">
+
+    <!-- Styles duplicated from VisualInspectionWindow.xaml: a Page loaded into
+         a Frame is isolated from the Window's resources, and the cell buttons
+         resolve BasedOn at parse time. Keep the two copies in step. -->
+    <Page.Resources>
+        <Style x:Key="FlatButtonBase" TargetType="Button">
+            <Setter Property="Foreground" Value="#2B2B2B" />
+            <Setter Property="Background" Value="#F4F5F7" />
+            <Setter Property="BorderBrush" Value="#CFD3DA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#E6F0FB" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#5B9BD5" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#CFE2F5" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#3A7CBD" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#F0F0F0" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#E2E2E2" />
+                                <Setter Property="Foreground" Value="#AAAAAA" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+
+        <Style x:Key="TextButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="12,0,12,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- Destructive, and dressed like it: red on hover only, so the column
+             does not read as a row of alarms while nothing is happening. -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource FlatButtonBase}">
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="10,0,10,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="#B3261E" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="#F4F5F7" BorderBrush="#E0C4C2"
+                            BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#B3261E" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#8C1D18" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#8C1D18" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Background" Value="#2D7DD2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5"
+                            Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2468B2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1E568F" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#BFC4CB" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
+    <Grid FlowDirection="RightToLeft" Margin="6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Which row this page is -->
+        <Grid Grid.Row="0" Margin="2,0,2,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" x:Name="row_score_text" FontSize="26"
+                       FontWeight="Bold" VerticalAlignment="Center"
+                       Margin="0,0,12,0" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock x:Name="row_title_text" FontWeight="Bold" FontSize="14"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="row_subtitle_text" Foreground="Gray"
+                           FontSize="11" Margin="0,2,0,0" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Bulk actions for this row -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+            <Button x:Name="create_all_btn" Content="צור אצלי הכל"
+                    Style="{StaticResource PrimaryButton}"
+                    Click="CreateAll_Click"
+                    ToolTip="יוצר במודל שלך את כל החתכים של השורה הזו שעדיין אינם קיימים אצלך, במקום המדויק שבו נחתכו בקומפילציה, ומחיל עליהם את ה-View Template של הקומפילציה. מבטים שכבר קיימים אצלך לא ייגעו." />
+            <Button x:Name="sync_all_btn" Content="סנכרן הכל"
+                    Style="{StaticResource TextButton}"
+                    Click="SyncAll_Click"
+                    ToolTip="מחזיר כל מבט שכבר קיים אצלך למיקום, לחיתוך ולעומק שיש לו כרגע בקומפילציה — למקרה שהמתאם הזיז אותו מאז. הגיאומטריה שלך נדרסת; שם המבט לא משתנה. מבט שהחתך שלו בקומפילציה עבר למישור אחר או סובב ייווצר מחדש, וסימונים שציירת בתוכו לא יישמרו." />
+            <Button x:Name="open_comp_note" Content="?"
+                    Style="{StaticResource IconButton}" IsEnabled="False"
+                    Margin="10,0,0,0"
+                    ToolTip="הציונים מגיעים ממודל הקומפילציה של מתאם התכנון. ציון נמוך = פחות התאמה בין האדריכלות לקונסטרוקציה באזור המבט הזה." />
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" x:Name="template_note" TextWrapping="Wrap"
+                   Margin="2,0,2,6" Visibility="Collapsed" />
+
+        <DataGrid x:Name="views_grid" Grid.Row="3"
+                  AutoGenerateColumns="False"
+                  HeadersVisibility="Column"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  GridLinesVisibility="All">
+
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding tier}" Value="green">
+                            <Setter Property="Background" Value="#C8E6C9" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding tier}" Value="orange">
+                            <Setter Property="Background" Value="#FFE0B2" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding tier}" Value="red">
+                            <Setter Property="Background" Value="#FFCDD2" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding tier}" Value="none">
+                            <Setter Property="Background" Value="#EEEEEE" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ציון" Binding="{Binding score_text}"
+                                    SortMemberPath="score_sort" Width="60" />
+                <DataGridTextColumn Header="סוג" Binding="{Binding kind}" Width="70" />
+                <DataGridTextColumn Header="ציר" Binding="{Binding grid_name}"
+                                    Width="70" />
+                <DataGridTextColumn Header="שם המבט" Binding="{Binding view_name}"
+                                    Width="*" />
+                <DataGridTextColumn Header="ממוקם ב" Binding="{Binding detail_number}"
+                                    Width="130" />
+                <DataGridTextColumn Header="קיים אצלי" Binding="{Binding exists_text}"
+                                    SortMemberPath="exists" Width="80" />
+                <DataGridTextColumn Header="תבנית" Binding="{Binding template_text}"
+                                    Width="110" />
+
+                <DataGridTemplateColumn Header="פעולות" Width="330">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="צור אצלי" Click="Create_Click"
+                                        IsEnabled="{Binding can_create}"
+                                        ToolTip="{Binding create_tooltip}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource TextButton}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding exists}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="סנכרן" Click="Sync_Click"
+                                        IsEnabled="{Binding can_create}"
+                                        ToolTip="{Binding sync_tooltip}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource TextButton}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding exists}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="פתח" Click="Open_Click"
+                                        ToolTip="פותח את המבט הזה במודל שלך ועובר אליו. החלון נשאר פתוח.">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource TextButton}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding exists}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="מחק" Click="Delete_Click"
+                                        ToolTip="מוחק את המבט הזה מהמודל שלך, יחד עם כל מה שציירת בתוכו. תישאל לפני. המבט בקומפילציה אינו מושפע, ותמיד אפשר ליצור אותו כאן מחדש.">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding exists}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="&#x2139;" Click="TemplateInfo_Click"
+                                        Style="{StaticResource IconButton}"
+                                        Margin="6,0,2,0"
+                                        Visibility="{Binding template_info_visibility}"
+                                        ToolTip="מציג במה ה-View Template שאצלך שונה מזה שבקומפילציה, ומציע להחליף אותו בזה של הקומפילציה." />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Page>
