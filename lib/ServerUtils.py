@@ -253,9 +253,22 @@ def get_comp_opening_sheets_data(doc):
 
 
 def get_bonds(doc):
-    """Returns a list of bonds for the given document."""
+    """Returns:
+    {
+        "status": "OK" | "ERROR",
+        "message": str,
+        "data": list | None
+    }
+    """
+
+    # Every failure below used to return an empty list, which the viewer showed
+    # as "this model has no bonds" - indistinguishable from the real thing.
     if not doc.IsModelInCloud:
-        return []
+        return {
+            "status": "ERROR",
+            "message": u"המודל הזה אינו מודל ענן, ולכן אין לו בונדים במערכת.",
+            "data": None,
+        }
 
     model_info = get_model_info(doc)
     url = "{}api/misc/bonds/project/{}/bonds".format(
@@ -263,7 +276,12 @@ def get_bonds(doc):
     )
     try:
         data = get(url)
-        return data
+        return {"status": "OK", "message": "", "data": data}
     except Exception as e:
-        print("Error fetching bonds: {}".format(e))
-        return []
+        return {
+            "status": "ERROR",
+            "message": u"לא ניתן לטעון את הבונדים של המודל הזה.\n"
+            u"ייתכן שהמודל אינו מוכר לשרת, למשל אחרי פיצול מודל או מעבר ענן.\n"
+            u"פרטים טכניים: {}".format(e),
+            "data": None,
+        }

@@ -89,10 +89,18 @@ class BondsViewerUI(Windows.Window):
             self.headers_StackPanel.Children.Add(tb)
 
     def fetch_bonds(self):
-        try:
-            self.bonds = get_bonds(self.doc)
-        except Exception as e:
-            print(e)
+        result = get_bonds(self.doc)
+        if result["status"] != "OK":
+            # Tell the user why the table is empty instead of leaving it blank.
+            self.bonds = []
+            Windows.MessageBox.Show(
+                result["message"],
+                "Error",
+                Windows.MessageBoxButton.OK,
+                Windows.MessageBoxImage.Error,
+            )
+            return
+        self.bonds = result["data"]
 
     def TxtBondsFilter_TextBox_TextChanged(self, sender, e):
         self.txt_filter = sender.Text.strip().lower()
