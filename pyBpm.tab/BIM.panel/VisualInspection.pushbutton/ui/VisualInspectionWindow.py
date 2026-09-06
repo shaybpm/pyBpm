@@ -60,6 +60,21 @@ ACTIVE_NAV_BACKGROUND = Windows.Media.SolidColorBrush(
 NAV_BUTTON_MAX_WIDTH = 260
 
 
+def _sheet_label(sheet):
+    """How one inspection sheet is named in the list: "V103 · Level 3".
+
+    The sheet is the unit this dashboard is organised by - one nav entry, one
+    page - so it is worth naming the way the coordinator who made it does,
+    which is by its number. `_LooseGroup` (views on no sheet) has no number and
+    falls back to its own title.
+    """
+    number = getattr(sheet, "number", None)
+    name = getattr(sheet, "name", None)
+    if number and name:
+        return u"{0} · {1}".format(number, name)
+    return number or name or u"—"
+
+
 class ActionEventHandler(IExternalEventHandler):
     """Runs the queued create / sync work on Revit's API context."""
 
@@ -244,7 +259,10 @@ class VisualInspectionWindow(Windows.Window):
             grid.ColumnDefinitions.Add(column)
 
         title = Windows.Controls.TextBlock()
-        title.Text = sheet.name or sheet.number or u"—"
+        # Number first, then name. The coordinator numbers these sheets himself
+        # and quotes the number when he talks about one; the name repeats the
+        # storey, which the planner can already see.
+        title.Text = _sheet_label(sheet)
         title.TextTrimming = Windows.TextTrimming.CharacterEllipsis
         title.VerticalAlignment = Windows.VerticalAlignment.Center
         Windows.Controls.Grid.SetColumn(title, 0)
