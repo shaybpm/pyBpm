@@ -14,9 +14,9 @@ Three facts have to be recovered, in falling order of reliability:
   2. The Visual Inspection REVISION on the sheets, which carries the model
      score in its description. Present in models where the shared parameters
      were never bound, and readable by a human on the drawing itself.
-  3. The BPM_VI name prefix, which finds views that exist but were never
-     scored - a view created and not yet run is worth showing as "no score
-     yet" rather than not showing at all.
+  3. The tool's name prefix (V_, or BPM_VI in older models), which finds
+     views that exist but were never scored - a view created and not yet
+     run is worth showing as "no score yet" rather than not showing at all.
 
 None of the three is trusted to identify a view on its own. A planner can
 rename a view and a coordinator can edit a revision description, so a view
@@ -48,7 +48,14 @@ import RevitUtils  # extension-level lib
 
 # --- THE CONTRACT WITH DEV.tab ------------------------------------------------
 
-VIEW_NAME_PREFIX = "BPM_VI"
+# DEV.tab names a view "V_<level>_<scope box>_<axis>" since 2026-09, and
+# "BPM_VI__<level>__<scope box>__<TYPE>__<axis>" before that. Both are still
+# in the models, so both are recognised - nothing here ever writes a name.
+VIEW_NAME_PREFIX = "V_"
+LEGACY_VIEW_NAME_PREFIX = "BPM_VI"
+# What DEV.tab writes as the last segment of a view that has no grid axis.
+# Anything else there is the axis name itself.
+VIEW_TYPE_NAMES = ("TOP", "SEC")
 PARAM_SCORE = "BPM_VI_Score"
 PARAM_RUN_DATE = "BPM_VI_RunDate"
 REVISION_PREFIX = u"בדיקה ויזואלית אדריכלות-קונסטרוקציה"
@@ -222,7 +229,9 @@ def _is_inspection_view(view):
         return False
 
     name = _safe(lambda: view.Name) or u""
-    if name.startswith(VIEW_NAME_PREFIX):
+    if name.startswith(VIEW_NAME_PREFIX) or name.startswith(
+        LEGACY_VIEW_NAME_PREFIX
+    ):
         return True
     return bool(_run_date_of(view))
 

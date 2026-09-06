@@ -33,6 +33,7 @@ from System import Windows
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 
 import VisualInspectionMirror as mirror  # type: ignore
+import VisualInspectionRead as read  # type: ignore
 import VisualInspectionTemplate as templates  # type: ignore
 
 
@@ -154,17 +155,31 @@ class ViewRowItem(object):
 
 
 def _grid_of(view_name):
-    """The grid axis out of a BPM_VI view name, for its own column.
+    """The grid axis out of a Visual Inspection view name, for its own column.
 
-    The name is built as BPM_VI__<level>__<scope box>__SEC__<grid>, so the axis
-    is the last segment of a section's name. Best effort: a view the planner
-    renamed simply shows nothing here, which is better than showing a guess.
+    Two conventions, because two are in the models. Since 2026-09 DEV.tab names
+    a section "V_<level>_<scope box>_<axis>", so the axis is the last segment
+    and a plan is recognised by ending in the view type instead. Before that it
+    was "BPM_VI__<level>__<scope box>__SEC__<axis>", where the word SEC marks
+    which name has an axis at all.
+
+    Best effort either way: a view the planner renamed simply shows nothing
+    here, which is better than showing a guess. Only names carrying the tool's
+    own prefix are read at all - a planner's own "V_something" is left alone.
     """
     if not view_name:
         return u""
-    parts = view_name.split(u"__")
-    if len(parts) >= 2 and parts[-2] == u"SEC":
-        return parts[-1]
+    if view_name.startswith(read.LEGACY_VIEW_NAME_PREFIX):
+        parts = view_name.split(u"__")
+        if len(parts) >= 2 and parts[-2] == u"SEC":
+            return parts[-1]
+        return u""
+    if view_name.startswith(read.VIEW_NAME_PREFIX):
+        parts = view_name.split(u"_")
+        # "V", the level, and at least one more segment - anything shorter has
+        # no room for an axis. A plan ends in its view type, not in an axis.
+        if len(parts) >= 3 and parts[-1] not in read.VIEW_TYPE_NAMES:
+            return parts[-1]
     return u""
 
 

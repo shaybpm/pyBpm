@@ -81,7 +81,7 @@ def find_mirrored_view(doc, comp_view_name):
     """The planner-side copy of a comp view, by name. None when not mirrored.
 
     Named identically to the comp view on purpose. The name already carries the
-    BPM_VI prefix, the level, the scope box and the grid, so it is unique
+    tool's prefix, the level, the scope box and the grid, so it is unique
     enough to be an identity, and a planner comparing the two models side by
     side sees the same string in both Project Browsers.
     """
