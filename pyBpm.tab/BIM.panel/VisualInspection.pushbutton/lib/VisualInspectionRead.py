@@ -53,12 +53,63 @@ import RevitUtils  # extension-level lib
 # in the models, so both are recognised - nothing here ever writes a name.
 VIEW_NAME_PREFIX = "V_"
 LEGACY_VIEW_NAME_PREFIX = "BPM_VI"
-# What DEV.tab writes as the last segment of a view that has no grid axis.
-# Anything else there is the axis name itself.
-VIEW_TYPE_NAMES = ("TOP", "SEC")
+# The SLOT a view fills in its row, as DEV.tab writes it into the name. A view
+# with no grid axis ends in its slot code; anything else there is the axis name.
+VIEW_TYPE_TOP = "TOP"
+VIEW_TYPE_SECTION = "SEC"
+# The slab itself, seen from both sides: FLR-TOP is a floor plan, FLR-BOT is a
+# Reflected Ceiling Plan. Both cover the same absolute band and differ only in
+# which way they look.
+VIEW_TYPE_FLOOR_TOP = "FLR-TOP"
+VIEW_TYPE_FLOOR_BOTTOM = "FLR-BOT"
+VIEW_TYPE_NAMES = (
+    VIEW_TYPE_TOP,
+    VIEW_TYPE_SECTION,
+    VIEW_TYPE_FLOOR_TOP,
+    VIEW_TYPE_FLOOR_BOTTOM,
+)
+# What each slot is called wherever a person reads it. Copied verbatim from
+# DEV.tab's _VIEW_TYPE_LABELS, which is the naming authority: the coordinator
+# and the planner are looking at the same view and had better call it the same
+# thing when they talk about it.
+VIEW_TYPE_LABELS = {
+    VIEW_TYPE_TOP: u"תכנית",
+    VIEW_TYPE_SECTION: u"חתך",
+    VIEW_TYPE_FLOOR_TOP: u"רצפה מלמעלה",
+    VIEW_TYPE_FLOOR_BOTTOM: u"רצפה מלמטה",
+}
 PARAM_SCORE = "BPM_VI_Score"
 PARAM_RUN_DATE = "BPM_VI_RunDate"
 REVISION_PREFIX = u"בדיקה ויזואלית אדריכלות-קונסטרוקציה"
+
+
+def view_type_of(view_name):
+    """The slot a view fills, out of its name. None when the name does not say.
+
+    Two conventions, because two are in the models at once. Since 2026-09 a
+    view is "V_<level>_<scope box>_<slot or axis>", so the slot is the last
+    segment when it is one of ours. Before that it was
+    "BPM_VI__<level>__<scope box>__<SLOT>__<axis>", where the slot is named
+    outright and the axis follows it.
+
+    Best effort, and only for names carrying the tool's own prefix: a view the
+    planner renamed says nothing about its slot, which is better than guessing.
+    """
+    if not view_name:
+        return None
+    if view_name.startswith(LEGACY_VIEW_NAME_PREFIX):
+        parts = view_name.split(u"__")
+        for candidate in (parts[-1], parts[-2] if len(parts) >= 2 else None):
+            if candidate in VIEW_TYPE_NAMES:
+                return candidate
+        return None
+    if view_name.startswith(VIEW_NAME_PREFIX):
+        parts = view_name.split(u"_")
+        # "V", the level, and at least one more segment - anything shorter has
+        # no room for a slot.
+        if len(parts) >= 3 and parts[-1] in VIEW_TYPE_NAMES:
+            return parts[-1]
+    return None
 
 
 # --- PRECONDITIONS ------------------------------------------------------------

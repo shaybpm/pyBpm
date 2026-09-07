@@ -207,7 +207,7 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ציון" Binding="{Binding score_text}"
                                     SortMemberPath="score_sort" Width="60" />
-                <DataGridTextColumn Header="סוג" Binding="{Binding kind}" Width="70" />
+                <DataGridTextColumn Header="סוג" Binding="{Binding type_label}" Width="100" />
                 <DataGridTextColumn Header="ציר" Binding="{Binding grid_name}"
                                     Width="70" />
                 <DataGridTextColumn Header="שם המבט" Binding="{Binding view_name}"

@@ -95,7 +95,15 @@ class ViewRowItem(object):
                  template_name=None):
         self.view_id = entry.view_id
         self.view_name = entry.name or u""
+        # kind comes from the view's CLASS and routes the row: it decides
+        # whether this is mirrored as a plan or as a section. It is not a label
+        # - ViewPlan is the class of a floor plan and of a Reflected Ceiling
+        # Plan alike, so it calls the two floor views "תכנית" like everything
+        # else. The slot in the name is what the coordinator called this view,
+        # and that is what the planner should see.
         self.kind = entry.kind or u""
+        self.slot = read.view_type_of(entry.name)
+        self.type_label = read.VIEW_TYPE_LABELS.get(self.slot) or self.kind
         self.grid_name = _grid_of(entry.name)
         self.detail_number = entry.detail_number or u"—"
         self.score = entry.score
@@ -143,6 +151,15 @@ class ViewRowItem(object):
                 u"בקומפילציה. שם המבט לא משתנה, והמבט עצמו נשמר — תכנית "
                 u"נוצרת מחדש רק אם הקומה שהותאמה לה השתנתה."
             )
+            if self.slot == read.VIEW_TYPE_FLOOR_BOTTOM:
+                # A planner who opens this view and finds the cut plane a whole
+                # storey below the level it sits on should know that is the
+                # point of it, not a mistake.
+                self.create_tooltip += (
+                    u" המבט הזה מציג את הרצפה מלמטה, ולכן הוא נוצר כ-Reflected "
+                    u"Ceiling Plan ומישור החיתוך שלו יושב קומה שלמה מתחת "
+                    u"למפלס של המבט."
+                )
         else:
             self.create_tooltip = mirror.MIRROR_UNSUPPORTED_KIND
             self.sync_tooltip = mirror.MIRROR_UNSUPPORTED_KIND
@@ -159,9 +176,9 @@ def _grid_of(view_name):
 
     Two conventions, because two are in the models. Since 2026-09 DEV.tab names
     a section "V_<level>_<scope box>_<axis>", so the axis is the last segment
-    and a plan is recognised by ending in the view type instead. Before that it
-    was "BPM_VI__<level>__<scope box>__SEC__<axis>", where the word SEC marks
-    which name has an axis at all.
+    and a view with no axis ends in its SLOT code instead. Before that it was
+    "BPM_VI__<level>__<scope box>__SEC__<axis>", where the slot is spelled out
+    and the axis follows it.
 
     Best effort either way: a view the planner renamed simply shows nothing
     here, which is better than showing a guess. Only names carrying the tool's
@@ -169,16 +186,17 @@ def _grid_of(view_name):
     """
     if not view_name:
         return u""
+    slot = read.view_type_of(view_name)
     if view_name.startswith(read.LEGACY_VIEW_NAME_PREFIX):
         parts = view_name.split(u"__")
-        if len(parts) >= 2 and parts[-2] == u"SEC":
+        if slot == read.VIEW_TYPE_SECTION and len(parts) >= 2:
             return parts[-1]
         return u""
     if view_name.startswith(read.VIEW_NAME_PREFIX):
         parts = view_name.split(u"_")
         # "V", the level, and at least one more segment - anything shorter has
-        # no room for an axis. A plan ends in its view type, not in an axis.
-        if len(parts) >= 3 and parts[-1] not in read.VIEW_TYPE_NAMES:
+        # no room for an axis.
+        if len(parts) >= 3 and slot is None:
             return parts[-1]
     return u""
 

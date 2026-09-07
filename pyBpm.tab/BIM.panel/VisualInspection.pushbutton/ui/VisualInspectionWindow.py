@@ -469,6 +469,8 @@ class VisualInspectionWindow(Windows.Window):
         failed = []
         transaction = Transaction(self.doc, "pyBpm | Visual Inspection - mirror views")
         transaction.Start()
+        # Held in a local on purpose - see suppress_off_axis_warnings.
+        _swallower = mirror.suppress_off_axis_warnings(transaction)
         try:
             for item in pending:
                 if item.get("kind") == "template":
@@ -534,6 +536,9 @@ class VisualInspectionWindow(Windows.Window):
 
         view = None
         rebuilt = False
+        # A plan can come back created-but-imperfect: the view is there and in
+        # the right place, and something about it is still worth saying.
+        range_note = None
         if item["sync"]:
             view = mirror.find_mirrored_view(self.doc, item["view_name"])
             if view is None:
@@ -541,7 +546,7 @@ class VisualInspectionWindow(Windows.Window):
                 # it is what the planner wanted either way.
                 item["sync"] = False
             elif level is not None:
-                view, rebuilt, error = mirror.resync_plan(
+                view, rebuilt, error, range_note = mirror.resync_plan(
                     self.doc, view, comp_view, transform, level
                 )
                 if error:
@@ -555,7 +560,7 @@ class VisualInspectionWindow(Windows.Window):
 
         if not item["sync"]:
             if level is not None:
-                view, error = mirror.mirror_plan(
+                view, error, range_note = mirror.mirror_plan(
                     self.doc, comp_view, transform, level
                 )
             else:
@@ -564,6 +569,8 @@ class VisualInspectionWindow(Windows.Window):
                 return False, error
 
         note = self._carry_template(view, comp_view, comp_doc)
+        if range_note:
+            note = u"{0} {1}".format(range_note, note) if note else range_note
         if rebuilt:
             # Not a warning and not a failure - but the planner should hear
             # that the view in front of them is a new one, because anything
