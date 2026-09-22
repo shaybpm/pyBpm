@@ -26,6 +26,7 @@ from pyrevit.forms import alert
 import RevitUtils, pyUtils
 
 TARGET_PREFIX = "BPM_Section_"
+MIN_SECTION_DEPTH = 0.021  # feet, just above CreateSection's exclusive 0.02 floor
 
 
 def target_section_name(su_name):
@@ -181,6 +182,10 @@ def create_section(doc, section, viewFamilyTypeId, transform):
     section_far_clip = section.get_Parameter(
         BuiltInParameter.VIEWER_BOUND_OFFSET_FAR
     ).AsDouble()
+    # The Revit UI lets a section go down to a 0.02 ft far clip, but
+    # CreateSection rejects any depth <= 0.02 ft ("near and far bound offsets
+    # ... too close"). Measured on Revit 2024.
+    section_far_clip = max(section_far_clip, MIN_SECTION_DEPTH)
 
     xyz_min = XYZ(-0.5 * section_length, -0.5 * section_height, -0.5 * section_far_clip)
     xyz_max = XYZ(0.5 * section_length, 0.5 * section_height, 0.5 * section_far_clip)
