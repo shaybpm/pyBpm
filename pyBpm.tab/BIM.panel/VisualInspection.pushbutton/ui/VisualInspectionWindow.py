@@ -36,6 +36,7 @@ import RevitUtils  # extension-level lib
 import VisualInspectionRead as read  # type: ignore
 import VisualInspectionMirror as mirror  # type: ignore
 import VisualInspectionTemplate as templates  # type: ignore
+import VisualInspectionSheet as row_sheet  # type: ignore
 from VisualInspectionRowPage import (  # type: ignore
     KIND_PLAN,
     VisualInspectionRowPage,
@@ -479,6 +480,8 @@ class VisualInspectionWindow(Windows.Window):
                     )
                 elif item.get("kind") == "delete":
                     ok, message = self._delete_view(item)
+                elif item.get("kind") == "sheet":
+                    ok, message = self._place_row_sheet(item)
                 else:
                     ok, message = self._run_one(item, comp_doc, transform)
                 if ok:
@@ -731,6 +734,85 @@ class VisualInspectionWindow(Windows.Window):
         except Exception as ex:
             return False, u"לא ניתן למחוק את '{0}': {1}".format(name, ex)
         return True, u"המבט '{0}' נמחק מהמודל שלך.".format(name)
+
+    def queue_row_sheet(self, sheet, items):
+        """Put the row's views that exist here on one sheet - on request only.
+
+        Queued by NAME, not by element: the queue is drained on Revit's API
+        context, after this click has returned, and a view handle held across
+        that gap is exactly what the element-lifetime rule forbids.
+        """
+        present = sorted(
+            [i for i in items if i.can_create and i.exists],
+            key=row_sheet.row_sheet_order,
+        )
+        if not present:
+            self.set_status(
+                u"אין עדיין אצלך אף מבט של השורה הזו — יש ליצור אותם קודם.", RED
+            )
+            return
+        self._pending.append(
+            {
+                "kind": "sheet",
+                "number": sheet.number,
+                "name": sheet.name or sheet.number,
+                "view_names": [i.view_name for i in present],
+                "missing": len(
+                    [i for i in items if i.can_create and not i.exists]
+                ),
+            }
+        )
+        self.set_status(
+            u"מניח {0} מבטים על גיליון...".format(len(present)), GRAY
+        )
+        self._event.Raise()
+
+    def _place_row_sheet(self, item):
+        """(succeeded, message) for one queued row sheet. Inside a transaction."""
+        found = row_sheet.views_by_name(self.doc, item["view_names"])
+        views = [found[n] for n in item["view_names"] if n in found]
+        if not views:
+            return False, u"המבטים של השורה כבר אינם קיימים אצלך."
+
+        result = row_sheet.place_row(
+            self.doc, item["number"], item["name"], views
+        )
+        sheet = result["sheet"]
+        if sheet is None:
+            first = result["elsewhere"][0]
+            return False, (
+                u"כל המבטים של השורה כבר מונחים על גיליונות אחרים (למשל '{0}' "
+                u"על {1}), ולכן לא נוצר גיליון."
+            ).format(first[0], first[1])
+        parts = [
+            (
+                u"נוצר גיליון {0} ({1}) ועליו {2} מבטים."
+                if result["created"]
+                else u"נוספו {2} מבטים לגיליון {0} ({1})."
+            ).format(sheet.SheetNumber, sheet.Name, result["placed"])
+        ]
+        if not result["placed"] and not result["created"]:
+            parts = [
+                u"כל המבטים של השורה כבר על גיליון {0}.".format(
+                    sheet.SheetNumber
+                )
+            ]
+        if result["elsewhere"]:
+            parts.append(
+                u"{0} מבטים כבר מונחים על גיליון אחר ונשארו שם (למשל '{1}' "
+                u"על {2}).".format(
+                    len(result["elsewhere"]),
+                    result["elsewhere"][0][0],
+                    result["elsewhere"][0][1],
+                )
+            )
+        if item.get("missing"):
+            parts.append(
+                u"{0} מבטים של השורה עוד לא קיימים אצלך ולכן לא הונחו.".format(
+                    item["missing"]
+                )
+            )
+        return True, u" ".join(parts)
 
     def show_template_differences(self, item):
         """Spell out how the local template differs, and offer to fix it.

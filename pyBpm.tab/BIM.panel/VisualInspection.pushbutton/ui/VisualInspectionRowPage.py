@@ -226,12 +226,18 @@ class VisualInspectionRowPage(Windows.Controls.Page):
         self.sync_all_btn.IsEnabled = bool(present)
         self.create_all_btn.Content = u"צור אצלי הכל ({0})".format(len(missing))
         self.sync_all_btn.Content = u"סנכרן הכל ({0})".format(len(present))
+        # Not for the "views on no sheet" group: it is not a row, and has no
+        # compilation sheet to be named after.
+        self.row_sheet_btn.IsEnabled = bool(present) and bool(self.sheet.number)
 
         self._render_template_note()
 
     def _subtitle(self):
         parts = []
-        if self.sheet.number:
+        pages = getattr(self.sheet, "page_numbers", None) or []
+        if len(pages) > 1:
+            parts.append(u"גיליונות {0}".format(u", ".join(pages)))
+        elif self.sheet.number:
             parts.append(u"גיליון {0}".format(self.sheet.number))
         parts.append(u"{0} מבטים".format(len(self.items)))
         if self.sheet.run_date:
@@ -270,6 +276,9 @@ class VisualInspectionRowPage(Windows.Controls.Page):
         self.window.queue_many(
             [i for i in self.items if i.can_create and i.exists], sync=True
         )
+
+    def RowSheet_Click(self, sender, e):
+        self.window.queue_row_sheet(self.sheet, self.items)
 
     def Create_Click(self, sender, e):
         self.window.queue_many([sender.DataContext], sync=False)
