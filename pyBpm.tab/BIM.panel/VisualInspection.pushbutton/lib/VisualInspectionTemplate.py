@@ -23,6 +23,13 @@ here does that on its own: the template is a shared, named object and other
 views in the planner's model may be on it, so the replacement is an explicit
 choice made in front of a dialog that says how many views come along with it.
 
+Replacing the template alone is not enough, for the same reason a copy is not
+faithful: the filters it lands on are still this model's own. So a replacement
+first ALIGNS every filter whose name is taken here but whose definition differs
+- see align_filter. That rewrites a filter other views share, which is why it
+only ever happens inside the replacement the planner explicitly chose, and why
+the caller rolls the whole replacement back if any step of it fails.
+
 WHAT THE COMPARISON COVERS, and why it is mostly about filters: a filter is the
 part of a template that makes elements disappear or change colour, so a filter
 that differs changes what the drawing SAYS. Compared per filter: presence,
@@ -44,9 +51,11 @@ from Autodesk.Revit.DB import (
     ElementParameterFilter,
     ElementTransformUtils,
     FilteredElementCollector,
+    FilterElement,
     IDuplicateTypeNamesHandler,
     LogicalAndFilter,
     LogicalOrFilter,
+    ParameterFilterElement,
     Transform,
     View,
 )
@@ -61,14 +70,18 @@ TEMPLATE_RENAME_FAILED = (
     u"לא ניתן היה לפנות את שם ה-View Template הקיים אצלך: {0}"
 )
 TEMPLATE_DELETE_FAILED = (
-    u"התבנית החדשה הועתקה והמבטים הועברו אליה, אבל התבנית הישנה לא נמחקה "
-    u"ונשארה במודל בשם '{0}': {1}"
+    u"לא ניתן היה למחוק את ה-View Template הישן '{0}': {1}"
 )
+FILTER_ALIGN_FAILED = u"לא ניתן היה לעדכן את הפילטר '{0}' לפי הקומפילציה: {1}"
 
 # What the outgoing template is renamed to while its name is handed over. It
 # lives under this name for a few lines only - long enough for the views to be
 # moved off it - and is then deleted.
 TEMPLATE_OLD_SUFFIX = u"_BPM_VI_OLD"
+
+# The same trick for a filter being aligned, except that here it is the
+# compilation's copy that is deleted and the planner's that gets its name back.
+FILTER_OLD_SUFFIX = u"_BPM_VI_OLD"
 
 
 class _UseDestinationTypes(IDuplicateTypeNamesHandler):
@@ -215,10 +228,117 @@ def _free_template_name(doc, base):
     return candidate
 
 
+def _filter_elements_by_name(doc):
+    """{name: FilterElement} for every filter in `doc`, selection filters too -
+    they share one namespace with parameter filters."""
+    result = {}
+    for element in FilteredElementCollector(doc).OfClass(FilterElement):
+        try:
+            result[element.Name] = element
+        except Exception:
+            continue
+    return result
+
+
+def _free_filter_name(doc, base):
+    """A filter name nothing in the model answers to."""
+    taken = _filter_elements_by_name(doc)
+    candidate = base + FILTER_OLD_SUFFIX
+    index = 1
+    while candidate in taken:
+        index += 1
+        candidate = u"{0}{1}{2}".format(base, FILTER_OLD_SUFFIX, index)
+    return candidate
+
+
+def filters_to_align(doc, comp_template):
+    """[(comp_filter, local_filter)] whose name is taken here, defined differently.
+
+    These are exactly the filters a template copy would NOT bring across - the
+    copy lands on the model's own by name. Any filter of that name counts, not
+    only those on the local template: the copy maps by name across the whole
+    model. A definition that cannot be read on either side counts as different;
+    aligning it is harmless, leaving an unknown in place is not.
+    """
+    comp_filters = _filters_by_name(comp_template) or {}
+    local_filters = _filter_elements_by_name(doc)
+    result = []
+    for name in sorted(comp_filters):
+        comp_filter = comp_filters[name]
+        local_filter = local_filters.get(name)
+        if not isinstance(comp_filter, ParameterFilterElement):
+            continue  # selection filters hold elements of their own model
+        if not isinstance(local_filter, ParameterFilterElement):
+            continue
+        comp_categories = _categories(comp_filter)
+        comp_rules = _rules_signature(comp_filter)
+        if (
+            comp_categories is not None
+            and comp_rules is not None
+            and comp_categories == _categories(local_filter)
+            and comp_rules == _rules_signature(local_filter)
+        ):
+            continue
+        result.append((comp_filter, local_filter))
+    return result
+
+
+def align_filter(doc, comp_doc, comp_filter, local_filter):
+    """Give the planner's filter the compilation's definition. Error or None.
+
+    The filter keeps its ElementId, so every view and template in this model
+    that uses it keeps its own visibility and overrides for it - only WHAT it
+    selects changes. Its rules cannot be built from the compilation's directly:
+    a shared parameter has a different id in every model. So the compilation's
+    filter is copied in under the free name - Revit maps the parameters while
+    copying - its definition is moved onto the planner's filter, and the copy is
+    deleted again.
+
+    Must run inside an open transaction on `doc`; on an error the filter may be
+    left half-changed (renamed, rules cleared), and rolling back is the caller's.
+    """
+    name = local_filter.Name
+    try:
+        local_filter.Name = _free_filter_name(doc, name)
+
+        ids = List[ElementId]()
+        ids.Add(comp_filter.Id)
+        options = CopyPasteOptions()
+        options.SetDuplicateTypeNamesHandler(_UseDestinationTypes())
+        copied = ElementTransformUtils.CopyElements(
+            comp_doc, ids, doc, Transform.Identity, options
+        )
+        source = None
+        for new_id in copied:
+            element = doc.GetElement(new_id)
+            if isinstance(element, ParameterFilterElement):
+                source = element
+                break
+        if source is None:
+            return FILTER_ALIGN_FAILED.format(name, u"הפילטר לא הועתק")
+
+        categories = source.GetCategories()
+        element_filter = source.GetElementFilter()
+        # Rules first: categories that the old rules' parameters do not apply
+        # to would be rejected while those rules are still in place.
+        local_filter.ClearRules()
+        local_filter.SetCategories(categories)
+        if element_filter is not None and not local_filter.SetElementFilter(
+            element_filter
+        ):
+            return FILTER_ALIGN_FAILED.format(name, u"Revit דחה את הכללים")
+
+        doc.Delete(source.Id)
+        local_filter.Name = name
+    except Exception as ex:
+        return FILTER_ALIGN_FAILED.format(name, ex)
+    return None
+
+
 def replace_template(doc, comp_doc, comp_view):
     """Make the planner's template BE the compilation's, keeping its views.
 
-    Returns (template, moved_views, remaining, error).
+    Returns (template, moved_views, aligned_filters, remaining, error).
 
     A template cannot be overwritten in place and its name cannot be taken
     while it holds it, so the swap is a four-step dance - the one Eyal
@@ -235,39 +355,47 @@ def replace_template(doc, comp_doc, comp_view):
     half the model on a template that no longer exists - is worse. `moved_views`
     is how many, so the caller can say so.
 
+    Before any of that, every filter the copy would land on by name but that
+    is defined differently here is aligned to the compilation's - see
+    align_filter. `aligned_filters` is how many.
+
     Must run inside an open transaction on `doc`; a failure part-way is the
-    caller's to roll back.
+    caller's to roll back - and it must: by then filters may already have been
+    rewritten, and a half-done replacement is worse than none.
     """
     comp_template = template_of(comp_view)
     if comp_template is None:
-        return None, 0, [], TEMPLATE_NONE_ON_COMP
+        return None, 0, 0, [], TEMPLATE_NONE_ON_COMP
 
     try:
         name = comp_template.Name
     except Exception:
-        return None, 0, [], TEMPLATE_NONE_ON_COMP
+        return None, 0, 0, [], TEMPLATE_NONE_ON_COMP
+
+    to_align = filters_to_align(doc, comp_template)
+    for comp_filter, local_filter in to_align:
+        error = align_filter(doc, comp_doc, comp_filter, local_filter)
+        if error:
+            return None, 0, 0, [], error
+    aligned = len(to_align)
 
     existing = find_template_by_name(doc, name)
     if existing is None:
         copied, error = copy_template(doc, comp_doc, comp_template)
         if copied is None:
-            return None, 0, [], error
-        return copied, 0, compare_templates(comp_template, copied), None
+            return None, 0, 0, [], error
+        return copied, 0, aligned, compare_templates(comp_template, copied), None
 
     followers = views_using(doc, existing)
     old_id = existing.Id
     try:
         existing.Name = _free_template_name(doc, name)
     except Exception as ex:
-        return None, 0, [], TEMPLATE_RENAME_FAILED.format(ex)
+        return None, 0, 0, [], TEMPLATE_RENAME_FAILED.format(ex)
 
     copied, error = copy_template(doc, comp_doc, comp_template)
     if copied is None:
-        try:
-            existing.Name = name  # nothing was lost - put the name back
-        except Exception:
-            pass
-        return None, 0, [], error
+        return None, 0, 0, [], error
 
     moved = 0
     for view_id in followers:
@@ -283,32 +411,27 @@ def replace_template(doc, comp_doc, comp_view):
     try:
         doc.Delete(old_id)
     except Exception as ex:
-        return copied, moved, [], TEMPLATE_DELETE_FAILED.format(name, ex)
+        return None, 0, 0, [], TEMPLATE_DELETE_FAILED.format(name, ex)
 
-    # Compared again, and not as a formality: this is the one comparison that
-    # can still fail after a replacement, and it fails for a reason worth
-    # naming - see remaining_reason().
-    return copied, moved, compare_templates(comp_template, copied), None
+    # Compared again, and not as a formality: with the filters aligned this
+    # should come back empty, and when it does not, the caller says so - see
+    # remaining_reason().
+    return copied, moved, aligned, compare_templates(comp_template, copied), None
 
 
 def remaining_reason(differences):
-    """Why differences can survive a replacement, in the planner's words.
+    """What is left after a replacement, in the planner's words.
 
-    Everything the TEMPLATE itself holds - which filters it carries, whether
-    each is on, its overrides, the drawing settings - is copied, so a
-    replacement settles all of it. What a copy cannot settle is the definition
-    of a FILTER whose name is already taken here: Revit keeps this model's own
-    and points the new template at it. Replacing that would rewrite a filter
-    every other view in the model shares, which is a bigger decision than this
-    one and is not taken here.
+    Everything the template holds is copied and every filter it lands on is
+    aligned, so what survives is what the comparison could not read through the
+    API (or a selection filter, which belongs to its own model). Rare, and the
+    dialog lists them when it is opened again.
     """
     if not differences:
         return None
     return (
-        u"נותרו {0} הבדלים שהחלפת התבנית אינה פותרת: הם בהגדרה של פילטר "
-        u"ששמו כבר תפוס אצלך, ו-Revit לא מעתיק פילטר על גבי אחד קיים — הוא "
-        u"משאיר את שלך. כדי ליישר גם אותם צריך להחליף את הפילטר עצמו, וזה "
-        u"משנה אותו בכל המבטים במודל שלך שמשתמשים בו."
+        u"נותרו {0} הבדלים שההחלפה לא יישרה - פתח שוב את פרטי ה-View Template "
+        u"כדי לראות אותם."
     ).format(len(differences))
 
 

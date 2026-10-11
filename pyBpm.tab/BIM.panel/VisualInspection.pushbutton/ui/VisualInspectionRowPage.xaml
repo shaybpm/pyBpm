@@ -167,6 +167,10 @@
                     Style="{StaticResource TextButton}"
                     Click="SyncAll_Click"
                     ToolTip="מחזיר כל מבט שכבר קיים אצלך למיקום, לחיתוך ולעומק שיש לו כרגע בקומפילציה — למקרה שהמתאם הזיז אותו מאז. הגיאומטריה שלך נדרסת; שם המבט לא משתנה. מבט שהחתך שלו בקומפילציה עבר למישור אחר או סובב ייווצר מחדש, וסימונים שציירת בתוכו לא יישמרו." />
+            <Button x:Name="row_sheet_btn" Content="צור גיליון"
+                    Style="{StaticResource TextButton}"
+                    Click="RowSheet_Click"
+                    ToolTip="מניח את כל המבטים של השורה שכבר קיימים אצלך על גיליון אחד, בלי Title Block, מסודרים: התכניות בשורה אחת והחתכים מתחתיהן. לחיצה נוספת מוסיפה לאותו גיליון מבטים שנוצרו מאז. מבט שכבר מונח על גיליון אחר נשאר שם." />
             <Button x:Name="open_comp_note" Content="?"
                     Style="{StaticResource IconButton}" IsEnabled="False"
                     Margin="10,0,0,0"

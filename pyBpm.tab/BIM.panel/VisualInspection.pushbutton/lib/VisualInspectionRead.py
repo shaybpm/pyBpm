@@ -30,6 +30,8 @@ between them. They are a contract - changing a name in DEV.tab without changing
 it here silently empties this dashboard.
 """
 
+import re
+
 from Autodesk.Revit.DB import (
     FilteredElementCollector,
     Revision,
@@ -80,6 +82,10 @@ VIEW_TYPE_LABELS = {
 }
 PARAM_SCORE = "BPM_VI_Score"
 PARAM_RUN_DATE = "BPM_VI_RunDate"
+# A row's continuation page: "<the row's sheet number>.<n>" (DEV.tab's
+# next_free_page_number). The row's own number is whatever precedes the LAST
+# dot, so a renumbered "A.103" still has its pages at "A.103.1".
+PAGE_NUMBER_PATTERN = re.compile(u"^(.+)\\.(\\d+)$")
 REVISION_PREFIX = u"בדיקה ויזואלית אדריכלות-קונסטרוקציה"
 
 
@@ -163,7 +169,13 @@ class ViewEntry(object):
 
 
 class SheetEntry(object):
-    """One inspection sheet - a level x scope box row - and its views."""
+    """One inspection row - a level x scope box - and its views.
+
+    Usually one sheet. A row that spills over is several - "V103", then
+    "V103.1", "V103.2", including pages the coordinator added by hand - and
+    those are folded into this one entry (see _fold_pages), so `number` and
+    `name` are the row's own sheet and `page_numbers` lists all of them.
+    """
 
     def __init__(self, sheet_id, number, name, score, run_date):
         self.sheet_id = sheet_id
@@ -172,6 +184,7 @@ class SheetEntry(object):
         self.score = score
         self.run_date = run_date
         self.views = []
+        self.page_numbers = [number] if number else []
 
     @property
     def worst_view(self):
@@ -233,11 +246,60 @@ def read_inspection(comp_doc):
     for orphaned in views_by_sheet_id.values():
         loose_views.extend(orphaned)
 
+    sheets = _fold_pages(sheets)
     sheets.sort(key=_by_score_then_name)
     loose_views.sort(key=_by_score_then_name)
 
     model_score, run_date, source = _model_score(comp_doc, sheets, loose_views)
     return InspectionReport(model_score, run_date, sheets, loose_views, source)
+
+
+def _fold_pages(sheets):
+    """Fold a row's continuation pages into the row's own sheet.
+
+    DEV.tab numbers a row's extra pages "<the row's number>.<n>" - V103.1,
+    V103.2 - and a coordinator who adds a page by hand numbers it the same way
+    (DEV.tab then scores it with the row). They are one level x scope box, so
+    the planner sees one entry with all of its views, not one per page.
+
+    A page whose base number is not itself an inspection sheet is left as it
+    is: there is no row entry to fold it into, and inventing one would show a
+    number the compilation does not have.
+    """
+    by_number = {}
+    for sheet in sheets:
+        if sheet.number:
+            by_number[sheet.number] = sheet
+
+    kept = []
+    for sheet in sheets:
+        base = _base_number(sheet.number)
+        target = by_number.get(base) if base else None
+        if target is None or target is sheet:
+            kept.append(sheet)
+            continue
+        target.views.extend(sheet.views)
+        target.page_numbers.append(sheet.number)
+        if target.score is None:
+            target.score = sheet.score
+        if not target.run_date:
+            target.run_date = sheet.run_date
+
+    for sheet in kept:
+        sheet.views.sort(key=_by_score_then_name)
+        sheet.page_numbers.sort(key=_page_sort_key)
+    return kept
+
+
+def _base_number(number):
+    """"V103" out of "V103.4". None when the number is not a page number."""
+    match = PAGE_NUMBER_PATTERN.match(number or u"")
+    return match.group(1) if match else None
+
+
+def _page_sort_key(number):
+    match = PAGE_NUMBER_PATTERN.match(number or u"")
+    return int(match.group(2)) if match else -1
 
 
 def _collect_views(comp_doc):
