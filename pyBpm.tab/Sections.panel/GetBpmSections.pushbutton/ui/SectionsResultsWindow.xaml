@@ -131,6 +131,9 @@
                         <TextBlock x:Name="TitleTextBlock" FontWeight="Bold"
                             FontSize="14" Text="BPM - התאמת חתכים"
                             FlowDirection="RightToLeft" VerticalAlignment="Center" />
+                        <TextBlock x:Name="CompModelTextBlock" Foreground="#555555"
+                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                            FlowDirection="RightToLeft" />
                     </Grid>
                 </Border>
 

@@ -55,13 +55,17 @@ def check_preconditions(doc):
     """Validate the launch preconditions (section 4.2 of the plan).
 
     Returns (comp_link, comp_doc, error_message). error_message is None when
-    all preconditions pass. The cloud check on ``doc`` comes first because
-    ``get_comp_link`` -> ``get_model_info`` raises when the doc is not in cloud.
+    all preconditions pass, and RevitUtils.COMP_LINK_CANCELLED when the planner
+    closed the compilation-model picker (nothing to show). The cloud check on
+    ``doc`` comes first because ``get_comp_link`` -> ``get_model_info`` raises
+    when the doc is not in cloud.
     """
     if not doc.IsModelInCloud:
         return None, None, NOT_IN_CLOUD_MSG
 
-    comp_link = RevitUtils.get_comp_link(doc)
+    comp_link, status = RevitUtils.resolve_comp_link(doc)
+    if status == RevitUtils.COMP_LINK_CANCELLED:
+        return None, None, RevitUtils.COMP_LINK_CANCELLED
     if not comp_link:
         return None, None, COMP_LINK_NOT_LOADED_MSG
 
@@ -261,6 +265,8 @@ def ensure_filter_selection(doc, force_window=False):
       {"status": "cancelled"}
     """
     comp_link, comp_doc, error = check_preconditions(doc)
+    if error == RevitUtils.COMP_LINK_CANCELLED:
+        return {"status": "cancelled"}
     if error:
         return {"status": "blocked", "message": error}
 

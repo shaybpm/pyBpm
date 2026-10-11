@@ -1019,6 +1019,8 @@ class TrackingOpeningsDialog(Windows.Window):
     def approve_by_compilation_sheets(self, sender, e):
         try:
             res = get_comp_opening_sheets_data(self.doc)
+            if res["status"] == "CANCELLED":
+                return
             if res["data"] is None:
                 self.alert(res["message"])
                 return

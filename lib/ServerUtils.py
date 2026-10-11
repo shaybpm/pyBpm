@@ -3,7 +3,14 @@ import json, os
 from System.Net import WebException, HttpWebResponse
 from pyrevit import script
 from HttpRequest import get, patch, post
-from RevitUtils import get_model_info, get_comp_link, is_comp_doc, getElementIdValue
+from RevitUtils import (
+    get_model_info,
+    get_comp_link,
+    resolve_comp_link,
+    COMP_LINK_CANCELLED,
+    is_comp_doc,
+    getElementIdValue,
+)
 from Config import server_url
 
 
@@ -131,7 +138,8 @@ class ProjectStructuralModels:
 def get_model_quality_auto_checks_data(doc):
     if not doc.IsModelInCloud:
         return None
-    comp_link = get_comp_link(doc)
+    # Reached from the view-activated hook - never open the picker there.
+    comp_link = get_comp_link(doc, interactive=False)
     if not comp_link:
         return None
     comp_doc = comp_link.GetLinkDocument()
@@ -204,7 +212,9 @@ def get_comp_opening_sheets_data(doc):
 
     if not doc.IsModelInCloud:
         return {"status": "ERROR", "message": "Document is not in cloud.", "data": None}
-    comp_link = get_comp_link(doc)
+    comp_link, comp_link_status = resolve_comp_link(doc)
+    if comp_link_status == COMP_LINK_CANCELLED:
+        return {"status": "CANCELLED", "message": "", "data": None}
     message = ""
     if comp_link:
         comp_doc = comp_link.GetLinkDocument()

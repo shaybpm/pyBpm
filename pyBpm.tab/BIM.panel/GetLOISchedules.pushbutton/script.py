@@ -23,7 +23,7 @@ from Autodesk.Revit.DB import (
 
 from pyrevit import forms
 
-from RevitUtils import get_comp_link
+from RevitUtils import resolve_comp_link, COMP_LINK_CANCELLED
 from TransferUtility import execute_function_on_cloud_doc, get_project_container_guids
 
 import sys, os
@@ -199,7 +199,9 @@ def run():
     project_guid, model_container_guid = get_project_container_guids(doc)
     if not project_guid or not model_container_guid:
         message = "No project container found and no compilation link found."
-        comp_link = get_comp_link(doc)
+        comp_link, status = resolve_comp_link(doc)
+        if status == COMP_LINK_CANCELLED:
+            return
         if not comp_link:
             forms.alert(message)
             return
