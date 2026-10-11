@@ -114,7 +114,28 @@ def is_comp_doc(doc):
     )
 
 
-def get_comp_link(doc):
+# Per-user store of the compilation model picked for each host model, used when
+# the host links more than one. {host modelGuid: comp model key}.
+COMP_LINK_CHOICE_FILE = "pybpm_comp_link_choice"
+
+COMP_LINK_OK = "ok"
+COMP_LINK_NONE = "none"
+COMP_LINK_CANCELLED = "cancelled"
+
+
+def comp_model_key(link_doc):
+    """Identifies a comp MODEL (not a link instance): two instances of the same
+    model are one choice. Cloud models are keyed by GUID, anything else by title."""
+    try:
+        if link_doc.IsModelInCloud:
+            return link_doc.GetCloudModelPath().GetModelGUID().ToString()
+    except Exception:
+        pass
+    return link_doc.Title
+
+
+def get_comp_link_candidates(doc):
+    """One loaded RevitLinkInstance per distinct compilation model in doc."""
     from Autodesk.Revit.DB import FilteredElementCollector, RevitLinkInstance
 
     all_links = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
@@ -126,15 +147,106 @@ def get_comp_link(doc):
             if not link_doc:
                 continue
             if "BPM-UT" in link_doc.Title:
-                return link
+                return [link]
 
+    candidates = []
+    seen_keys = set()
     for link in all_links:
         link_doc = link.GetLinkDocument()
         if not link_doc:
             continue
-        if is_comp_doc(link_doc):
-            return link
-    return None
+        if not is_comp_doc(link_doc):
+            continue
+        key = comp_model_key(link_doc)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        candidates.append(link)
+    return candidates
+
+
+def _comp_link_choices():
+    from LocalUserInputs import LocalUserInputs
+
+    return LocalUserInputs(COMP_LINK_CHOICE_FILE)
+
+
+def get_saved_comp_model_key(doc):
+    return _comp_link_choices().data.get(get_model_info(doc)["modelGuid"])
+
+
+def release_comp_link_choice(doc):
+    """Forget the compilation model picked for doc. True if one was saved."""
+    choices = _comp_link_choices()
+    host_guid = get_model_info(doc)["modelGuid"]
+    if host_guid not in choices.data:
+        return False
+    del choices.data[host_guid]
+    choices.save_inputs()
+    return True
+
+
+def _pick_comp_link(doc, candidates):
+    from pyrevit import forms
+
+    by_title = {}
+    for link in candidates:
+        base_title = title = link.GetLinkDocument().Title
+        # Distinct models can share a title (same file name in two projects).
+        n = 2
+        while title in by_title:
+            title = u"{} ({})".format(base_title, n)
+            n += 1
+        by_title[title] = link
+
+    picked = forms.SelectFromList.show(
+        sorted(by_title.keys()),
+        title=u"בחר מודל קומפילציה",
+        button_name=u"בחר",
+        multiselect=False,
+    )
+    if not picked:
+        return None
+
+    link = by_title[picked]
+    choices = _comp_link_choices()
+    choices.data[get_model_info(doc)["modelGuid"]] = comp_model_key(
+        link.GetLinkDocument()
+    )
+    choices.save_inputs()
+    return link
+
+
+def resolve_comp_link(doc, interactive=True):
+    """(link, status) - status is COMP_LINK_OK / COMP_LINK_NONE / COMP_LINK_CANCELLED.
+
+    One comp model -> it. Several -> the one saved for this host model, otherwise
+    the planner picks one (and the pick is saved). interactive=False is for hooks,
+    where no dialog may open: with several and nothing saved it returns NONE.
+    """
+    candidates = get_comp_link_candidates(doc)
+    if not candidates:
+        return None, COMP_LINK_NONE
+    if len(candidates) == 1:
+        return candidates[0], COMP_LINK_OK
+
+    saved_key = get_saved_comp_model_key(doc)
+    if saved_key:
+        for link in candidates:
+            if comp_model_key(link.GetLinkDocument()) == saved_key:
+                return link, COMP_LINK_OK
+
+    if not interactive:
+        return None, COMP_LINK_NONE
+
+    link = _pick_comp_link(doc, candidates)
+    if link is None:
+        return None, COMP_LINK_CANCELLED
+    return link, COMP_LINK_OK
+
+
+def get_comp_link(doc, interactive=True):
+    return resolve_comp_link(doc, interactive)[0]
 
 
 def get_model_info(doc):

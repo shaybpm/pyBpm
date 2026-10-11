@@ -37,7 +37,9 @@ doc = uidoc.Document
 
 
 def run():
-    comp_link = RevitUtils.get_comp_link(doc)
+    comp_link, status = RevitUtils.resolve_comp_link(doc)
+    if status == RevitUtils.COMP_LINK_CANCELLED:
+        return
     if not comp_link:
         forms.alert("The Compilation model link is not loaded.")
         return
@@ -98,8 +100,8 @@ def run():
 
     if counter > 0:
         to_commit = forms.alert(
-            "This script will replace the family types of {} Generic Model tags in the active view.\n\nDo you want to continue?".format(
-                counter
+            u"This script will replace the family types of {} Generic Model tags in the active view.\nCompilation model: {}\n\nDo you want to continue?".format(
+                counter, comp_doc.Title
             ),
             yes=True,
             cancel=True,

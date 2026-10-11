@@ -4,7 +4,7 @@ import clr
 clr.AddReferenceByPartialName("System")
 from System.Collections.Generic import List
 from pyrevit.forms import alert
-from RevitUtils import get_comp_link
+from RevitUtils import resolve_comp_link, COMP_LINK_CANCELLED
 from Autodesk.Revit.DB import (
     Transaction,
     FilteredElementCollector,
@@ -34,7 +34,9 @@ def get_bpm_ac_view_template_ids(comp_doc, doc):
 
 def get_bpm_ac_view_templates(uidoc):
     doc = uidoc.Document
-    comp_link = get_comp_link(doc)
+    comp_link, status = resolve_comp_link(doc)
+    if status == COMP_LINK_CANCELLED:
+        return
     if not comp_link:
         alert("The Compilation model link is not loaded.")
         return

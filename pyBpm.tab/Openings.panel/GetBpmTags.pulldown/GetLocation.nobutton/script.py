@@ -33,7 +33,9 @@ doc = uidoc.Document
 
 
 def run():
-    comp_link = RevitUtils.get_comp_link(doc)
+    comp_link, status = RevitUtils.resolve_comp_link(doc)
+    if status == RevitUtils.COMP_LINK_CANCELLED:
+        return
     if not comp_link:
         forms.alert("The Compilation model link is not loaded.")
         return
@@ -60,8 +62,8 @@ def run():
     }
 
     to_continue = forms.alert(
-        "This script will relocate {} Generic Model tags in the active view to the same location as the tags in the Compilation model.\n\nDo you want to continue?".format(
-            len(gm_tags_in_view_dict.keys())
+        u"This script will relocate {} Generic Model tags in the active view to the same location as the tags in the Compilation model.\nCompilation model: {}\n\nDo you want to continue?".format(
+            len(gm_tags_in_view_dict.keys()), comp_doc.Title
         ),
         yes=True,
         cancel=True,
