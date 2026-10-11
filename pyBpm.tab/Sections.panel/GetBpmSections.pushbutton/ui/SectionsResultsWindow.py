@@ -138,6 +138,7 @@ class SectionsResultsWindow(Windows.Window):
         # The comp-document generation the state below was built from. When this
         # reference goes invalid, a reload happened -> ensure_live() heals.
         self._comp_doc_ref = comp_doc
+        self.CompModelTextBlock.Text = u"מודל הקומפילציה: {}".format(comp_doc.Title)
         self.filters = filters  # list of ParameterFilterElements, or None
         self.items = items  # [{'section', 'sheet'}], no scoring
         self.sheets = sheets  # sorted unique sheet numbers

@@ -123,7 +123,9 @@ COMP_LINK_BROKEN_MSG = u"הלינק של מודל הקומפילציה קיים 
 
 
 def check_preconditions(doc):
-    """(comp_link, comp_doc, error). error is None when everything is in place.
+    """(comp_link, comp_doc, error). error is None when everything is in place,
+    and RevitUtils.COMP_LINK_CANCELLED when the planner closed the
+    compilation-model picker.
 
     The cloud check comes first because get_comp_link -> get_model_info raises
     on a document that is not in the cloud.
@@ -131,7 +133,9 @@ def check_preconditions(doc):
     if not doc.IsModelInCloud:
         return None, None, NOT_IN_CLOUD_MSG
 
-    comp_link = RevitUtils.get_comp_link(doc)
+    comp_link, status = RevitUtils.resolve_comp_link(doc)
+    if status == RevitUtils.COMP_LINK_CANCELLED:
+        return None, None, RevitUtils.COMP_LINK_CANCELLED
     if not comp_link:
         return None, None, COMP_LINK_NOT_LOADED_MSG
 

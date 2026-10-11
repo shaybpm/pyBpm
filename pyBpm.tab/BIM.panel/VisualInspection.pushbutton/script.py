@@ -61,7 +61,8 @@ def run():
 
     comp_link, comp_doc, error = read.check_preconditions(doc)
     if error:
-        alert(error)
+        if error != RevitUtils.COMP_LINK_CANCELLED:
+            alert(error)
         return
 
     window = VisualInspectionWindow(uidoc, comp_link)
