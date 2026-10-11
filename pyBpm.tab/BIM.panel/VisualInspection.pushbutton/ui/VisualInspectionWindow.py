@@ -26,7 +26,7 @@ import sys
 from pyrevit.framework import wpf
 from System import Windows
 
-from Autodesk.Revit.DB import Transaction
+from Autodesk.Revit.DB import SubTransaction, Transaction
 from Autodesk.Revit.UI import IExternalEventHandler, ExternalEvent
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
@@ -474,7 +474,9 @@ class VisualInspectionWindow(Windows.Window):
         try:
             for item in pending:
                 if item.get("kind") == "template":
-                    ok, message = self._replace_template(item, comp_doc)
+                    ok, message = self._replace_template_atomically(
+                        item, comp_doc
+                    )
                 elif item.get("kind") == "delete":
                     ok, message = self._delete_view(item)
                 else:
@@ -752,7 +754,9 @@ class VisualInspectionWindow(Windows.Window):
             + u"\n".join(u"• " + d for d in item.template_differences)
             + u"\n\nהחלפה תביא את התבנית מהקומפילציה במקום שלך, תחת אותו שם. "
             u"{0} מבטים במודל שלך נמצאים כרגע על התבנית הזו ויעברו יחד איתה — "
-            u"גם כאלה שאינם קשורים לבדיקה הויזואלית.".format(followers),
+            u"גם כאלה שאינם קשורים לבדיקה הויזואלית. פילטרים בשם זהה שמוגדרים "
+            u"אצלך אחרת יעודכנו לפי הקומפילציה, בכל המבטים שמשתמשים "
+            u"בהם.".format(followers),
             u"View Template",
             [replace, u"סגור"],
         )
@@ -770,6 +774,27 @@ class VisualInspectionWindow(Windows.Window):
         self.set_status(u"מחליף את ה-View Template '{0}'...".format(name), GRAY)
         self._event.Raise()
 
+    def _replace_template_atomically(self, item, comp_doc):
+        """_replace_template, all or nothing.
+
+        A replacement rewrites the planner's own filters before it touches the
+        template, so a failure half-way would leave their model with filters
+        changed and nothing to show for it. The SubTransaction undoes this one
+        replacement without giving up the rest of the queue, which commits with
+        the outer transaction as before.
+        """
+        sub = SubTransaction(self.doc)
+        sub.Start()
+        try:
+            ok, message = self._replace_template(item, comp_doc)
+        except Exception as ex:
+            ok, message = False, u"{0}".format(ex)
+        if ok:
+            sub.Commit()
+            return ok, message
+        sub.RollBack()
+        return False, u"{0} ההחלפה בוטלה ולא שונה דבר במודל שלך.".format(message)
+
     def _replace_template(self, item, comp_doc):
         """(succeeded, message) for one queued replacement. In a transaction."""
         comp_view = comp_doc.GetElement(
@@ -780,7 +805,7 @@ class VisualInspectionWindow(Windows.Window):
                 item["view_name"]
             )
 
-        template, moved, remaining, error = templates.replace_template(
+        template, moved, aligned, remaining, error = templates.replace_template(
             self.doc, comp_doc, comp_view
         )
         if error:
@@ -790,6 +815,10 @@ class VisualInspectionWindow(Windows.Window):
             u"ה-View Template '{0}' הוחלף בזה של הקומפילציה, ו-{1} מבטים "
             u"אצלך עברו אליו."
         ).format(template.Name, moved)
+        if aligned:
+            message = u"{0} {1} פילטרים עודכנו לפי הקומפילציה.".format(
+                message, aligned
+            )
         reason = templates.remaining_reason(remaining)
         if reason:
             message = u"{0} {1}".format(message, reason)
