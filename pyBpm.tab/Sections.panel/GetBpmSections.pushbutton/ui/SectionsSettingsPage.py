@@ -40,6 +40,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import SectionsFilterSelection as sfs  # type: ignore
 import SectionsCreate as creator  # type: ignore
+import SectionsColoring as coloring  # type: ignore
 from RevitUtils import getElementIdValue, getElementName
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsSettingsPage.xaml")
@@ -59,6 +60,9 @@ class SectionsSettingsPage(Windows.Controls.Page):
         # Same guard for the create-option combos (populate/sync fire
         # SelectionChanged, which must not be read as a user edit).
         self._suspend_create = False
+        # _refresh_color_enabled moves radio selections, which re-enters it
+        # through the Checked handlers - once is enough.
+        self._suspend_color_refresh = False
         self.active_nav_bg = Windows.Media.Brushes.LightBlue
         # Create options first: _build_groups ends with _update_save_enabled,
         # which reads the create combos, so they must already be populated.
@@ -147,8 +151,88 @@ class SectionsSettingsPage(Windows.Controls.Page):
                 self._select_saved_create()
             finally:
                 self._suspend_create = False
+            self._refresh_color_enabled()
         except Exception:
             self.res_window.report_error(u"טעינת הגדרות היצירה")
+
+    # ------------------------------------------------------------------
+    # Coloring options (T-0494) - the checkbox gates the three modes, and the
+    # modes gate the View Template combo. Enforced here (not only on save) so
+    # the dialog can never show a combination the coloring would not honor.
+    # ------------------------------------------------------------------
+    def _mode_radio(self, mode):
+        if mode == coloring.MODE_CREATE:
+            return self.ModeCreateRadio
+        if mode == coloring.MODE_EXISTING:
+            return self.ModeExistingRadio
+        return self.ModeNoneRadio
+
+    def _current_color_mode(self):
+        if self.ModeCreateRadio.IsChecked:
+            return coloring.MODE_CREATE
+        if self.ModeExistingRadio.IsChecked:
+            return coloring.MODE_EXISTING
+        return coloring.MODE_NONE
+
+    def _refresh_color_enabled(self):
+        """Keep the coloring controls consistent with each other.
+
+        The View Template combo is what decides WHICH modes exist: with a
+        template picked the coloring can only go onto it (or be off), and
+        without one the tool colors the view itself or makes its own template.
+        The radios are not merely disabled - an invalid one is moved, so the
+        dialog never shows a selected mode that would not be honored.
+        """
+        if self._suspend_color_refresh:
+            return
+        self._suspend_color_refresh = True
+        try:
+            colorize = bool(self.ColorizeCheckBox.IsChecked)
+            has_template = self._combo_value(self.ViewTemplateCombo) is not None
+
+            self.ModeNoneRadio.IsEnabled = colorize and not has_template
+            self.ModeCreateRadio.IsEnabled = colorize and not has_template
+            self.ModeExistingRadio.IsEnabled = colorize and has_template
+
+            # Move the selection off a mode that no longer applies.
+            if has_template and not self.ModeExistingRadio.IsChecked:
+                self.ModeExistingRadio.IsChecked = True
+            elif not has_template and self.ModeExistingRadio.IsChecked:
+                self.ModeNoneRadio.IsChecked = True
+
+            if has_template:
+                hint = u"נבחרה תבנית תצוגה, ולכן הצביעה יכולה לחול רק עליה. לצביעה על המבט עצמו או על תבנית שהתוסף ייצור - בחר 'ללא'."
+            else:
+                hint = u"לא נבחרה תבנית תצוגה, ולכן הצביעה תחול על המבט עצמו או על תבנית ייעודית שהתוסף ייצור."
+            self.ColorModeHint.Text = hint
+            self.ColorModeHint.Visibility = (
+                Windows.Visibility.Visible
+                if colorize
+                else Windows.Visibility.Collapsed
+            )
+            self.ExistingWarningBorder.Visibility = (
+                Windows.Visibility.Visible
+                if colorize and has_template
+                else Windows.Visibility.Collapsed
+            )
+        except Exception:
+            pass
+        finally:
+            self._suspend_color_refresh = False
+
+    def colorize_toggled(self, sender, e):
+        try:
+            self._refresh_color_enabled()
+            self._on_create_change(sender, e)
+        except Exception:
+            self.res_window.report_error(u"הגדרת צביעת המערכות")
+
+    def color_mode_changed(self, sender, e):
+        try:
+            self._refresh_color_enabled()
+            self._on_create_change(sender, e)
+        except Exception:
+            self.res_window.report_error(u"הגדרת מצב הצביעה")
 
     def _select_combo(self, combo, id_value):
         for item in combo.Items:
@@ -162,29 +246,45 @@ class SectionsSettingsPage(Windows.Controls.Page):
         saved = self._saved_create_settings()
         self._select_combo(self.SectionTypeCombo, saved["section_type_id"])
         self._select_combo(self.ViewTemplateCombo, saved["view_template_id"])
+        self.ColorizeCheckBox.IsChecked = saved["colorize_on_create"]
+        self._mode_radio(saved["color_template_mode"]).IsChecked = True
 
     def _combo_value(self, combo):
         item = combo.SelectedItem
         return item.Tag if item is not None else None
 
     def _current_create_settings(self):
-        return {
+        settings = {
             "section_type_id": self._combo_value(self.SectionTypeCombo),
             "view_template_id": self._combo_value(self.ViewTemplateCombo),
+            "colorize_on_create": bool(self.ColorizeCheckBox.IsChecked),
+            "color_template_mode": self._current_color_mode(),
         }
+        # Normalized through the SAME helper the coloring itself reads, so what
+        # is saved is exactly what will run - and the dirty check compares like
+        # with like (both sides normalized).
+        settings["color_template_mode"] = sfs.color_template_mode(settings)
+        return settings
 
     def _saved_create_settings(self):
-        """The window's persisted create settings, normalized to the two keys."""
+        """The window's persisted create settings, normalized to the four keys.
+        The coloring keys go through the lib helpers, which carry the defaults
+        for a settings dict saved before coloring existed."""
         saved = self.res_window.create_settings or {}
         return {
             "section_type_id": saved.get("section_type_id"),
             "view_template_id": saved.get("view_template_id"),
+            "colorize_on_create": sfs.colorize_on_create(saved),
+            "color_template_mode": sfs.color_template_mode(saved),
         }
 
     def _on_create_change(self, sender, e):
         if self._suspend_create:
             return
         try:
+            # The View Template combo gates the coloring modes, so every change
+            # here re-normalizes them before the dirty check reads them.
+            self._refresh_color_enabled()
             self._update_save_enabled()
         except Exception:
             pass
@@ -196,6 +296,7 @@ class SectionsSettingsPage(Windows.Controls.Page):
             self._select_saved_create()
         finally:
             self._suspend_create = False
+        self._refresh_color_enabled()
 
     # ------------------------------------------------------------------
     # Build (filters sub-page)

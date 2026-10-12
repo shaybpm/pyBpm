@@ -213,11 +213,48 @@ def _host_key(doc):
     return RevitUtils.get_model_info(doc)["modelGuid"]
 
 
+# Coloring defaults (T-0494). Read through the two helpers below, never with a
+# bare dict lookup: a settings dict saved before coloring existed has neither
+# key, and the planner must still get the coloring - it is on by default.
+DEFAULT_COLORIZE_ON_CREATE = True
+DEFAULT_COLOR_TEMPLATE_MODE = "none"
+
+
 def load_create_settings(doc):
     """Return this user's saved section-creation settings for the host model
-    ({'section_type_id', 'view_template_id'}), or an empty dict if never saved."""
+    ({'section_type_id', 'view_template_id', 'colorize_on_create',
+    'color_template_mode'}), or an empty dict if never saved."""
     inputs = LocalUserInputs(CREATE_SETTINGS_FILE)
     return inputs.data.get(_host_key(doc)) or {}
+
+
+def colorize_on_create(settings):
+    if not settings:
+        return DEFAULT_COLORIZE_ON_CREATE
+    return bool(settings.get("colorize_on_create", DEFAULT_COLORIZE_ON_CREATE))
+
+
+def color_template_mode(settings):
+    """The coloring's template mode, normalized against the other settings.
+
+    Two coherence rules, enforced here rather than in the UI alone so a
+    settings dict saved by an older version can never act on a combination the
+    UI would not offer:
+      - coloring off -> no mode at all.
+      - a View Template was picked -> the coloring belongs ON that template.
+        The other modes would either fight it (a view-level filter a
+        template-controlled view refuses) or replace it (the tool's own
+        template), and replacing the planner's choice is never ours to make.
+    """
+    if not colorize_on_create(settings):
+        return DEFAULT_COLOR_TEMPLATE_MODE
+    mode = settings.get("color_template_mode") or DEFAULT_COLOR_TEMPLATE_MODE
+    has_template = settings.get("view_template_id") is not None
+    if has_template:
+        return "existing"
+    if mode == "existing":
+        return DEFAULT_COLOR_TEMPLATE_MODE
+    return mode
 
 
 def save_create_settings(doc, settings):

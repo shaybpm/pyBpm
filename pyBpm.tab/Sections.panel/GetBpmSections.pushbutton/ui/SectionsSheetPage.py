@@ -462,6 +462,14 @@ class SectionsSheetPage(Windows.Controls.Page):
         except Exception:
             self.res_window.report_error(u"מעבר לחתך")
 
+    def Colorize_Click(self, sender, e):
+        try:
+            self.res_window.request_action(
+                "colorize", self._rows_for_action(sender.DataContext)
+            )
+        except Exception:
+            self.res_window.report_error(u"צביעת מערכות")
+
     def Delete_Click(self, sender, e):
         try:
             self.res_window.request_action(
