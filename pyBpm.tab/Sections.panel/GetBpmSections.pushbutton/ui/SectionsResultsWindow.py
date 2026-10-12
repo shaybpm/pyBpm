@@ -54,6 +54,7 @@ import SectionsScoring as scoring  # type: ignore
 from SectionsHomePage import SectionsHomePage  # type: ignore
 from SectionsSheetPage import SectionsSheetPage  # type: ignore
 from SectionsSettingsPage import SectionsSettingsPage  # type: ignore
+import SectionsColoring as coloring  # type: ignore
 import SectionsDisplay as display_module  # type: ignore
 from SectionsDisplay import SectionsDisplay  # type: ignore
 import SectionsImage  # type: ignore
@@ -179,6 +180,9 @@ class SectionsResultsWindow(Windows.Window):
         # _pending is a QUEUE - Revit coalesces rapid Raise() calls into a single
         # Execute, so a single slot would silently drop earlier requests.
         self._pending = []
+        # Coloring warnings collected during one Execute, flushed as a single
+        # message when it ends (T-0494).
+        self._coloring_warnings = []
         self._action_handler = SectionActionEventHandler(self)
         self._action_event = ExternalEvent.Create(self._action_handler)
 
@@ -671,6 +675,25 @@ class SectionsResultsWindow(Windows.Window):
         actions, so no cache reset / page rebuild is needed."""
         sfs.save_create_settings(self.doc, settings)
         self.create_settings = settings
+
+    def _colorize_view(self, view, fresh=False):
+        """Color one section view per the saved coloring settings (T-0494).
+
+        Runs inside the caller's transaction, on the API context. A warning is
+        QUEUED, not shown: a 20-row batch would otherwise pop 20 modal alerts
+        (notify hides and re-shows the window) - execute_pending_action flushes
+        them as one message."""
+        report = coloring.colorize_section(
+            self.doc,
+            view,
+            sfs.color_template_mode(self.create_settings),
+            self.create_settings.get("view_template_id"),
+            fresh,
+        )
+        warning = report.get("warning")
+        if warning and warning not in self._coloring_warnings:
+            self._coloring_warnings.append(warning)
+        return report
 
     def _resolve_create_type_id(self):
         """The section VFT id to create with: the saved default if still valid,
@@ -1188,6 +1211,14 @@ class SectionsResultsWindow(Windows.Window):
                             "batch": names,
                         }
                     )
+            elif action == "colorize":
+                targets = [row for row in rows if row.exists]
+                if not targets:
+                    return
+                for row in targets:
+                    self._pending.append(
+                        {"action": "colorize", "name": row.section_name}
+                    )
             elif action == "goto":
                 existing = [row for row in rows if row.exists]
                 if not existing:
@@ -1215,12 +1246,18 @@ class SectionsResultsWindow(Windows.Window):
             # T-0340: the model was closed between the click and this Execute.
             return
         changed = False
+        self._coloring_warnings = []
         for request in requests:
             try:
                 if self._run_action(uiapp, request):
                     changed = True
             except Exception as ex:
                 print(ex)
+        if self._coloring_warnings:
+            # One message for the whole batch (see _colorize_view).
+            warnings = self._coloring_warnings
+            self._coloring_warnings = []
+            self.notify(u"\n\n".join(warnings))
         if changed:
             # Refresh every already-built sheet page: a coalesced Execute may
             # carry actions from more than one sheet, and a created/deleted view
@@ -1310,9 +1347,36 @@ class SectionsResultsWindow(Windows.Window):
                     )
                 except Exception as ex:
                     print(ex)
+                # Coloring (T-0494), same transaction - a failure here must not
+                # lose the section, so it is caught and reported like the
+                # template above.
+                if sfs.colorize_on_create(self.create_settings):
+                    try:
+                        # fresh=True: a template this view got from its section
+                        # type is not a planner's choice, so the coloring may
+                        # drop it (T-0494 follow-up).
+                        self._colorize_view(new_view, True)
+                    except Exception as ex:
+                        print(ex)
                 t.Commit()
                 return True
             t.RollBack()
+            return False
+
+        if action == "colorize":
+            # Re-coloring an existing section (T-0494): the blue is a snapshot,
+            # so this is how a planner refreshes it after re-drawing systems.
+            view = creator.find_existing_section(self.doc, name)
+            if view is None:
+                return True  # it is gone - let the exists state refresh
+            t = Transaction(self.doc, "pyBpm | Colorize Bpm Section")
+            t.Start()
+            try:
+                self._colorize_view(view)
+                t.Commit()
+            except Exception as ex:
+                print(ex)
+                t.RollBack()
             return False
 
         if action == "delete":

@@ -51,8 +51,10 @@ import SectionsCreate as creator  # type: ignore
 # removes a leftover with the same id). Do NOT replace with Guid.NewGuid().
 SERVER_GUID = Guid("b7e2c1a4-3f5d-4e8a-9c2b-1a2b3c4d5e6f")
 
-# Semi-transparent yellow (r, g, b, transparency) - transparency 0=opaque..255=clear.
-DISPLAY_COLOR = ColorWithTransparency(255, 255, 0, 110)
+# Semi-transparent red (r, g, b, transparency) - transparency 0=opaque..255=clear.
+# Red, not yellow: since T-0494 yellow means "comes from the compilation link"
+# in the colored sections, and the overlay must stay distinguishable from it.
+DISPLAY_COLOR = ColorWithTransparency(255, 0, 0, 110)
 
 # Uniform scale applied to each solid (about its own centroid) before meshing, so
 # the overlay sits slightly OUTSIDE the real geometry's faces and is not occluded

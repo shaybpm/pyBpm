@@ -161,6 +161,43 @@
                 <TextBlock Text="תבנית תצוגה (View Template)" FontWeight="SemiBold"
                     Margin="0,0,0,4" />
                 <ComboBox x:Name="ViewTemplateCombo" />
+
+                <!-- ============ Coloring (T-0494) ============ -->
+                <Border BorderThickness="0,1,0,0" BorderBrush="#DDDDDD"
+                    Padding="0,10,0,0" Margin="0,16,0,0">
+                    <StackPanel>
+                        <CheckBox x:Name="ColorizeCheckBox" FontWeight="SemiBold"
+                            Content="צביעת מערכות ביצירת החתך"
+                            Checked="colorize_toggled" Unchecked="colorize_toggled" />
+                        <TextBlock Foreground="Gray" TextWrapping="Wrap" FontSize="11"
+                            Margin="0,4,0,10"
+                            Text="מערכות המודל הנוכחי בכחול, ומערכות הקומפילציה (הלינק) בצהוב. הכחול הוא תמונת מצב: אלמנט שישורטט אחרי הצביעה יוצג בצהוב עד שתורץ הפעולה 'צבע מערכות' על החתך." />
+
+                        <!-- Which modes are available is decided by the View
+                             Template combo above (code-behind). -->
+                        <TextBlock x:Name="ColorModeHint" Foreground="Gray"
+                            TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6" />
+
+                        <RadioButton x:Name="ModeNoneRadio" GroupName="ColorMode"
+                            Content="צביעה על המבט עצמו" Margin="0,2,0,2"
+                            Checked="color_mode_changed" />
+                        <RadioButton x:Name="ModeCreateRadio" GroupName="ColorMode"
+                            Content="יצירת View Template (BPM_Sections_Colors)"
+                            Margin="0,2,0,2" Checked="color_mode_changed" />
+                        <RadioButton x:Name="ModeExistingRadio" GroupName="ColorMode"
+                            Content="החלת הפילטרים על View Template נבחר"
+                            Margin="0,2,0,2" Checked="color_mode_changed" />
+
+                        <Border x:Name="ExistingWarningBorder" Visibility="Collapsed"
+                            Background="#FDECEC" BorderBrush="#C62828"
+                            BorderThickness="1" CornerRadius="4" Padding="8"
+                            Margin="22,6,0,0">
+                            <TextBlock Foreground="#B71C1C" FontWeight="SemiBold"
+                                TextWrapping="Wrap" FontSize="11"
+                                Text="⚠ אזהרה: הפילטר של הצביעה יתווסף ל-View Template שנבחר למעלה, ישנה את הגרפיקה שלו, וישפיע על כל המבטים במודל שמשתמשים בתבנית הזו - לא רק על חתכי BPM. לבחור רק אם ה-View Template הנבחר ייעודי לעבודה עם התוסף." />
+                        </Border>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Grid>
 
