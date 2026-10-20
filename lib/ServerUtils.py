@@ -277,3 +277,15 @@ def get_bonds(doc):
     except Exception as e:
         print("Error fetching bonds: {}".format(e))
         return []
+
+
+def get_coordination_prep_reports(doc):
+    """The coordination-prep missing-items reports (BPM, T-0622) that list this
+    model: per compilation, the rows of the latest report that belong to it.
+    -> [{compModelGuid, compModelName, uploadedAt, uploadedBy, discipline,
+    disciplineLabel, rows}] - empty when no report lists the model."""
+    if not doc.IsModelInCloud:
+        return []
+    model_info = get_model_info(doc)
+    url = "{}api/coordination-prep-report/model/{}".format(server_url, model_info["modelGuid"])
+    return get(url) or []
