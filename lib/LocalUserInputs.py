@@ -28,14 +28,23 @@ class LocalUserInputs:
             self.data = self.defaults
             return
         
-        with open(self.file_path, 'r') as f:
-            self.data = json.load(f)
-            for key, value in self.defaults.items():
-                if key not in self.data:
-                    self.data[key] = value
-                    
-            
+        try:
+            with open(self.file_path, 'r') as f:
+                self.data = json.load(f)
+        except ValueError:
+            # A corrupt file (truncated by an older save_inputs, or by a crash
+            # mid-write) must not lock the tool out - start over from defaults.
+            self.data = {}
+        for key, value in self.defaults.items():
+            if key not in self.data:
+                self.data[key] = value
+
+
     def save_inputs(self):
         """Saves the current user inputs to the JSON file."""
+        # Serialize before opening the file, and keep the output ASCII (\uXXXX):
+        # IronPython's text-mode file encodes as 'ascii' on buffer flush, so a
+        # non-ASCII char used to raise mid-write and truncate the file at 8 KB.
+        content = json.dumps(self.data, indent=4)
         with open(self.file_path, 'w') as f:
-            json.dump(self.data, f, ensure_ascii=False, indent=4)
+            f.write(content)
