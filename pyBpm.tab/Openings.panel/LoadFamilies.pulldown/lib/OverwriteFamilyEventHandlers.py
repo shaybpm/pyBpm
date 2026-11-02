@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys
+import os
 from Autodesk.Revit.DB import ElementId, Transaction, TransactionGroup
 from RevitUtils import (
     getElementName,
@@ -11,7 +11,6 @@ from RevitUtils import (
 )
 from ExEventHandlers import get_simple_external_event
 from ExternalEventDataFile import ExternalEventDataFile
-from Config import root_path
 
 parameter_names_to_restore = [
     "Mark",
@@ -225,44 +224,3 @@ def delete_old_family(uiapp):
 
 
 delete_old_family_event = get_simple_external_event(delete_old_family)
-
-
-def run_opening_set(uiapp):
-    # NOTE:
-    # For some reason, this causes when the user closes Revit they get a note saying that Revit was closed incorrectly.
-    # For now, we'll just ask the user to run "Opening Set" themselves.
-
-    sys.path.append(
-        os.path.join(
-            root_path, "pyBpm.tab", "Openings.panel", "OpeningSet.pushbutton", "lib"
-        )
-    )
-    import OpeningSet  # type: ignore
-    import PrintResults  # type: ignore
-    from RevitUtilsOpenings import get_all_openings
-
-    uidoc = uiapp.ActiveUIDocument
-    doc = uidoc.Document
-
-    from pyrevit import script
-
-    output = script.get_output()
-
-    all_openings = get_all_openings(doc)
-
-    t = Transaction(doc, "BPM | Opening Set")
-    t.Start()
-
-    failOpt = t.GetFailureHandlingOptions()
-    preprocessor = OpeningSet.Preprocessor()
-    failOpt.SetFailuresPreprocessor(preprocessor)
-    t.SetFailureHandlingOptions(failOpt)
-
-    results = OpeningSet.execute_all_functions_for_all_openings(doc, all_openings, True)
-
-    PrintResults.print_results(output, results)
-
-    t.Commit()
-
-
-run_opening_set_event = get_simple_external_event(run_opening_set)

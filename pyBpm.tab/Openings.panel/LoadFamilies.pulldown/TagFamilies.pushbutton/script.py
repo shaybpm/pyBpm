@@ -14,8 +14,6 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "lib"))
 import LoadOpeningFamily  # type: ignore
 
-from RevitUtils import getRevitVersion
-
 # -------------------------------
 # -------------MAIN--------------
 # -------------------------------
@@ -23,19 +21,9 @@ from RevitUtils import getRevitVersion
 uidoc = __revit__.ActiveUIDocument  # type: ignore
 doc = uidoc.Document
 
-families = (
-    [
-        "BPM Opening Tag (R20)",
-    ]
-    if getRevitVersion(doc) < 2022
-    else [
-        "BPM Opening Tag (R22)",
-    ]
-    if getRevitVersion(doc) < 2023
-    else [
-        "BPM Opening Tag (R23)",
-    ]
-)
+families = [
+    "BPM Opening Tag (R23)",
+]
 
 # --------------------------------
 # -------------SCRIPT-------------
