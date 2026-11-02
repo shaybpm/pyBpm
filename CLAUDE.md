@@ -62,7 +62,6 @@ BPM       → Info, Custom, Update (self-update smartbutton)
 BIM       → CreateWorksets, GetLOISchedules, ModelQuality (Auto/Report), SyncRoomInfo
 Sections  → GetBpmSections
 Openings  → GetBpmTags, HideOpeningsOutOfRange, LoadFamilies
-            (OpeningSet / TrackingOpenings / OpeningExplorer moved to BPMTools and were removed in 1.20.0)
 ```
 A second tab, `pyBpmTests.tab/DEV.panel`, holds dev/test buttons and is **gitignored** (see `.gitignore`).
 
