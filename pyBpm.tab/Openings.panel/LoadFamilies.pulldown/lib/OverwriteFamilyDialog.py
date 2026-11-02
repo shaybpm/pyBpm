@@ -22,7 +22,6 @@ from OverwriteFamilyEventHandlers import (
     change_family_symbol_event,
     restore_parameters_event,
     delete_old_family_event,
-    # run_opening_set_event,
 )
 
 xaml_file = os.path.join(os.path.dirname(__file__), "OverwriteFamilyDialogUi.xaml")
@@ -42,7 +41,7 @@ class OverwriteFamilyDialog(Windows.Window):
             "Change the family symbol for all instances.",
             "Restore the parameters.",
             "Delete the old family.",
-            'Finished!\nPlease close this dialog and run the "Opening Set" command.',
+            'Finished!\nPlease close this dialog and run "Opening Set" from the BPM tab (BPM Tools).',
         ]
         self.button_contents = [
             "Rename Current Family",
