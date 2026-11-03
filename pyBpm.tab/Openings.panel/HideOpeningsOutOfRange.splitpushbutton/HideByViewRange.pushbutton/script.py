@@ -10,6 +10,11 @@ exactly those openings (the filter is reset on every run).
 Requires a plan view (has a View Range) with no View Template. """
 __title__ = "Hide By\nView Range"
 __author__ = "BPM"
+__doc__ = """Hides linked-model openings that sit below the view range of the active plan view.
+Requires a plan view without a View Template.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-hidebyviewrange"
 
 import os, sys
 

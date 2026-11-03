@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-""" Quick Parameter Edit - bulk-edit parameter values by category. """
 __title__ = "Quick\nParam Edit"
 __author__ = "BPM"
+__doc__ = """Edits parameter values of many elements at once, by category, directly or through Excel.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-quickparamedit"
 
 # -------------------------------
 # ------------IMPORTS------------

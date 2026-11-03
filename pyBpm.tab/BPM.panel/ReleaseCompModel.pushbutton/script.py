@@ -6,6 +6,10 @@ one asks which, and the answer is remembered for this model. This button drops
 that answer, so the next tool asks again. """
 __title__ = "Release\nComp Model"
 __author__ = "Eyal Sinay"
+__doc__ = """Forgets the compilation model saved for this model, so the next tool that needs one asks again.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-releasecompmodel"
 
 from pyrevit import forms
 import RevitUtils

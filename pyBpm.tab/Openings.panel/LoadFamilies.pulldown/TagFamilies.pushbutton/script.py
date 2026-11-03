@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-""" Loads the BPM Tag Opening families into the project. """
 __title__ = "Tag\nFamilies"
 __author__ = "Eyal Sinay"
+__doc__ = """Loads the BPM opening tag family into the model.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-tagfamilies"
 
 # -------------------------------
 # ------------IMPORTS------------

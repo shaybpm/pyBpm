@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-""" Loads the BPM Opening families into the project.
-families:
-- M_Rectangular Face Opening Solid.rfa
-- M_Round Face Opening Solid.rfa """
 __title__ = "Opening\nFamilies"
 __author__ = "Eyal Sinay"
+__doc__ = """Loads the BPM opening families and sets your discipline on them.
+Shift+Click: replace a loaded family with the current version.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-openingfamilies"
 
 # -------------------------------
 # ------------IMPORTS------------

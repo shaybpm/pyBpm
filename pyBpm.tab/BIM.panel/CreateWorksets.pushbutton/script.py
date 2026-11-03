@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-""" Create Worksets by the BEP. """
 __title__ = "Create\nWorksets"
 __author__ = "BPM"
+__doc__ = """Creates the worksets of your discipline from the project's BEP file.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-createworksets"
 
 # -------------------------------
 # ------------IMPORTS------------

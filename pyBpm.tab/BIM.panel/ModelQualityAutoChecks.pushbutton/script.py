@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-Open model quality auto checks results
-Click with Shift to open in browser
-"""
 __title__ = "Model Quality\nAuto Checks"
 __author__ = "BPM"
+__doc__ = """Shows the automatic model quality check results of this model.
+Shift+Click: open in a browser.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-modelqualityautochecks"
 
 # -------------------------------
 # ------------IMPORTS------------
