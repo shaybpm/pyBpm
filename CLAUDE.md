@@ -61,7 +61,7 @@ Dev vs prod is decided by inspecting `__file__`: if the path contains the BPM `S
 BPM       → Info, Custom, Update (self-update smartbutton)
 BIM       → CreateWorksets, GetLOISchedules, ModelQuality (Auto/Report), SyncRoomInfo
 Sections  → GetBpmSections
-Openings  → GetBpmTags, HideOpeningsOutOfRange, LoadFamilies
+Openings  → HideOpeningsOutOfRange, LoadFamilies
 ```
 A second tab, `pyBpmTests.tab/DEV.panel`, holds dev/test buttons and is **gitignored** (see `.gitignore`).
 
