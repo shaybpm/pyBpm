@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-""" Open a list of custom scripts. """
 __title__ = "Custom"
 __author__ = "BPM"
+__doc__ = """Opens a list of extra BPM tools.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-custom"
 
 # -------------------------------
 # ------------IMPORTS------------

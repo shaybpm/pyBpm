@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Copy or update the LOI schedules from the template model."""
 __title__ = "Get LOI\nSchedules"
 __author__ = "BPM"
+__doc__ = """Copies the LOI schedules of your discipline into this model, replacing existing ones with the same name.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-getloischedules"
 
 # -------------------------------
 # ------------IMPORTS------------

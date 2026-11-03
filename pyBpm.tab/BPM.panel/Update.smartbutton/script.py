@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
-""" Update pyBpm Extension. """
 __title__ = "Update"
 __author__ = "Eyal Sinay"
+__doc__ = """Downloads and installs the latest pyBpm version, then reloads pyRevit.
+The icon changes when an update is available.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-update"
 
 # -------------------------------
 # ------------IMPORTS------------

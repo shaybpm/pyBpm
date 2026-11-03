@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-- Show information about PyBpm.
-- Show release notes.
-- Link to the HOW-TO-DO.
-"""
 __title__ = "Info"
 __author__ = "BPM"
+__doc__ = """Shows what pyBpm is, the installed version, whether a newer one exists, and a link to the guide.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-info"
 
 # -------------------------------
 # ------------IMPORTS------------

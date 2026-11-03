@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
-"""This script copies room data (number, name, and level) from selected source models to elements in the predefined categories. If the required shared parameters do not exist, they will be created automatically on the first run."""
 __title__ = "Sync Room\nInformation"
 __author__ = "BPM"
+__doc__ = """Copies room number, name and level from linked models to the MEP and equipment elements located in those rooms.
+Adds its shared parameters to the model on the first run.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-syncroominfo"
 
 # -------------------------------
 # ------------IMPORTS------------

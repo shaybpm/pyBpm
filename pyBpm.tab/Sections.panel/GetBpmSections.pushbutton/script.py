@@ -8,6 +8,10 @@ model. The window opens on its Home page and computes nothing until you pick a
 sheet. Replaces the old multi-select section picker. """
 __title__ = "Get Bpm\nSections"
 __author__ = "Eyal Sinay"
+__doc__ = """Scores how well your model matches the compilation model sections, and creates, opens or deletes them.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-getbpmsections"
 
 import os, sys
 

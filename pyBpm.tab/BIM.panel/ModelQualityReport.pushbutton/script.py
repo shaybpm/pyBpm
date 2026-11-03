@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-""" Open the Model Quality Report 
-Click with Shift to open in browser """
 __title__ = "Model Quality\nReport"
 __author__ = "BPM"
+__doc__ = """Opens the Model Quality Report of this model.
+Shift+Click: open in a browser.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-modelqualityreport"
 
 # -------------------------------
 # ------------IMPORTS------------

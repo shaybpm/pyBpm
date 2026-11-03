@@ -1,5 +1,10 @@
 title:
   en_us: "Load\nFamilies"
+tooltip: |-
+  Loads the BPM opening families or the opening tag family into the model.
+
+  Press F1 for a detailed explanation in Hebrew.
+help_url: https://pybpm.azurewebsites.net/tutorials/pybpm-extension-openingfamilies
 layout:
   - OpeningFamilies
   - TagFamilies

@@ -1,5 +1,10 @@
 title:
   en_us: "Hide Openings\nOut Of Range"
+tooltip: |-
+  Hides linked-model openings in the active plan view, by its view range or by picking them.
+
+  Press F1 for a detailed explanation in Hebrew.
+help_url: https://pybpm.azurewebsites.net/tutorials/pybpm-extension-hidebyviewrange
 layout:
   - HideByViewRange
   - HidePickedOpenings

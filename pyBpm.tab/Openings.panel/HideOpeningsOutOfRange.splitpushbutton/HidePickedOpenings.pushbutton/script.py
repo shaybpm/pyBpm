@@ -8,6 +8,11 @@ per-view filter (hides the matches).
 Requires a plan view with no View Template. """
 __title__ = "Hide Picked\nOpenings"
 __author__ = "BPM"
+__doc__ = """Hides the linked-model openings you pick in the active plan view.
+Requires a plan view without a View Template.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-hidepickedopenings"
 
 import os, sys
 

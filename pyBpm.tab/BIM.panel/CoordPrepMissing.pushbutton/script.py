@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Coordination prep - the missing items BPM found for this model,
-with zoom and 3D to each one.
-"""
 __title__ = "Coordination\nPrep Missing"
 __author__ = "BPM"
+__doc__ = """Lists the missing items BPM found for this model in coordination prep, with zoom and 3D to each one.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-coordprepmissing"
 
 import os
 import sys

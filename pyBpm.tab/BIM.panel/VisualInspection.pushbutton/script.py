@@ -9,6 +9,10 @@ exactly where the coordinator cut it, so you can go and fix what scored
 badly. """
 __title__ = "Arc-Const\nInspection"
 __author__ = "Eyal Sinay"
+__doc__ = """Shows the Arc-Const visual inspection scores of this project and rebuilds the inspected views in your model.
+
+Press F1 for a detailed explanation in Hebrew."""
+__helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-visualinspection"
 
 import os
 import sys
