@@ -49,7 +49,13 @@ An `Element` / `Document` object is a **handle into Revit's memory, not a value*
 
 ## Environment Detection (`lib/Config.py`)
 
-Dev vs prod is decided by inspecting `__file__`: if the path contains the BPM `Software_Development` working-tree string it returns `"dev"` (→ localhost:5000), otherwise `"prod"` (→ Azure). A deployed client copy lives outside that path, so it resolves to prod automatically.
+`get_env_mode()` runs these checks in order. The first match returns `"dev"` (→ localhost:5000); if none matches it returns `"prod"` (→ Azure):
+
+1. Env var `PYBPM_ENV` equals `dev` (case-insensitive). Set once per dev machine with `setx PYBPM_ENV dev`; Revit must be restarted to pick it up. Any other value is ignored and falls through to the path checks, so it cannot force prod.
+2. `__file__` contains the full old `...\BPM - Status - General\Software_Development` path under Eyal's user folder (case-sensitive). Legacy, kept for a transition period until all dev machines have `PYBPM_ENV` set.
+3. `__file__` contains `d:\bpm\prext` (case-insensitive).
+
+A deployed client copy, with no `PYBPM_ENV` set and outside those paths, resolves to prod automatically.
 
 - To force prod while testing locally, uncomment the `return "prod"` line at the top of `get_env_mode()`.
 - `Config.root_path` is derived by slicing `__file__` at `.extension`; other paths (shared parameters, `extension.json`) hang off it.
