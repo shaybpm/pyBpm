@@ -18,6 +18,7 @@ except:
 
 from System import Windows
 from RevitUtils import getElementIdValue, getElementName
+from WpfText import plain_text  # type: ignore
 from pyrevit.framework import wpf
 import os
 
@@ -43,8 +44,8 @@ class FilterSelectionDialog(Windows.Window):
             expander = Windows.Controls.Expander()
             expander.IsExpanded = True
             expander.Margin = Windows.Thickness(0, 0, 0, 6)
-            expander.Header = u"{} ({})".format(
-                group["display"], len(group["filters"])
+            expander.Header = plain_text(
+                u"{} ({})".format(group["display"], len(group["filters"]))
             )
 
             content = Windows.Controls.StackPanel()
@@ -73,7 +74,7 @@ class FilterSelectionDialog(Windows.Window):
 
             for f in group["filters"]:
                 checkbox = Windows.Controls.CheckBox()
-                checkbox.Content = getElementName(f)
+                checkbox.Content = plain_text(getElementName(f))
                 checkbox.Margin = Windows.Thickness(0, 2, 0, 2)
                 fid = getElementIdValue(self.comp_doc, f.Id)
                 checkbox.IsChecked = fid in self.preselected_ids

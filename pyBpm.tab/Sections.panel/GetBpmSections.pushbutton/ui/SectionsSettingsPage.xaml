@@ -182,8 +182,9 @@
                             Content="צביעה על המבט עצמו" Margin="0,2,0,2"
                             Checked="color_mode_changed" />
                         <RadioButton x:Name="ModeCreateRadio" GroupName="ColorMode"
-                            Content="יצירת View Template (BPM_Sections_Colors)"
-                            Margin="0,2,0,2" Checked="color_mode_changed" />
+                            Margin="0,2,0,2" Checked="color_mode_changed">
+                            <TextBlock Text="יצירת View Template (BPM_Sections_Colors)" />
+                        </RadioButton>
                         <RadioButton x:Name="ModeExistingRadio" GroupName="ColorMode"
                             Content="החלת הפילטרים על View Template נבחר"
                             Margin="0,2,0,2" Checked="color_mode_changed" />
