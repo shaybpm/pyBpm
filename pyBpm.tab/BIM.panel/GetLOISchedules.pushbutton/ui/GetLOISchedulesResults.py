@@ -15,6 +15,7 @@ from System import Windows
 import os, sys
 
 from RevitUtils import getElementIdValue
+from WpfText import plain_text  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "GetLOISchedulesResults.xaml")
 
@@ -33,7 +34,7 @@ class GetLOISchedulesResults(Windows.Window):
 
         for schedule in self.schedules:
             schedule_button = Windows.Controls.Button()
-            schedule_button.Content = schedule.Name
+            schedule_button.Content = plain_text(schedule.Name)
             schedule_button.Tag = getElementIdValue(doc, schedule.Id)
             schedule_button.Click += self.schedule_button_Click
 

@@ -42,6 +42,7 @@ import SectionsFilterSelection as sfs  # type: ignore
 import SectionsCreate as creator  # type: ignore
 import SectionsColoring as coloring  # type: ignore
 from RevitUtils import getElementIdValue, getElementName
+from WpfText import plain_text  # type: ignore
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsSettingsPage.xaml")
 
@@ -381,7 +382,7 @@ class SectionsSettingsPage(Windows.Controls.Page):
                 content.Margin = Windows.Thickness(18, 2, 0, 2)
                 for f in group["filters"]:
                     checkbox = Windows.Controls.CheckBox()
-                    checkbox.Content = getElementName(f)
+                    checkbox.Content = plain_text(getElementName(f))
                     checkbox.Margin = Windows.Thickness(0, 2, 0, 2)
                     fid = getElementIdValue(comp_doc, f.Id)
                     checkbox.IsChecked = fid in preselected_ids

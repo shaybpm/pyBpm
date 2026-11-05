@@ -44,6 +44,7 @@ from Autodesk.Revit.DB import (
 # the ElementId(int) constructor. getElementIdValue / getElementId pick the right
 # API per Revit version (RevitUtils lives in the extension's lib/, on sys.path).
 from RevitUtils import getElementIdValue, getElementId, getElementName
+from WpfText import plain_text  # type: ignore
 
 # Resolves the fixed set of valid values for ElementId / Workset parameters
 # (Material, Level, Phase, type selectors, ...). Optional: if this import fails
@@ -224,7 +225,7 @@ def _set_grid(elem, col=None, row=None, col_span=None, row_span=None):
 
 def _label(text, bold=False, align_center=False, wrap=False):
     lbl = Windows.Controls.Label()
-    lbl.Content = text
+    lbl.Content = plain_text(text)
     lbl.Padding = Windows.Thickness(6, 2, 6, 2)
     if bold:
         lbl.FontWeight = Windows.FontWeights.Bold
