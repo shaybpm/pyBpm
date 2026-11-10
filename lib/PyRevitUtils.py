@@ -150,16 +150,14 @@ class ModelQualityAutoChecksToggleIcon:
         )
         ui_button = ribbon.get_uibutton(model_quality_auto_button_name)
         if ui_button:
-            if not is_model_quality_auto_checks_successful(self.doc, "A"):
-                ui_button.set_icon(
-                    model_quality_auto_path + "icon_failed.png",
-                    icon_size=32,
-                )
+            successful = is_model_quality_auto_checks_successful(self.doc, "A")
+            if successful is None:
+                icon_name = "icon_unknown.png"
+            elif successful:
+                icon_name = "icon.png"
             else:
-                ui_button.set_icon(
-                    model_quality_auto_path + "icon.png",
-                    icon_size=32,
-                )
+                icon_name = "icon_failed.png"
+            ui_button.set_icon(model_quality_auto_path + icon_name, icon_size=32)
             self.set_set_once()
 
 

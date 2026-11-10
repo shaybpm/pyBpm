@@ -151,7 +151,16 @@ def get_model_quality_auto_checks_data(doc):
     return get(url)
 
 
-def get_filtered_model_quality_auto_checks(doc, filter_by_importance="A"):
+def get_importance_list(filter_by_importance):
+    return (
+        ["A", "B", "C"]
+        if filter_by_importance == "C"
+        else ["A", "B"] if filter_by_importance == "B" else ["A"]
+    )
+
+
+def get_model_checks(doc):
+    """This model's checks from the server, or None when there are none to read."""
     data = get_model_quality_auto_checks_data(doc)
     if not data:
         return None
@@ -160,45 +169,39 @@ def get_filtered_model_quality_auto_checks(doc, filter_by_importance="A"):
     if not checks:
         return None
 
-    filter_by_importance_list = (
-        ["A", "B", "C"]
-        if filter_by_importance == "C"
-        else ["A", "B"] if filter_by_importance == "B" else ["A"]
-    )
-
-    filtered_checks = []
     doc_model_guid = get_model_info(doc)["modelGuid"]
-    for check in checks:
-        if check.get("modelGuid") != doc_model_guid:
-            continue
-        if check.get("importanceGroup") not in filter_by_importance_list:
-            continue
-        filtered_checks.append(check)
-
-    return filtered_checks
+    return [check for check in checks if check.get("modelGuid") == doc_model_guid]
 
 
 def is_model_quality_auto_checks_successful(doc, filter_by_importance="A"):
     """
-    By default, return True.
+    True - no failed check of the given importance, or the auto checks do not
+        apply to this document (not a cloud model, a family, the compilation model).
+    False - at least one check of the given importance failed.
+    None - unknown: the compilation link was not found, the server has no checks
+        for this model, or reading them failed. Must not look like a pass (T-0775).
 
     filter_by_importance: A returns only A, B returns A and B, and C returns all.
     """
     try:
-        filtered_checks = get_filtered_model_quality_auto_checks(
-            doc, filter_by_importance
-        )
-        if not filtered_checks:
+        if doc.IsFamilyDocument or not doc.IsModelInCloud or is_comp_doc(doc):
             return True
 
-        for check in filtered_checks:
+        model_checks = get_model_checks(doc)
+        if not model_checks:
+            return None
+
+        importance_list = get_importance_list(filter_by_importance)
+        for check in model_checks:
+            if check.get("importanceGroup") not in importance_list:
+                continue
             if check.get("boolResult") is False:
                 return False
 
         return True
 
     except Exception:
-        return True
+        return None
 
 
 def get_comp_opening_sheets_data(doc):
