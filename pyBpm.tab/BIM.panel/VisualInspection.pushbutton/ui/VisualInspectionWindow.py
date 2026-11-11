@@ -916,6 +916,28 @@ class VisualInspectionWindow(Windows.Window):
         self.reload()
         self.set_status(u"", BLACK)
 
+    def web_btn_Click(self, sender, e):
+        """The compilation model's page on pyBpm-server (T-0760): the latest
+        run with every image, which this window does not carry. Addressed by
+        the LINKED compilation model, the one this window reads."""
+        # Modeless window: an exception escaping a handler takes Revit down.
+        try:
+            import webbrowser
+            from Config import server_url
+
+            comp_doc = self.comp_doc
+            if comp_doc is None:
+                self.set_status(read.COMP_LINK_BROKEN_MSG, RED)
+                return
+            info = RevitUtils.get_model_info(comp_doc)
+            webbrowser.open(
+                u"{0}{1}/visual-inspection/{2}".format(
+                    server_url, info["projectGuid"], info["modelGuid"]
+                )
+            )
+        except Exception as ex:
+            self.set_status(u"לא ניתן לפתוח את הדף: {0}".format(ex), RED)
+
     def close_btn_Click(self, sender, e):
         self.Close()
 

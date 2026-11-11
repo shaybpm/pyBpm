@@ -92,6 +92,7 @@
                             <ColumnDefinition Width="130" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
@@ -114,6 +115,12 @@
                                 Style="{StaticResource IconButton}"
                                 ToolTip="קורא מחדש את מודל הקומפילציה ואת הציונים, ומעדכן אילו מבטים כבר קיימים אצלך."
                                 Click="refresh_btn_Click" />
+
+                        <Button Grid.Column="3" x:Name="web_btn" Content="פתח בדפדפן"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource TextButton}"
+                                ToolTip="פותח בדפדפן את דף הבדיקה של מודל הקומפילציה: כל המבנים והקומות, עם התמונות של המבטים."
+                                Click="web_btn_Click" />
                     </Grid>
                 </Border>
 
