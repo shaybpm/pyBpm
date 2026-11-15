@@ -2,6 +2,7 @@
 __title__ = "Model Quality\nReport"
 __author__ = "BPM"
 __doc__ = """Opens the Model Quality Report of this model.
+Asks for the language (Hebrew / English) first.
 Shift+Click: open in a browser.
 
 Press F1 for a detailed explanation in Hebrew."""
@@ -13,7 +14,7 @@ __helpurl__ = "https://pybpm.azurewebsites.net/tutorials/pybpm-extension-modelqu
 
 from pyrevit import script
 from RevitUtils import get_model_info
-from PyRevitUtils import open_pybpm_page
+from PyRevitUtils import open_pybpm_page, ask_report_language
 
 # -------------------------------
 # -------------MAIN--------------
@@ -35,9 +36,13 @@ def run():
     )
     rel_target_css = "styles/mq-model.css"
 
+    lang = ask_report_language()
+    if not lang:
+        return
+
     output = script.get_output() if not __shiftclick__ else None  # type: ignore
 
-    open_pybpm_page(rel_target_html, rel_target_css, output)
+    open_pybpm_page(rel_target_html, rel_target_css, output, lang)
 
 
 run()

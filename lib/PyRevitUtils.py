@@ -161,16 +161,37 @@ class ModelQualityAutoChecksToggleIcon:
             self.set_set_once()
 
 
-def open_pybpm_page(rel_target_html, rel_target_css, output=None):
+REPORT_LANGUAGES = [(u"עברית", "he"), (u"English", "en")]
+
+
+def ask_report_language():
+    """Returns "he" / "en", or None when the user closed the window."""
+    from pyrevit import forms
+
+    labels = [label for label, _ in REPORT_LANGUAGES]
+    picked = forms.CommandSwitchWindow.show(
+        labels, message=u"Report language / שפת הדוח"
+    )
+    return dict(REPORT_LANGUAGES).get(picked)
+
+
+def open_pybpm_page(rel_target_html, rel_target_css, output=None, lang=None):
     import webbrowser
     from HttpRequest import download_string
 
     target_html = server_url + rel_target_html
     target_css = server_url + rel_target_css
 
+    # The server renders Hebrew unless asked for ?lang=en.
+    query = []
     if output:
-        target_html += "?revit=true"
+        query.append("revit=true")
+    if lang and lang != "he":
+        query.append("lang=" + lang)
+    if query:
+        target_html += "?" + "&".join(query)
 
+    if output:
         html = download_string(target_html)
         # clear brake lines (because pyrevit output do it <br> tags)
         html = html.replace("\n", "")
