@@ -36,6 +36,12 @@ class SectionsHomePage(Windows.Controls.Page):
         self.CountsTextBlock.Text = u"נמצאו {} גיליונות ו-{} חתכים.".format(
             len(sheets), len(items)
         )
+        hold_count = len([it for it in items if it.get("hold")])
+        if hold_count:
+            # T-0794
+            self.CountsTextBlock.Text += u" {} מהחתכים ב-HOLD אצל המתאמים.".format(
+                hold_count
+            )
         # T-0386: spell out what the list on the side is - the planners read the
         # numbers there without realising they were sheet numbers.
         if self.res_window.has_filters():

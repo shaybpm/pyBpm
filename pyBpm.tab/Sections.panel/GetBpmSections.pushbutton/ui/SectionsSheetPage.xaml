@@ -147,6 +147,11 @@
                         <DataTrigger Binding="{Binding tier}" Value="empty">
                             <Setter Property="Background" Value="#EEEEEE" />
                         </DataTrigger>
+                        <!-- T-0794: on HOLD at the coordinators -->
+                        <DataTrigger Binding="{Binding tier}" Value="hold">
+                            <Setter Property="Background" Value="#E0E0E0" />
+                            <Setter Property="Foreground" Value="#777777" />
+                        </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </DataGrid.RowStyle>
@@ -246,6 +251,9 @@
                                                 <DataTrigger Binding="{Binding exists}" Value="True">
                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding hold}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Button.Style>
@@ -258,6 +266,9 @@
                                                 <DataTrigger Binding="{Binding exists}" Value="True">
                                                     <Setter Property="Visibility" Value="Visible" />
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding hold}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Button.Style>
@@ -269,6 +280,9 @@
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding exists}" Value="True">
                                                     <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding hold}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -284,14 +298,42 @@
                                                 <DataTrigger Binding="{Binding exists}" Value="True">
                                                     <Setter Property="Visibility" Value="Visible" />
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding hold}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Button.Style>
                                 </Button>
                                 <Button Content="&#x21BB;" ToolTip="חשב חתך זה מחדש"
                                     Click="Recompute_Click"
-                                    Style="{StaticResource IconButton}"
-                                    Margin="8,0,2,0" />
+                                    Margin="8,0,2,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding hold}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <!-- T-0794: a HOLD row gets a label instead of actions -->
+                                <TextBlock Text="ב-HOLD אצל המתאמים, לא ניתן למשוך"
+                                    VerticalAlignment="Center" Margin="4,0,4,0"
+                                    FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding hold}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
