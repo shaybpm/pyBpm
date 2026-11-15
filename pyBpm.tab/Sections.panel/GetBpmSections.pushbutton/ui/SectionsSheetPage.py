@@ -47,6 +47,8 @@ from ProgressBar import ProgressBar  # extension-level lib
 
 xaml_file = os.path.join(os.path.dirname(__file__), "SectionsSheetPage.xaml")
 
+HOLD_SORT_KEY = 1000.0
+
 
 class ControlTypes:
     TEXT_BOX = "text_box"
@@ -66,11 +68,14 @@ class SectionsRowItem(object):
     bindings/filters/sort are meaningful to WPF; `section` and `result` are held
     for later phases (actions, recompute)."""
 
-    def __init__(self, record, section, sheet, host_names):
+    def __init__(self, record, section, sheet, host_names, hold=False):
         self.result = record  # cached score dict (or empty marker)
         self.section = section  # comp View
         self.section_name = record["section_name"]
         self.sheet = sheet if sheet else u"-"
+        # T-0794: on HOLD at the coordinators - shown, but not scored and with
+        # no actions (the XAML hides every action button on a hold row).
+        self.hold = hold
         self.n = int(record.get("n", 0))
         self.has_systems = self.n > 0
         # Numeric sort key: empty sections use -1 so they sort predictably first.
@@ -80,7 +85,12 @@ class SectionsRowItem(object):
         # System.Double (a scored row's float lower). Coercing every value to
         # float keeps the whole column one .NET type.
         self.result_lower = float(record.get("lower", -1))
-        if self.has_systems:
+        if hold:
+            # Sorts after every scored row (scores are 0-100).
+            self.result_lower = HOLD_SORT_KEY
+            self.score_text = u"HOLD"
+            self.tier = "hold"
+        elif self.has_systems:
             self.score_text = scoring.format_score(record)
             self.tier = scoring.score_tier(self.result_lower)
         else:
@@ -165,7 +175,9 @@ class SectionsSheetPage(Windows.Controls.Page):
         forced_ids = set()
         to_compute = []
         if force_sections:
-            to_compute = list(force_sections)
+            to_compute = [
+                s for s in force_sections if not win.is_hold(s, comp_doc)
+            ]
             forced_ids = set(
                 scoring.section_id_value(comp_doc, s) for s in force_sections
             )
@@ -173,6 +185,8 @@ class SectionsSheetPage(Windows.Controls.Page):
             section_id = scoring.section_id_value(comp_doc, section)
             if section_id in forced_ids:
                 continue
+            if win.is_hold(section, comp_doc):
+                continue  # T-0794: never scored, shown as a HOLD row
             if score_cache.get(section_id) is None:
                 to_compute.append(section)
 
@@ -274,6 +288,17 @@ class SectionsSheetPage(Windows.Controls.Page):
         comp_doc = win.comp_doc  # resolved once (T-0340), this loop is per section
         self.items = []
         for section in self.sections:
+            if win.is_hold(section, comp_doc):
+                self.items.append(
+                    SectionsRowItem(
+                        self._empty_record(section),
+                        section,
+                        self.sheet,
+                        host_names,
+                        hold=True,
+                    )
+                )
+                continue
             section_id = scoring.section_id_value(comp_doc, section)
             record = self._score_cache.get(section_id)
             if record is None:
@@ -492,7 +517,10 @@ class SectionsSheetPage(Windows.Controls.Page):
         rebuild (avoids a recompute-inside-rebuild)."""
         try:
             selected = self.DataGrid.SelectedItems
-            if selected.Count == 1:
+            if selected.Count == 1 and getattr(selected[0], "hold", False):
+                # T-0794: nothing to show for a HOLD section - it is not scored.
+                self.res_window.close_details_pane()
+            elif selected.Count == 1:
                 row = selected[0]
                 if row is self.res_window._details_row:
                     # Same row still selected (e.g. a filter keystroke or a
@@ -511,7 +539,7 @@ class SectionsSheetPage(Windows.Controls.Page):
             # Recompute is a bulk action too (D3): act on the whole selection when
             # the clicked row is part of it, else just the clicked row.
             rows = self._rows_for_action(sender.DataContext)
-            self.recompute([row.section for row in rows])
+            self.recompute([row.section for row in rows if not row.hold])
         except Exception:
             self.res_window.report_error(u"חישוב חתך מחדש")
 

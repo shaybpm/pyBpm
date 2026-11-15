@@ -36,6 +36,8 @@ from Autodesk.Revit.DB import (
     View,
     ViewSheet,
     ViewType,
+    Viewport,
+    Element,
     BuiltInParameter,
     BuiltInCategory,
     XYZ,
@@ -58,8 +60,15 @@ from Autodesk.Revit.DB import (
 from System.Collections.Generic import List
 
 import math
+import re
 
 import RevitUtils
+
+# T-0794: coordinators put a section on hold by switching its viewport on the
+# comp-model sheet to a Viewport Type whose name contains the word HOLD. The
+# viewport stays on the sheet on purpose, so the marker is the type, not the view.
+# Letters-only boundaries (not \b), so "Title_HOLD" matches but "Threshold" not.
+_HOLD_TYPE_RE = re.compile(r"(?<![A-Za-z])HOLD(?![A-Za-z])", re.IGNORECASE)
 
 # Slim fixed depth of the section slab, in feet (matches SecReport.get_view_solid).
 VIEW_SOLID_OFFSET = 0.3
@@ -726,10 +735,44 @@ def _sheet_display_title(sheet):
     return u"{} - {}".format(number, name)
 
 
+def _hold_view_ids(comp_doc):
+    """Id values of the comp views whose sheet viewport uses a HOLD Viewport Type
+    (T-0794). Best-effort per viewport: one unreadable viewport must not hide
+    the HOLD state of the others."""
+    held = set()
+    type_names = {}
+    for vp in FilteredElementCollector(comp_doc).OfClass(Viewport).ToElements():
+        try:
+            type_id = vp.GetTypeId()
+            key = RevitUtils.getElementIdValue(comp_doc, type_id)
+            if key not in type_names:
+                vp_type = comp_doc.GetElement(type_id)
+                type_names[key] = (
+                    Element.Name.GetValue(vp_type) if vp_type is not None else u""
+                )
+            if _HOLD_TYPE_RE.search(type_names[key] or u""):
+                held.add(RevitUtils.getElementIdValue(comp_doc, vp.ViewId))
+        except Exception:
+            continue
+    return held
+
+
+def _section_is_hold(section, views_by_name, hold_ids, comp_doc):
+    """HOLD if the viewport of the SU section OR of its EX twin is marked - the
+    coordinators may mark either one (or both) when both are on the sheet."""
+    if RevitUtils.getElementIdValue(comp_doc, section.Id) in hold_ids:
+        return True
+    ex_view = views_by_name.get(section.Name.replace("SU", "EX"))
+    if ex_view is None:
+        return False
+    return RevitUtils.getElementIdValue(comp_doc, ex_view.Id) in hold_ids
+
+
 def get_candidate_sections_with_sheets(comp_doc):
-    """Return (items, sheets, sheet_titles): items = [{'section', 'sheet'}] for
-    every candidate SU section, sheets = the sorted unique sheet numbers present,
-    and sheet_titles = {number: '<number> - <name>'} for display (T-0386).
+    """Return (items, sheets, sheet_titles): items = [{'section', 'sheet',
+    'hold'}] for every candidate SU section, sheets = the sorted unique sheet
+    numbers present, and sheet_titles = {number: '<number> - <name>'} for
+    display (T-0386). 'hold' = the coordinators put it on HOLD (T-0794).
 
     The NUMBER stays the key everything groups/sorts by (stable, short); the
     title is display-only, so a coordinator renaming a sheet cannot break the
@@ -743,11 +786,13 @@ def get_candidate_sections_with_sheets(comp_doc):
             title = _sheet_display_title(v)
             if title:
                 sheet_titles[v.SheetNumber] = title
+    hold_ids = _hold_view_ids(comp_doc)
     items = []
     sheets_set = set()
     for section in sections:
         sheet = _section_sheet_number(section, views_by_name)
-        items.append({"section": section, "sheet": sheet})
+        hold = _section_is_hold(section, views_by_name, hold_ids, comp_doc)
+        items.append({"section": section, "sheet": sheet, "hold": hold})
         if sheet:
             sheets_set.add(sheet)
     return items, sorted(sheets_set), sheet_titles

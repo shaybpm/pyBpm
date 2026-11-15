@@ -164,6 +164,7 @@ class SectionsResultsWindow(Windows.Window):
             self._sections_by_sheet.setdefault(it["sheet"], []).append(
                 it["section"]
             )
+        self._hold_ids = self._compute_hold_ids(comp_doc, self.items)
 
         # Pages. Home + Settings are built once; sheet pages are created lazily
         # (there may be many sheets).
@@ -362,6 +363,7 @@ class SectionsResultsWindow(Windows.Window):
             self._sections_by_sheet.setdefault(it["sheet"], []).append(
                 it["section"]
             )
+        self._hold_ids = self._compute_hold_ids(comp_doc, self.items)
         self._comp_key = self._compute_comp_key(comp_doc)
 
         self._reset_sheet_pages()
@@ -371,6 +373,24 @@ class SectionsResultsWindow(Windows.Window):
         self.notify(
             u"לינק מודל הקומפילציה נטען מחדש - הנתונים רועננו. בחר גיליון שוב."
         )
+
+    def _compute_hold_ids(self, comp_doc, items):
+        """Id values of the sections the coordinators put on HOLD (T-0794).
+        Ids, not views: they survive a link reload, the views do not."""
+        return set(
+            scoring.section_id_value(comp_doc, it["section"])
+            for it in items
+            if it.get("hold")
+        )
+
+    def is_hold(self, section, comp_doc=None):
+        """True when this comp section is on HOLD - never offered for Create."""
+        try:
+            if comp_doc is None:
+                comp_doc = self.comp_doc
+            return scoring.section_id_value(comp_doc, section) in self._hold_ids
+        except Exception:
+            return False
 
     def _resolve_filters_by_ids(self, comp_doc, filter_ids):
         """Re-resolve the discipline filters in the CURRENT comp document from
@@ -498,8 +518,11 @@ class SectionsResultsWindow(Windows.Window):
     def _add_sheet_buttons(self):
         # One button per sheet, count = candidate sections on that sheet.
         counts = {}
+        hold_counts = {}
         for it in self.items:
             counts[it["sheet"]] = counts.get(it["sheet"], 0) + 1
+            if it.get("hold"):
+                hold_counts[it["sheet"]] = hold_counts.get(it["sheet"], 0) + 1
 
         enabled = self.has_filters()
         for sheet in self.sheets:
@@ -515,6 +538,8 @@ class SectionsResultsWindow(Windows.Window):
             # for every sheet; the full title stays readable in the tooltip.
             btn.MaxWidth = SHEET_BUTTON_MAX_WIDTH
             btn.ToolTip = u"גיליון {}\n{} חתכים בגיליון".format(title, count)
+            if hold_counts.get(sheet):
+                btn.ToolTip += u"\n{} מהם ב-HOLD".format(hold_counts[sheet])
             btn.IsEnabled = enabled  # D9: locked until a valid selection exists
             self.NavSheetsPanel.Children.Add(btn)
             self.sheet_buttons.append((btn, sheet))
@@ -1164,6 +1189,11 @@ class SectionsResultsWindow(Windows.Window):
             if not rows:
                 return
             if not self.ensure_live():  # T-0340
+                return
+            # T-0794: a HOLD row is never acted on, also not when it rides along
+            # in a bulk selection (Select All + Create).
+            rows = [row for row in rows if not getattr(row, "hold", False)]
+            if not rows:
                 return
             if action == "create":
                 targets = [row for row in rows if not row.exists]
