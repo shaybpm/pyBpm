@@ -27,18 +27,24 @@ scope box crosses as the crop shape it produces rather than as itself.
 IronPython 2.7. None of these functions open a transaction - the caller does.
 """
 
+import math
+
 from Autodesk.Revit.DB import (
     BoundingBoxXYZ,
     BuiltInCategory,
     BuiltInFailures,
     BuiltInParameter,
+    CopyPasteOptions,
     CurveLoop,
+    ElementCategoryFilter,
     ElementId,
+    ElementTransformUtils,
     ElementTypeGroup,
     FailureProcessingResult,
     FilteredElementCollector,
     IFailuresPreprocessor,
     Level,
+    Line,
     PlanViewPlane,
     Transform,
     View,
@@ -47,8 +53,10 @@ from Autodesk.Revit.DB import (
     ViewSection,
     XYZ,
 )
+from System.Collections.Generic import List
 
 import RevitUtils  # extension-level lib
+from VisualInspectionTemplate import _UseDestinationTypes  # type: ignore
 
 
 MIRROR_UNSUPPORTED_KIND = (
@@ -81,6 +89,14 @@ RESYNC_ON_SHEET = (
     u"החתך בקומפילציה עבר למישור אחר או סובב, ולכן אי אפשר לסנכרן אותו "
     u"בעריכה — צריך ליצור אותו מחדש, והמבט שלך מונח על גיליון. הסר אותו "
     u"מהגיליון ולחץ סנכרן שוב, או השאר אותו כמות שהוא."
+)
+COPY_FAILED = u"העתקת החתך '{0}' מהקומפילציה נכשלה: {1}"
+COPY_LINK_NOT_LEVEL = (
+    u"הלינק של מודל הקומפילציה מוטה או משוקף (Mirror) ביחס למודל שלך, ולכן "
+    u"אי אפשר להעביר אליו חתך מועתק למקום הנכון."
+)
+COPY_NOT_PLACED = (
+    u"החתך '{0}' הועתק אך לא הגיע למקום שלו בקומפילציה, ולכן ההעתקה בוטלה."
 )
 # Not a failure: the view exists and is in the right place, it just did not get
 # the compilation's cut depths. Said out loud rather than swallowed, because a
@@ -224,6 +240,117 @@ def resync_section(doc, view, comp_view, transform):
         return None, False, error
     rebuilt.Name = _free_name(doc, name)
     return rebuilt, True, None
+
+
+def copy_section(doc, comp_doc, comp_view, transform):
+    """Copy a comp section into the planner's model as is. (view, error).
+
+    For the old-method sections, which are not rebuilt the way mirror_section
+    rebuilds an inspection view but COPIED, so the view's own Visibility/Graphics
+    overrides and filters come across with it. Everything below was measured on
+    a live model, Revit 2025:
+
+      - CopyElements copies a ViewSection between documents, crop and depth
+        included, and without its View Template - whose Visibility/Graphics
+        the copy carries as its own settings;
+      - it IGNORES the transform for the view, which lands at the comp's raw
+        coordinates - even a pure translation is dropped. Invisible wherever
+        the comp is linked origin to origin, which is why it can go unnoticed.
+        MoveElement on the ViewSection itself does nothing
+        (see resync_section). What does move it is its VIEWER, the section mark
+        element the view depends on: rotated about Z through the origin and then
+        moved by the link origin, the view arrives exactly where the transform
+        puts the comp view.
+
+    That only expresses a link rotated in plan, so a tilted or mirrored link is
+    refused rather than approximated. Must run inside a transaction; the caller
+    rolls back on an error, since a copy can fail after the view exists.
+    """
+    if not isinstance(comp_view, ViewSection):
+        return None, MIRROR_UNSUPPORTED_KIND
+    if transform.HasReflection or not transform.BasisZ.IsAlmostEqualTo(XYZ.BasisZ):
+        return None, COPY_LINK_NOT_LEVEL
+
+    name = comp_view.Name
+    try:
+        ids = List[ElementId]()
+        ids.Add(comp_view.Id)
+        options = CopyPasteOptions()
+        options.SetDuplicateTypeNamesHandler(_UseDestinationTypes())
+        copied = ElementTransformUtils.CopyElements(
+            comp_doc, ids, doc, Transform.Identity, options
+        )
+    except Exception as ex:
+        return None, COPY_FAILED.format(name, ex)
+
+    view = None
+    for new_id in copied:
+        element = doc.GetElement(new_id)
+        if isinstance(element, ViewSection):
+            view = element
+            break
+    if view is None:
+        return None, COPY_FAILED.format(name, u"לא נוצר מבט")
+
+    # Revit renames a copy whose name is taken, by changing its trailing digits
+    # ("SEC3" became "SEC1"), which would hide the view from the name-based
+    # "exists" check. Take the comp's name back, or the nearest free one.
+    if view.Name != name:
+        try:
+            view.Name = _free_name(doc, name)
+        except Exception:
+            pass
+
+    error = _move_through_link(doc, view, comp_view, transform)
+    if error:
+        return None, error
+    return view, None
+
+
+def _move_through_link(doc, view, comp_view, transform):
+    """Put a copied section where the link transform puts the comp one."""
+    if not transform.IsIdentity:
+        doc.Regenerate()
+        try:
+            viewer_ids = list(
+                view.GetDependentElements(
+                    ElementCategoryFilter(BuiltInCategory.OST_Viewers)
+                )
+            )
+        except Exception:
+            viewer_ids = []
+        if not viewer_ids:
+            return COPY_NOT_PLACED.format(view.Name)
+
+        angle = math.atan2(transform.BasisX.Y, transform.BasisX.X)
+        try:
+            if abs(angle) > 1e-9:
+                ElementTransformUtils.RotateElement(
+                    doc,
+                    viewer_ids[0],
+                    Line.CreateBound(XYZ.Zero, XYZ.BasisZ),
+                    angle,
+                )
+            if not transform.Origin.IsZeroLength():
+                ElementTransformUtils.MoveElement(doc, viewer_ids[0], transform.Origin)
+        except Exception:
+            return COPY_NOT_PLACED.format(view.Name)
+        doc.Regenerate()
+
+    # Checked, not assumed: the viewer trick is measured behaviour, not a
+    # documented contract, and a section cut in the wrong place would quietly
+    # show the planner a different drawing from the coordinator's.
+    try:
+        placed = view.Origin.IsAlmostEqualTo(
+            transform.OfPoint(comp_view.Origin), PLANE_TOLERANCE
+        ) and view.ViewDirection.IsAlmostEqualTo(
+            transform.OfVector(comp_view.ViewDirection), 1e-6
+        )
+    except Exception:
+        placed = False
+    if not placed:
+        return COPY_NOT_PLACED.format(view.Name)
+    return None
 
 
 def _crop_can_reach(view, section_box):

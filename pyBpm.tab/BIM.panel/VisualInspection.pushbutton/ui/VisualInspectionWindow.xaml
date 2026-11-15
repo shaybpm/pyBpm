@@ -93,6 +93,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
@@ -110,13 +111,20 @@
                                        TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
 
-                        <Button Grid.Column="2" x:Name="refresh_btn" Content="&#x21BB;"
+                        <Button Grid.Column="2" x:Name="unregistered_btn"
+                                Content="משיכת חתכים שאינם רשומים"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource TextButton}"
+                                ToolTip="מעתיק אליך חתכי אדריכלות-קונסטרוקציה מהשיטה הקודמת: חתכים בקומפילציה על ה-View Template 01_AC_Sections שאינם חלק מהבדיקה הוויזואלית. החתך מועתק כמו שהוא, כולל הגדרות ה-Visibility/Graphics שלו."
+                                Click="unregistered_btn_Click" />
+
+                        <Button Grid.Column="3" x:Name="refresh_btn" Content="&#x21BB;"
                                 VerticalAlignment="Center"
                                 Style="{StaticResource IconButton}"
                                 ToolTip="קורא מחדש את מודל הקומפילציה ואת הציונים, ומעדכן אילו מבטים כבר קיימים אצלך."
                                 Click="refresh_btn_Click" />
 
-                        <Button Grid.Column="3" x:Name="web_btn" Content="פתח בדפדפן"
+                        <Button Grid.Column="4" x:Name="web_btn" Content="פתח בדפדפן"
                                 VerticalAlignment="Center"
                                 Style="{StaticResource TextButton}"
                                 ToolTip="פותח בדפדפן את דף הבדיקה של מודל הקומפילציה: כל המבנים והקומות, עם התמונות של המבטים."

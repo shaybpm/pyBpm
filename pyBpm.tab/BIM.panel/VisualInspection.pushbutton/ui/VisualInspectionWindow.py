@@ -482,6 +482,10 @@ class VisualInspectionWindow(Windows.Window):
                     ok, message = self._delete_view(item)
                 elif item.get("kind") == "sheet":
                     ok, message = self._place_row_sheet(item)
+                elif item.get("kind") == "copy_section":
+                    ok, message = self._copy_unregistered_atomically(
+                        item, comp_doc, transform
+                    )
                 else:
                     ok, message = self._run_one(item, comp_doc, transform)
                 if ok:
@@ -813,6 +817,126 @@ class VisualInspectionWindow(Windows.Window):
                 )
             )
         return True, u" ".join(parts)
+
+    # --- UNREGISTERED (OLD-METHOD) SECTIONS ------------------------------------
+
+    def unregistered_btn_Click(self, sender, e):
+        """Pick old-method Arc-Const sections from the compilation and copy them.
+
+        Projects that started before the visual inspection have their
+        Arc-Const sections under the 01_AC_Sections template, unscored, so the
+        dashboard does not list them. This is the interim way to still hand
+        them to the planner. Queued by id and name, like every other write.
+        """
+        # Modeless window: an exception escaping a handler takes Revit down.
+        try:
+            self._pick_unregistered()
+        except Exception as ex:
+            self.set_status(u"משיכת החתכים נכשלה: {0}".format(ex), RED)
+
+    def _pick_unregistered(self):
+        from pyrevit import forms
+
+        comp_doc = self.comp_doc
+        if comp_doc is None:
+            self.set_status(read.COMP_LINK_BROKEN_MSG, RED)
+            return
+
+        sections = read.read_unregistered_sections(comp_doc)
+        if not sections:
+            self.set_status(
+                u"לא נמצאו בקומפילציה חתכים לא רשומים (חתכים על ה-View Template "
+                u"'{0}' שאינם חלק מהבדיקה הוויזואלית).".format(
+                    read.LEGACY_AC_SECTIONS_TEMPLATE
+                ),
+                GRAY,
+            )
+            return
+
+        # A section already in the planner's model is left out rather than
+        # copied again: a second copy would only be a renamed duplicate.
+        existing = mirror.mirrored_names(self.doc)
+        by_name = {}
+        for section in sections:
+            if section.name and section.name not in existing:
+                by_name[section.name] = section
+        here = len(sections) - len(by_name)
+        if not by_name:
+            self.set_status(
+                u"כל החתכים הלא רשומים שבקומפילציה ({0}) כבר קיימים אצלך.".format(
+                    len(sections)
+                ),
+                GREEN,
+            )
+            return
+
+        title = u"חתכים שאינם רשומים בקומפילציה ({0})".format(len(by_name))
+        if here:
+            title = u"{0} - {1} נוספים כבר קיימים אצלך".format(title, here)
+        try:
+            picked = forms.SelectFromList.show(
+                sorted(by_name.keys()),
+                title=title,
+                button_name=u"משוך אצלי",
+                multiselect=True,
+            )
+        finally:
+            self.take_focus()
+        if not picked:
+            return
+
+        for name in picked:
+            self._pending.append(
+                {
+                    "kind": "copy_section",
+                    "view_id": by_name[name].view_id,
+                    "view_name": name,
+                }
+            )
+        self.set_status(u"מעתיק אצלך {0} חתכים...".format(len(picked)), GRAY)
+        self._event.Raise()
+
+    def _copy_unregistered_atomically(self, item, comp_doc, transform):
+        """_copy_unregistered, all or nothing per section.
+
+        A copy can fail after the view already exists in the planner's model -
+        landed in the wrong place, say - and that view must not stay behind.
+        """
+        sub = SubTransaction(self.doc)
+        sub.Start()
+        try:
+            ok, message = self._copy_unregistered(item, comp_doc, transform)
+        except Exception as ex:
+            ok, message = False, mirror.COPY_FAILED.format(item["view_name"], ex)
+        if ok:
+            sub.Commit()
+        else:
+            sub.RollBack()
+        return ok, message
+
+    def _copy_unregistered(self, item, comp_doc, transform):
+        """(succeeded, message) for one queued copy. Inside a transaction.
+
+        The copy is left WITHOUT a View Template, on purpose (Eyal, 2026-11-15):
+        it carries the compilation's Visibility/Graphics as its own settings -
+        measured identical to the comp template, filters, categories, detail
+        level and style alike - and a local template of the same name could
+        only change that.
+        """
+        comp_view = comp_doc.GetElement(
+            RevitUtils.getElementId(comp_doc, item["view_id"])
+        )
+        if comp_view is None:
+            return False, u"החתך '{0}' כבר אינו קיים בקומפילציה.".format(
+                item["view_name"]
+            )
+        if mirror.find_mirrored_view(self.doc, item["view_name"]) is not None:
+            return False, u"החתך '{0}' כבר קיים אצלך.".format(item["view_name"])
+
+        _view, error = mirror.copy_section(self.doc, comp_doc, comp_view, transform)
+        if error:
+            return False, error
+        return True, None
 
     def show_template_differences(self, item):
         """Spell out how the local template differs, and offer to fix it.

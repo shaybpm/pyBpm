@@ -39,6 +39,7 @@ from Autodesk.Revit.DB import (
     ViewPlan,
     ViewSection,
     ViewSheet,
+    ViewType,
     BuiltInCategory,
     BuiltInParameter,
     ElementCategoryFilter,
@@ -87,6 +88,11 @@ PARAM_RUN_DATE = "BPM_VI_RunDate"
 # dot, so a renumbered "A.103" still has its pages at "A.103.1".
 PAGE_NUMBER_PATTERN = re.compile(u"^(.+)\\.(\\d+)$")
 REVISION_PREFIX = u"בדיקה ויזואלית אדריכלות-קונסטרוקציה"
+# The template every Arc-Const section of the OLD method was drawn under, before
+# the visual inspection existed. Those sections carry no score and no tool
+# prefix, so this name is the only thing that tells them apart from the rest of
+# the compilation's sections.
+LEGACY_AC_SECTIONS_TEMPLATE = "01_AC_Sections"
 
 
 def view_type_of(view_name):
@@ -351,6 +357,47 @@ def _is_inspection_view(view):
     ):
         return True
     return bool(_run_date_of(view))
+
+
+class UnregisteredSection(object):
+    """An old-method Arc-Const section: in the compilation, not in the inspection."""
+
+    def __init__(self, view_id, name):
+        self.view_id = view_id
+        self.name = name
+
+
+def read_unregistered_sections(comp_doc):
+    """The compilation's Arc-Const sections that the inspection does not know.
+
+    Projects that started before the visual inspection have their Arc-Const
+    sections drawn under LEGACY_AC_SECTIONS_TEMPLATE, unscored and unnamed by
+    the tool. "Unregistered" is exactly the complement of _is_inspection_view,
+    so a section is either on the dashboard or in this list, never both.
+
+    Only real sections: an elevation or a detail view can carry a section
+    template too, and a dependent view is a crop of a primary one, not a cut of
+    its own.
+    """
+    found = []
+    for view in FilteredElementCollector(comp_doc).OfClass(ViewSection).ToElements():
+        try:
+            if view.IsTemplate or view.ViewType != ViewType.Section:
+                continue
+            if view.GetPrimaryViewId() != ElementId.InvalidElementId:
+                continue
+            template = comp_doc.GetElement(view.ViewTemplateId)
+            if template is None or template.Name != LEGACY_AC_SECTIONS_TEMPLATE:
+                continue
+        except Exception:
+            continue
+        if _is_inspection_view(view):
+            continue
+        found.append(
+            UnregisteredSection(_id_value(comp_doc, view.Id), _safe(lambda: view.Name))
+        )
+    found.sort(key=lambda s: s.name or u"")
+    return found
 
 
 def _kind_of(view):
