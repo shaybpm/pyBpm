@@ -83,6 +83,15 @@ def score_brush(score):
     return Windows.Media.Brushes.SeaGreen
 
 
+def set_label(sheet):
+    """The row's set value to show beside its number, or None.
+
+    Decided in VisualInspectionRead._label_sets; the "views on no sheet" group
+    has no set and no attribute for it.
+    """
+    return getattr(sheet, "set_label", None)
+
+
 class ViewRowItem(object):
     """One inspection view, as the grid shows it.
 
@@ -234,6 +243,9 @@ class VisualInspectionRowPage(Windows.Controls.Page):
 
     def _subtitle(self):
         parts = []
+        set_id = set_label(self.sheet)
+        if set_id:
+            parts.append(u"מזהה סט {0}".format(set_id))
         pages = getattr(self.sheet, "page_numbers", None) or []
         if len(pages) > 1:
             parts.append(u"גיליונות {0}".format(u", ".join(pages)))

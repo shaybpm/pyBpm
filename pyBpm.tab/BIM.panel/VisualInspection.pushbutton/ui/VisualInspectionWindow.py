@@ -43,6 +43,7 @@ from VisualInspectionRowPage import (  # type: ignore
     ViewRowItem,
     score_brush,
     score_text,
+    set_label,
 )
 
 
@@ -281,15 +282,21 @@ class VisualInspectionWindow(Windows.Window):
 
     def _nav_tooltip(self, sheet, items):
         here = len([i for i in items if i.exists])
-        return (
-            u"{0}\nגיליון {1}\n{2} מבטים, {3} כבר קיימים אצלך\nציון השורה: {4}"
+        pages = getattr(sheet, "page_numbers", None) or []
+        text = (
+            u"{0}\n{1} {2}\n{3} מבטים, {4} כבר קיימים אצלך\nציון השורה: {5}"
         ).format(
             sheet.name or u"—",
-            sheet.number or u"—",
+            u"גיליונות" if len(pages) > 1 else u"גיליון",
+            u", ".join(pages) if len(pages) > 1 else (sheet.number or u"—"),
             len(items),
             here,
             score_text(sheet.score),
         )
+        set_id = set_label(sheet)
+        if set_id:
+            text += u"\nמזהה סט: {0}".format(set_id)
+        return text
 
     def _key_of(self, sheet):
         return sheet.number or sheet.name or u"?"
