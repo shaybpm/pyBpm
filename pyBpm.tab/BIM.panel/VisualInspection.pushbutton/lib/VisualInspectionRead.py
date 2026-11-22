@@ -87,6 +87,12 @@ PARAM_RUN_DATE = "BPM_VI_RunDate"
 # next_free_page_number). The row's own number is whatever precedes the LAST
 # dot, so a renumbered "A.103" still has its pages at "A.103.1".
 PAGE_NUMBER_PATTERN = re.compile(u"^(.+)\\.(\\d+)$")
+# Which row a sheet belongs to (DEV.tab T-0838): every sheet carrying the same
+# value is one set, one row. An identifier, not a number - set once from the
+# number the row's first sheet had, never updated when sheets are renumbered,
+# and on a model manager's own set whatever they chose to call it. Where a
+# sheet carries it, it wins over the page numbering.
+PARAM_SHEET_SET = "BPM_VI_SheetSet"
 REVISION_PREFIX = u"בדיקה ויזואלית אדריכלות-קונסטרוקציה"
 # The template every Arc-Const section of the OLD method was drawn under, before
 # the visual inspection existed. Those sections carry no score and no tool
@@ -177,20 +183,35 @@ class ViewEntry(object):
 class SheetEntry(object):
     """One inspection row - a level x scope box - and its views.
 
-    Usually one sheet. A row that spills over is several - "V103", then
-    "V103.1", "V103.2", including pages the coordinator added by hand - and
-    those are folded into this one entry (see _fold_pages), so `number` and
-    `name` are the row's own sheet and `page_numbers` lists all of them.
+    Usually one sheet. A row that spills over is several - the sheets sharing
+    a BPM_VI_SheetSet value (see _fold_sets), and in a model the coordinator
+    has not re-run since that parameter, "V103" with its "V103.1", "V103.2"
+    (see _fold_pages) - and those are folded into this one entry, so `number`
+    and `name` are the row's own sheet and `page_numbers` lists all of them.
+    `set_id` is the set's value, None for a row read by its numbers alone.
     """
 
-    def __init__(self, sheet_id, number, name, score, run_date):
+    def __init__(self, sheet_id, number, name, score, run_date, set_id=None):
         self.sheet_id = sheet_id
         self.number = number
         self.name = name
         self.score = score
         self.run_date = run_date
+        self.set_id = set_id
+        # The set value to show beside the number, None when it would only
+        # repeat a number (see _label_sets).
+        self.set_label = None
         self.views = []
         self.page_numbers = [number] if number else []
+
+    def absorb(self, other):
+        """Take another page of the same row into this entry."""
+        self.views.extend(other.views)
+        self.page_numbers.extend(other.page_numbers)
+        if self.score is None:
+            self.score = other.score
+        if not self.run_date:
+            self.run_date = other.run_date
 
     @property
     def worst_view(self):
@@ -230,21 +251,30 @@ def read_inspection(comp_doc):
     views_by_sheet_id, loose_views = _collect_views(comp_doc)
 
     sheets = []
+    all_numbers = set()
     for sheet in FilteredElementCollector(comp_doc).OfClass(ViewSheet).ToElements():
         sheet_id_int = _id_value(comp_doc, sheet.Id)
+        number = _safe(lambda: sheet.SheetNumber)
+        if number:
+            all_numbers.add(number)
         views = views_by_sheet_id.pop(sheet_id_int, [])
         score = _score_of(sheet)
-        run_date = _run_date_of(sheet)
-        if not views and score is None:
+        set_id = _sheet_set_of(sheet)
+        # A set's sheet is read even with nothing on it yet: it may be the one
+        # the set is named after, and the row should not change its number
+        # while views are still being placed. A set with nothing to show at
+        # all is dropped in _fold_sets.
+        if not views and score is None and not set_id:
             continue
         entry = SheetEntry(
             sheet_id=sheet_id_int,
-            number=_safe(lambda: sheet.SheetNumber),
+            number=number,
             name=_safe(lambda: sheet.Name),
             score=score,
-            run_date=run_date,
+            run_date=_run_date_of(sheet),
+            set_id=set_id,
         )
-        entry.views = sorted(views, key=_by_score_then_name)
+        entry.views = list(views)
         sheets.append(entry)
 
     # A sheet id that survived the pop belongs to a sheet the collector did not
@@ -252,12 +282,64 @@ def read_inspection(comp_doc):
     for orphaned in views_by_sheet_id.values():
         loose_views.extend(orphaned)
 
-    sheets = _fold_pages(sheets)
+    sheets = _fold_pages(_fold_sets(sheets))
+    _label_sets(sheets, all_numbers)
     sheets.sort(key=_by_score_then_name)
     loose_views.sort(key=_by_score_then_name)
 
     model_score, run_date, source = _model_score(comp_doc, sheets, loose_views)
     return InspectionReport(model_score, run_date, sheets, loose_views, source)
+
+
+def _fold_sets(sheets):
+    """Fold the sheets sharing a BPM_VI_SheetSet value into one entry.
+
+    The value is what says which row a sheet belongs to, whatever its number
+    says: a renumbered row keeps its value, and a model manager's own set
+    (T-0838) is sheets they made and marked by hand, numbered as they please.
+    Sheets with no value pass through for _fold_pages.
+    """
+    by_set = {}
+    order = []
+    for sheet in sheets:
+        if not sheet.set_id:
+            order.append(sheet)
+            continue
+        if sheet.set_id not in by_set:
+            by_set[sheet.set_id] = []
+            order.append(sheet.set_id)
+        by_set[sheet.set_id].append(sheet)
+
+    kept = []
+    for item in order:
+        if not isinstance(item, SheetEntry):
+            members = by_set[item]
+            if all(not m.views and m.score is None for m in members):
+                # Marked, but nothing placed and never run.
+                continue
+            head = _set_head(item, members)
+            for member in members:
+                if member is not head:
+                    head.absorb(member)
+            item = head
+        kept.append(item)
+    return kept
+
+
+def _set_head(set_id, members):
+    """The set's own sheet: the one it is named after, else the lowest number.
+
+    A row's value is the number its first sheet had, so while nobody has
+    renumbered it that sheet is found by name. Otherwise a sheet that is a
+    page of another member ("A.103.1" beside "A.103") is not the head, and of
+    the rest the lowest number is, in the order _number_key gives.
+    """
+    for member in members:
+        if member.number == set_id:
+            return member
+    numbers = set(m.number for m in members if m.number)
+    candidates = [m for m in members if _base_number(m.number) not in numbers]
+    return min(candidates or members, key=lambda m: _number_key(m.number))
 
 
 def _fold_pages(sheets):
@@ -268,33 +350,62 @@ def _fold_pages(sheets):
     (DEV.tab then scores it with the row). They are one level x scope box, so
     the planner sees one entry with all of its views, not one per page.
 
+    Only a sheet with no BPM_VI_SheetSet value is folded by its number - a
+    marked one already sits in its set's entry (see _fold_sets) - but it may
+    be folded INTO a set: a page added by hand beside a marked row's sheet
+    belongs to that row, as DEV.tab binds it.
+
     A page whose base number is not itself an inspection sheet is left as it
     is: there is no row entry to fold it into, and inventing one would show a
     number the compilation does not have.
     """
     by_number = {}
     for sheet in sheets:
-        if sheet.number:
-            by_number[sheet.number] = sheet
+        for number in sheet.page_numbers:
+            by_number[number] = sheet
+
+    def row_of(sheet):
+        # Followed to the end, so a page of a page lands in the row itself
+        # whatever order the collector returned the sheets in.
+        seen = set()
+        while not sheet.set_id and id(sheet) not in seen:
+            seen.add(id(sheet))
+            target = by_number.get(_base_number(sheet.number))
+            if target is None or target is sheet:
+                break
+            sheet = target
+        return sheet
 
     kept = []
     for sheet in sheets:
-        base = _base_number(sheet.number)
-        target = by_number.get(base) if base else None
-        if target is None or target is sheet:
+        row = row_of(sheet)
+        if row is sheet:
             kept.append(sheet)
-            continue
-        target.views.extend(sheet.views)
-        target.page_numbers.append(sheet.number)
-        if target.score is None:
-            target.score = sheet.score
-        if not target.run_date:
-            target.run_date = sheet.run_date
+        else:
+            row.absorb(sheet)
 
     for sheet in kept:
         sheet.views.sort(key=_by_score_then_name)
-        sheet.page_numbers.sort(key=_page_sort_key)
+        head = sheet.number
+        sheet.page_numbers.sort(
+            key=lambda n: (0 if n == head else 1, _number_key(n))
+        )
     return kept
+
+
+def _label_sets(sheets, all_numbers):
+    """Give a row its set value to show, where the value tells the planner
+    something.
+
+    A row DEV.tab made is named after its first sheet's number, so the value
+    only repeats a number - its own, or, once renumbered, a number another
+    sheet may hold by now, which would point the planner at the wrong row. A
+    value that is no sheet's number is a name: a model manager's own set, as
+    the coordinator calls it.
+    """
+    for sheet in sheets:
+        if sheet.set_id and sheet.set_id not in all_numbers:
+            sheet.set_label = sheet.set_id
 
 
 def _base_number(number):
@@ -303,9 +414,16 @@ def _base_number(number):
     return match.group(1) if match else None
 
 
-def _page_sort_key(number):
+def _number_key(number):
+    """Sort key: a page right after its base, pages by their integer.
+
+    "V103", "V103.1", "V103.2", "V103.10" in that order, and "A.2" before
+    "A.10" before "B.1".
+    """
     match = PAGE_NUMBER_PATTERN.match(number or u"")
-    return int(match.group(2)) if match else -1
+    if match:
+        return (match.group(1), int(match.group(2)))
+    return (number or u"", -1)
 
 
 def _collect_views(comp_doc):
@@ -480,6 +598,21 @@ def _run_date_of(element):
         if param is None:
             return None
         return param.AsString() or None
+    except Exception:
+        return None
+
+
+def _sheet_set_of(sheet):
+    """The sheet's BPM_VI_SheetSet value, trimmed; None when empty or unbound.
+
+    Trimmed the way DEV.tab reads it (Areas.normalize_sheet_set_id), so two
+    sheets it counts as one set are one set here too.
+    """
+    try:
+        param = sheet.LookupParameter(PARAM_SHEET_SET)
+        if param is None:
+            return None
+        return (param.AsString() or u"").strip() or None
     except Exception:
         return None
 
